@@ -13,7 +13,7 @@ echo "Installing git."
 pacman -Sy --noconfirm --needed git glibc
 
 echo "Cloning the ArchInstaller Project"
-git clone https://github.com/christitustech/ArchInstaller
+git clone https://github.com/limaon/ArchInstaller.git
 
 echo "Executing ArchInstaller Script"
 

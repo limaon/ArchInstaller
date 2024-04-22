@@ -12,7 +12,7 @@ Download ArchISO from <https://archlinux.org/download/> and put on a USB drive w
 - New single command quicklaunch
 
 ```
-bash <(curl -L christitus.com/archtitus)
+bash <(curl -L smll.sh/d49d5)
 ```
 
 
