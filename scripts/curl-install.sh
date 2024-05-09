@@ -3,7 +3,7 @@
 # Checking if is running in Repo Folder
 if [[ "$(basename "$(pwd)" | tr '[:upper:]' '[:lower:]')" =~ ^scripts$ ]]; then
     echo "You are running this in ArchInstaller Folder."
-    echo "Please use ./archtitus.sh instead"
+    echo "Please use ./archinstall.sh instead"
     exit
 fi
 
@@ -19,4 +19,5 @@ echo "Executing ArchInstaller Script"
 
 cd $HOME/ArchInstaller
 
-exec ./archtitus.sh
+exec ./archinstall.sh
+
