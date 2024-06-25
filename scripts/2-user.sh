@@ -11,7 +11,7 @@ echo -ne "
 
 Installing AUR Softwares
 "
-source $HOME/ArchInstaller/configs/setup.conf
+source ${HOME}/ArchInstaller/configs/setup.conf
 
   cd ~
   mkdir "/home/$USERNAME/.cache"
@@ -36,7 +36,7 @@ if [[ ! $AUR_HELPER == none ]]; then
   cd ~
   git clone "https://aur.archlinux.org/$AUR_HELPER.git"
   cd ~/$AUR_HELPER
-  makepkg -si --noconfirm
+  makepkg -sircC --noconfirm
   # sed $INSTALL_TYPE is using install type to check for MINIMAL installation, if it's true, stop
   # stop the script and move on, not installing any more packages below that line
   sed -n '/'$INSTALL_TYPE'/q;p' ~/ArchInstaller/pkg-files/aur-pkgs.txt | while read line

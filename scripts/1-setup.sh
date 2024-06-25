@@ -3,20 +3,23 @@
 #
 # @file Setup
 # @brief Configures installed system, installs base packages, and creates user. 
+
+
 echo -ne "
 -------------------------------------------------------------------------
                     Automated Arch Linux Installer
                         SCRIPTHOME: ArchInstaller
 -------------------------------------------------------------------------
 "
-source $HOME/ArchInstaller/configs/setup.conf
+source ${HOME}/ArchInstaller/configs/setup.conf
 echo -ne "
 -------------------------------------------------------------------------
                     Network Setup 
 -------------------------------------------------------------------------
 "
-pacman -S --noconfirm --needed networkmanager dhclient
-systemctl enable --now NetworkManager
+pacman -Sy --noconfirm --needed networkmanager dhclient
+# systemctl enable --now NetworkManager
+systemctl enable NetworkManager
 echo -ne "
 -------------------------------------------------------------------------
                     Setting up mirrors for optimal download 
@@ -36,33 +39,40 @@ echo -ne "
 "
 TOTAL_MEM=$(cat /proc/meminfo | grep -i 'memtotal' | grep -o '[[:digit:]]*')
 if [[  $TOTAL_MEM -gt 8000000 ]]; then
-sed -i "s/#MAKEFLAGS=\"-j2\"/MAKEFLAGS=\"-j$nc\"/g" /etc/makepkg.conf
-sed -i "s/COMPRESSXZ=(xz -c -z -)/COMPRESSXZ=(xz -c -T $nc -z -)/g" /etc/makepkg.conf
+	sed -i "s/#MAKEFLAGS=\"-j2\"/MAKEFLAGS=\"-j$nc\"/g" /etc/makepkg.conf
+	sed -i "s/COMPRESSXZ=(xz -c -z -)/COMPRESSXZ=(xz -c -T $nc -z -)/g" /etc/makepkg.conf
 fi
 echo -ne "
 -------------------------------------------------------------------------
                     Setup Language to US and set locale  
 -------------------------------------------------------------------------
 "
-sed -i 's/^#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen
+sed -i -e 's/^#en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' \
+       -e 's/^#en_US ISO-8859-1/en_US ISO-8859-1/' /etc/locale.gen
+
 locale-gen
-timedatectl --no-ask-password set-timezone ${TIMEZONE}
-timedatectl --no-ask-password set-ntp 1
-localectl --no-ask-password set-locale LANG="en_US.UTF-8" LC_TIME="en_US.UTF-8"
-ln -s /usr/share/zoneinfo/${TIMEZONE} /etc/localtime
+hwclock --systohc
+echo "LANG=en_US.UTF-8" > /etc/locale.conf
+export LANG=en_US.UTF-8
+# timedatectl --no-ask-password set-timezone ${TIMEZONE}
+# timedatectl --no-ask-password set-ntp 1
+# localectl --no-ask-password set-locale LANG="en_US.UTF-8" LC_TIME="en_US.UTF-8"
+ln -sf /usr/share/zoneinfo/${TIMEZONE} /etc/localtime
 # Set keymaps
-localectl --no-ask-password set-keymap ${KEYMAP}
+# localectl --no-ask-password set-keymap ${KEYMAP}
 
 # Add sudo no password rights
 sed -i 's/^# %wheel ALL=(ALL) NOPASSWD: ALL/%wheel ALL=(ALL) NOPASSWD: ALL/' /etc/sudoers
 sed -i 's/^# %wheel ALL=(ALL:ALL) NOPASSWD: ALL/%wheel ALL=(ALL:ALL) NOPASSWD: ALL/' /etc/sudoers
 
-#Add parallel downloading
-sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
+# Add pacman configurations
+#sed -i -e 's/^#ParallelDownloads/ParallelDownloads/' \
+#       -e 's/^#VerbosePkgLists/VerbosePkgLists/' \
+#       -e '/\[multilib\]/,/Include/s/^#//' \
+#       -e 's/^#Color/Color/' /etc/pacman.conf
 
-#Enable multilib
-sed -i "/\[multilib\]/,/Include/"'s/^#//' /etc/pacman.conf
 pacman -Sy --noconfirm --needed
+
 
 echo -ne "
 -------------------------------------------------------------------------
@@ -117,7 +127,7 @@ elif grep -E "Intel Corporation UHD" <<< ${gpu_type}; then
     pacman -S --needed --noconfirm libva-intel-driver libvdpau-va-gl lib32-vulkan-intel vulkan-intel libva-intel-driver libva-utils lib32-mesa
 fi
 #SETUP IS WRONG THIS IS RUN
-if ! source $HOME/ArchInstaller/configs/setup.conf; then
+if ! source ${HOME}/ArchInstaller/configs/setup.conf; then
 	# Loop through user input until the user gives a valid username
 	while true
 	do 
@@ -170,7 +180,7 @@ if [ $(whoami) = "root"  ]; then
     echo "$USERNAME:$PASSWORD" | chpasswd
     echo "$USERNAME password set"
 
-	cp -R $HOME/ArchInstaller /home/$USERNAME/
+	cp -R ${HOME}/ArchInstaller /home/$USERNAME/
     chown -R $USERNAME: /home/$USERNAME/ArchInstaller
     echo "ArchInstaller copied to home directory"
 

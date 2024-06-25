@@ -31,8 +31,9 @@ set_password() {
     if [[ "$PASSWORD1" == "$PASSWORD2" ]]; then
         set_option "$1" "$PASSWORD1"
     else
-        echo -ne "ERROR! Passwords do not match. \n"
-        set_password
+		echo -ne "ERROR! Passwords do not match. \n"
+		sed -i '/&PASSWORD1=.*/d' "$CONFIG_FILE"
+		set_password "$1"
     fi
 }
 
@@ -184,7 +185,7 @@ select_option() {
 
     return $(( $active_col + $active_row * $colmax ))
 }
-# @description Displays ArchInstaller logo
+# @description Displays custom logo
 # @noargs
 logo () {
 # This will be shown on every set as user is progressing

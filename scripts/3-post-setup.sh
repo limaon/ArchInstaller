@@ -3,6 +3,8 @@
 #
 # @file Post-Setup
 # @brief Finalizing installation configurations and cleaning up after script.
+
+
 echo -ne "
 -------------------------------------------------------------------------
                     Automated Arch Linux Installer
@@ -30,21 +32,27 @@ fi
 # set kernel parameter for adding splash screen
 sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="[^"]*/& splash /' /etc/default/grub
 
-echo -e "Installing CyberRe Grub theme..."
+echo -e "Installing Grub theme..."
 THEME_DIR="/boot/grub/themes"
-THEME_NAME=CyberRe
+THEME_NAME=Vimix
+
 echo -e "Creating the theme directory..."
 mkdir -p "${THEME_DIR}/${THEME_NAME}"
+
 echo -e "Copying the theme..."
 cd ${HOME}/ArchInstaller
 cp -a configs${THEME_DIR}/${THEME_NAME}/* ${THEME_DIR}/${THEME_NAME}
+
 echo -e "Backing up Grub config..."
 cp -an /etc/default/grub /etc/default/grub.bak
+
 echo -e "Setting the theme as the default..."
 grep "GRUB_THEME=" /etc/default/grub 2>&1 >/dev/null && sed -i '/GRUB_THEME=/d' /etc/default/grub
 echo "GRUB_THEME=\"${THEME_DIR}/${THEME_NAME}/theme.txt\"" >> /etc/default/grub
+
 echo -e "Updating grub..."
 grub-mkconfig -o /boot/grub/grub.cfg
+
 echo -e "All set!"
 
 echo -ne "
@@ -76,7 +84,7 @@ echo -ne "
 "
 systemctl enable cups.service
 echo "  Cups enabled"
-ntpd -qg
+# ntpd -qg
 systemctl enable ntpd.service
 echo "  NTP enabled"
 systemctl disable dhcpcd.service
@@ -93,7 +101,7 @@ echo "  Avahi enabled"
 if [[ "${FS}" == "luks" || "${FS}" == "btrfs" ]]; then
 echo -ne "
 -------------------------------------------------------------------------
-                    Creating Snapper Config
+                    Creating Snapper Config Files
 -------------------------------------------------------------------------
 "
 
