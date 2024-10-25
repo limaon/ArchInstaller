@@ -11,8 +11,11 @@
 set -a
 
 SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-SCRIPTS_DIR="${SCRIPTS_DIR}/scripts"
-CONFIGS_DIR="${SCRIPTS_DIR}/configs"
+SCRIPTS_DIR="${SCRIPT_DIR}/scripts"
+CONFIGS_DIR="${SCRIPT_DIR}/configs"
+
+CONFIG_FILE="${CONFIGS_DIR}/setup.conf"
+LOG_FILE="${SCRIPT_DIR}/install.log"
 
 BOLD='\e[1m'
 RESET='\e[0m'
@@ -27,11 +30,18 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 
 
 # Load utility scripts
-for filename in "$SCRIPTS_DIR"/utils/*.sh; do
+for filename in ${SCRIPTS_DIR}/utils/*.sh; do
   [ -e "$filename" ] || continue
-  # shellcheck source=$SCRIPTS_DIR/utils/*.sh
+  # shellcheck source=${SCRIPTS_DIR}/utils/*.sh
   source "$filename"
 done
+
+
+
+# Actual install sequence
+# clear
+show_logo # loaded from 'install-helper.sh'
+source "${SCRIPTS_DIR}/configuration.sh"
 
 # echo -ne "
 # -------------------------------------------------------------------------
