@@ -7,7 +7,7 @@
 # @stderror Output routed to startup.log
 
 # @setting-header General Settings
-# @setting CONFIG_FILE string[$CONFIGS_DIR/setup.conf] Location of setup.conf to be used by set_option and all subsequent scripts. 
+# @setting CONFIG_FILE string[$CONFIGS_DIR/setup.conf] Location of setup.conf to be used by set_option and all subsequent scripts.
 CONFIG_FILE=$CONFIGS_DIR/setup.conf
 if [ ! -f $CONFIG_FILE ]; then # check if file exists
     touch -f $CONFIG_FILE # create file if not exists
@@ -110,7 +110,7 @@ select_option() {
                             if [[ $key = [B || $key = j ]]; then echo down;  fi;
                             if [[ $key = [C || $key = l ]]; then echo right;  fi;
                             if [[ $key = [D || $key = h ]]; then echo left;  fi;
-                        fi 
+                        fi
     }
     print_options_multicol() {
         # print options by overwriting the last lines
@@ -121,9 +121,9 @@ select_option() {
         local idx=0
         local row=0
         local col=0
-        
+
         curr_idx=$(( $curr_col + $curr_row * $colmax ))
-        
+
         for option in "${options[@]}"; do
 
             row=$(( $idx/$colmax ))
@@ -149,7 +149,7 @@ select_option() {
     local startrow=$(($lastrow - $#))
     local startcol=1
     local lines=$( tput lines )
-    local cols=$( tput cols ) 
+    local cols=$( tput cols )
     local colmax=$2
     local offset=$(( $cols / $colmax ))
 
@@ -163,7 +163,7 @@ select_option() {
     local active_row=0
     local active_col=0
     while true; do
-        print_options_multicol $active_col $active_row 
+        print_options_multicol $active_col $active_row
         # user key control
         case `key_input` in
             enter)  break;;
@@ -191,7 +191,7 @@ logo () {
 # This will be shown on every set as user is progressing
 echo -ne "
 ------------------------------------------------------------------------
-            Please select presetup settings for your system              
+            Please select presetup settings for your system
 ------------------------------------------------------------------------
 "
 }
@@ -207,7 +207,7 @@ select_option $? 1 "${options[@]}"
 case $? in
 0) set_option FS btrfs;;
 1) set_option FS ext4;;
-2) 
+2)
     set_password "LUKS_PASSWORD"
     set_option FS luks
     ;;
@@ -215,14 +215,14 @@ case $? in
 *) echo "Wrong option please select again"; filesystem;;
 esac
 }
-# @description Detects and sets timezone. 
+# @description Detects and sets timezone.
 timezone () {
 # Added this from arch wiki https://wiki.archlinux.org/title/System_time
 time_zone="$(curl --fail https://ipapi.co/timezone)"
 echo -ne "
 System detected your timezone to be '$time_zone' \n"
 echo -ne "Is this correct?
-" 
+"
 options=("Yes" "No")
 select_option $? 1 "${options[@]}"
 
@@ -231,14 +231,14 @@ case ${options[$?]} in
     echo "${time_zone} set as timezone"
     set_option TIMEZONE $time_zone;;
     n|N|no|NO|No)
-    echo "Please enter your desired timezone e.g. Europe/London :" 
+    echo "Please enter your desired timezone e.g. Europe/London :"
     read new_timezone
     echo "${new_timezone} set as timezone"
     set_option TIMEZONE $new_timezone;;
     *) echo "Wrong option. Try again";timezone;;
 esac
 }
-# @description Set user's keyboard mapping. 
+# @description Set user's keyboard mapping.
 keymap () {
 echo -ne "
 Please select key board layout from this list"
@@ -294,16 +294,16 @@ echo -e "\n${disk%|*} selected \n"
 drivessd
 }
 
-# @description Gather username and password to be used for installation. 
+# @description Gather username and password to be used for installation.
 userinfo () {
 read -p "Please enter your username: " username
-set_option USERNAME ${username,,} # convert to lower case as in issue #109 
+set_option USERNAME ${username,,} # convert to lower case as in issue #109
 set_password "PASSWORD"
 read -rep "Please enter your hostname: " nameofmachine
 set_option NAME_OF_MACHINE $nameofmachine
 }
 
-# @description Choose AUR helper. 
+# @description Choose AUR helper.
 aurhelper () {
   # Let the user choose AUR helper from predefined list
   echo -ne "Please enter your desired AUR helper:\n"
@@ -323,7 +323,7 @@ desktopenv () {
   set_option DESKTOP_ENV $desktop_env
 }
 
-# @description Choose whether to do full or minimal installation. 
+# @description Choose whether to do full or minimal installation.
 installtype () {
   echo -ne "Please select type of installation:\n\n
   Full install: Installs full featured desktop enviroment, with added apps and themes needed for everyday use\n
