@@ -12,14 +12,14 @@ echo -e "installler-helper.sh loaded\n"
 # @noargs
 show_logo() {
     echo -e "
+                        _      _              _          _  _
+                       | |    (_)            | |        | || |
+       ____  _ __  ___ | |__   _  _ __   ___ | |_  ____ | || |
+      / _  || '__|/ __|| '_ \ | || '_ \ / __|| __|/ _  || || |
+     | (_| || |  | (__ | | | || || | | |\__ \| |_| (_| || || |
+      \__,_||_|   \___||_| |_||_||_| |_||___/ \__|\__,_||_||_|
 
-    Show logo here!!
-    Show logo here!!
-    Show logo here!!
-    Show logo here!!
-
-    SCRIPTHOME: $SCRIPT_DIR
-
+        SCRIPTHOME: $SCRIPT_DIR
 "
 }
 

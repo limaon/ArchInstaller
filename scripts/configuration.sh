@@ -12,5 +12,7 @@
 [ -f "$CONFIG_FILE" ] || touch -f "$CONFIG_FILE" # crete $CONFIG_FILE if it doesn't exist
 
 
+
 # Start functions
-echo -e "configuration.sh file loaded\n"
+background_checks
+show_logo
