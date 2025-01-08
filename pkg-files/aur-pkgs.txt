@@ -1,5 +1,0 @@
---END OF MINIMAL INSTALL--
-bluetuith
-dxvk-bin
-mangohud
-snapper-gui-git

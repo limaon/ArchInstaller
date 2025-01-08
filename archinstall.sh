@@ -19,7 +19,7 @@ LOG_FILE="${SCRIPT_DIR}/install.log"
 
 BOLD='\e[1m'
 RESET='\e[0m'
-BRED='\e[91m]'
+BRED='\e[91m'
 
 set +a
 
