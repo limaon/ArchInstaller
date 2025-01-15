@@ -36,9 +36,9 @@ for filename in ${SCRIPTS_DIR}/utils/*.sh; do
   source "$filename"
 done
 
-
 # Actual install sequence
-show_logo # loaded from 'install-helper.sh'
+setfont ter-v22b
+show_logo # function from 'install-helper.sh'
 source "${SCRIPTS_DIR}/configuration.sh"
 source_file "$CONFIG_FILE"
 sequence

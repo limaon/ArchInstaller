@@ -12,7 +12,7 @@ Download ArchISO from <https://archlinux.org/download/> and put on a USB drive w
 - New single command quicklaunch
 
 ```
-bash <(curl -L smll.sh/d49d5)
+bash <(curl -L "https://raw.githubusercontent.com/limaon/ArchInstaller/main/archinstall.sh")
 ```
 
 
@@ -36,7 +36,7 @@ __[Arch Linux RickEllis Installation Guide](https://github.com/rickellis/Arch-Li
 
 __[Arch Linux Wiki Installation Guide](https://wiki.archlinux.org/title/Installation_guide)__
 
-The main script will generate .log files for every script that is run as part of the installation process. These log files contain the terminal output so you can review any warnings or errors that occurred during installation and aid in troubleshooting. 
+The main script will generate .log files for every script that is run as part of the installation process. These log files contain the terminal output so you can review any warnings or errors that occurred during installation and aid in troubleshooting.
 ### No Wifi
 
 You can check if the WiFi is blocked by running `rfkill list`.
