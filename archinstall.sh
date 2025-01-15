@@ -38,11 +38,10 @@ done
 
 
 # Actual install sequence
-# clear
 show_logo # loaded from 'install-helper.sh'
 source "${SCRIPTS_DIR}/configuration.sh"
 source_file "$CONFIG_FILE"
-show_logo
+sequence
 
 echo -ne "
             Done - Please Eject Install Media and Reboot

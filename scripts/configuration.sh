@@ -44,3 +44,4 @@ keymap
 clear
 
 show_configurations
+clear

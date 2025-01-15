@@ -6,7 +6,6 @@
 # @stdout Output routed to install.log
 # @stderror Output routed to install.log
 
-echo -e "installler-helper.sh loaded\n"
 
 # @description Exits script if previous command fails
 # @arg $1 string Exit code of previous command
@@ -158,10 +157,23 @@ sequence() {
 # @description set options in setup.conf
 # @arg $1 string Configuration variable.
 # @arg $2 string Configuration value.
+# set_option() {
+#     grep -Eq "^${1}.*" "$CONFIG_FILE" && sed -i "/^${1}.*/d" "$CONFIG_FILE" # delete option if exists
+#     echo "${1}=${2}" >>"$CONFIG_FILE"                                       # add option
+# }
 set_option() {
-    grep -Eq "^${1}.*" "$CONFIG_FILE" && sed -i "/^${1}.*/d" "$CONFIG_FILE" # delete option if exists
-    echo "${1}=${2}" >>"$CONFIG_FILE"                                       # add option
+    local key="$1"
+    local value="$2"
+
+    grep -Eq "^${key}.*" "$CONFIG_FILE" && sed -i "/^${key}.*/d" "$CONFIG_FILE"
+
+    if [[ "$key" == "REAL_NAME" && "$value" =~ \  ]]; then
+        echo "${key}=\"${value}\"" >>"$CONFIG_FILE"
+    else
+        echo "${key}=${value}" >>"$CONFIG_FILE"
+    fi
 }
+
 
 # Renders a text based list of options that can be selected by the
 # user using up, down and enter keys and returns the chosen option.
@@ -290,12 +302,20 @@ select_option() {
 
 # @description Sources file to be used by the script
 # @arg $1 File to source
+# source_file() {
+#     if [[ -f "$1" ]]; then
+#         source "$1"
+#     else
+#         echo "ERROR! Missing file: $1"
+#         exit 0
+#     fi
+# }
 source_file() {
     if [[ -f "$1" ]]; then
-        source "$1"
+        source "$1" || { echo "ERROR! Failed to source file: $1"; exit 1; }
     else
         echo "ERROR! Missing file: $1"
-        exit 0
+        exit 1
     fi
 }
 
@@ -304,10 +324,10 @@ source_file() {
 # @noargs
 end_script() {
     echo "Copying logs"
-    # if [[ "$(find /mnt/var/log -type d | wc -l)" -ne 0 ]]; then
-    #     # cp -v "$LOG_FILE" /mnt/var/log/install.log
-    # else
-    #     echo -ne "ERROR! Log directory not found"
-    #     exit 0
-    # fi
+    if [[ "$(find /mnt/var/log -type d | wc -l)" -ne 0 ]]; then
+        cp -v "$LOG_FILE" /mnt/var/log/install.log
+    else
+        echo -ne "ERROR! Log directory not found"
+        exit 0
+    fi
 }

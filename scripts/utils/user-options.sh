@@ -7,8 +7,6 @@
 # @stderror Output routed to install.log
 
 
-echo -e "user_options loaded"
-
 # @description Read and verify user password before setting
 # @noargs
 set_password() {
@@ -25,25 +23,39 @@ set_password() {
     fi
 }
 
-# @description Gather username and password to be used for installation.
+# @description Gather username, real name, and password to be used for installation.
 # @noargs
 user_info() {
 
+    # Loop through user input until the user gives a valid full name
+    while true; do
+        read -rp "Please enter your full name (e.g., David Brown): " real_name
+        if [[ -z "$real_name" ]]; then
+            echo "Full name cannot be empty."
+        elif [[ "$real_name" =~ [^a-zA-Z\ ] ]]; then
+            echo "Full name contains invalid characters. Only letters and spaces are allowed."
+        else
+            set_option REAL_NAME "$real_name"
+            break
+        fi
+    done
+
     # Loop through user input until the user gives a valid username
     while true; do
-        read -rp "Please enter username:" username
+        read -rp "Please enter username: " username
         # username regex per response here https://unix.stackexchange.com/questions/157426/what-is-the-regex-to-validate-linux-users
         # lowercase the username to test regex
         [[ "${username,,}" =~ ^[a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30}\$)$ ]] && break
         echo "Incorrect username."
     done
-    set_option USERNAME "${username,,}" # convert to lower case as in issue #109
+    set_option USERNAME "${username,,}" # convert to lower case
 
+    # Ask for and set password
     set_password "PASSWORD"
 
     # Loop through user input until the user gives a valid hostname, but allow the user to force save
     while true; do
-        read -rp "Please name your machine:" nameofmachine
+        read -rp "Please name your machine: " nameofmachine
         # hostname regex (!!couldn't find spec for computer name!!)
         [[ "${nameofmachine,,}" =~ ^[a-z][a-z0-9_.-]{0,62}[a-z0-9]$ ]] && break
         # if validation fails allow the user to force saving of the hostname
@@ -152,6 +164,34 @@ Please Select your file system for both boot and root
 }
 
 
+# @description Set btrfs subvolumes to be used during install
+# @noargs
+set_btrfs() {
+    echo "Please enter your btrfs subvolumes separated by space"
+    echo "usualy they start with @."
+    echo "like @home, [defaults are @home, @var, @tmp, @.snapshots]"
+    echo " "
+    read -r -p "press enter to use default: " -a ARR
+
+    if [[ -z "${ARR[*]}" ]]; then
+        set_option "SUBVOLUMES" "(@ @home @var @tmp @.snapshots)"
+    else
+        NAMES=(@)
+        for i in "${ARR[@]}"; do
+            if [[ $i =~ [@] ]]; then
+                NAMES+=("$i")
+            else
+                NAMES+=(@"${i}")
+            fi
+        done
+        IFS=" " read -r -a SUBS <<<"$(tr ' ' '\n' <<<"${NAMES[@]}" | awk '!x[$0]++' | tr '\n' ' ')"
+        set_option "SUBVOLUMES" "${SUBS[*]}"
+    fi
+
+    set_option "MOUNTPOINT" "/mnt"
+}
+
+
 # @description Detects and sets timezone.
 # @noargs
 timezone() {
@@ -216,35 +256,47 @@ show_configurations() {
 
         echo -e "
 ------------------------------------------------------------------------
-Do you want to redo any step? Select an option below:
-1) Username and Password
-2) Installation Type
-3) AUR Helper
-4) Desktop Environment
-5) Disk Selection
-6) File System
-7) Timezone
-8) Keyboard Layout
-0) Exit and Proceed
+Do you want to redo any step? Select an option below, or press Enter to proceed:
+1) Full Name
+2) Username and Password
+3) Installation Type
+4) AUR Helper
+5) Desktop Environment
+6) Disk Selection
+7) File System
+8) Timezone
+9) Keyboard Layout
 ------------------------------------------------------------------------
 "
-        read -rp "Enter the number of the step to redo, or '0' to proceed: " choice
+        read -rp "Enter the number of the step to redo, or press Enter to proceed: " choice
 
+        if [[ -z "$choice" ]]; then
+            echo "Proceeding with installation..."
+            break
+        fi
+
+        # Processa a escolha do usuário
         case $choice in
-            1) user_info ;;
-            2) install_type ;;
-            3) aur_helper ;;
-            4) desktop_environment ;;
-            5) disk_select ;;
-            6) filesystem ;;
-            7) timezone ;;
-            8) keymap ;;
-            0)
-                echo "Proceeding with installation..."
-                break
+            1)
+                while true; do
+                    read -rp "Please enter your full name (e.g., Jose da Silva): " real_name
+                    if [[ -n "$real_name" ]]; then
+                        set_option REAL_NAME "$real_name"
+                        break
+                    else
+                        echo "Full name cannot be empty."
+                    fi
+                done
                 ;;
+            2) user_info ;;
+            3) install_type ;;
+            4) aur_helper ;;
+            5) desktop_environment ;;
+            6) disk_select ;;
+            7) filesystem ;;
+            8) timezone ;;
+            9) keymap ;;
             *)
-                clear
                 echo "Invalid option. Please try again."
                 ;;
         esac
