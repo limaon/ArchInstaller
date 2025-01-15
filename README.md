@@ -12,7 +12,7 @@ Download ArchISO from <https://archlinux.org/download/> and put on a USB drive w
 - New single command quicklaunch
 
 ```
-bash <(curl -L "https://raw.githubusercontent.com/limaon/ArchInstaller/main/archinstall.sh")
+bash <(curl -L raw.githubusercontent.com/limaon/ArchInstaller/refs/heads/main/scripts/curl-install.sh)
 ```
 
 
@@ -22,7 +22,7 @@ From initial Prompt type the following commands:
 
 ```
 pacman -Sy git
-git clone https://github.com/limaon/ArchInstaller.git
+git clone --depth=1 https://github.com/limaon/ArchInstaller.git
 cd ArchInstaller
 ./archinstall.sh
 ```
