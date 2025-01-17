@@ -19,6 +19,7 @@ exit_on_error() {
     fi
 }
 
+
 # @description display archinstaller logo
 # @noargs
 show_logo() {
@@ -33,6 +34,7 @@ show_logo() {
         SCRIPTHOME: $SCRIPT_DIR
 "
 }
+
 
 # @description Select multiple options
 # @noargs
@@ -143,6 +145,7 @@ function multiselect {
     eval "$retval"='("${selected[@]}")'
 }
 
+
 # @description Sequence to call scripts
 # @noargs
 sequence() {
@@ -154,13 +157,10 @@ sequence() {
     arch-chroot /mnt "$HOME"/archinstaller/scripts/3-post-setup.sh
 }
 
+
 # @description set options in setup.conf
 # @arg $1 string Configuration variable.
 # @arg $2 string Configuration value.
-# set_option() {
-#     grep -Eq "^${1}.*" "$CONFIG_FILE" && sed -i "/^${1}.*/d" "$CONFIG_FILE" # delete option if exists
-#     echo "${1}=${2}" >>"$CONFIG_FILE"                                       # add option
-# }
 set_option() {
     local key="$1"
     local value="$2"
@@ -175,21 +175,21 @@ set_option() {
 }
 
 
-# Renders a text based list of options that can be selected by the
-# user using up, down and enter keys and returns the chosen option.
+# Renders a text-based list of options that can be selected by the
+# user using up, down, and enter keys and returns the chosen option.
 #
 #   Arguments   : list of options, maximum of 256
 #                 "opt1" "opt2" ...
 #   Return value: selected index (0 for opt1, 1 for opt2 ...)
 select_option() {
 
-    # little helpers for terminal print control and key input
+    # Helpers for terminal print control and key input
     ESC=$(printf "\033")
-    cursor_blink_on() { printf "%s[?25h" "$ESC"; }
-    cursor_blink_off() { printf "%s[?25l" "$ESC"; }
-    cursor_to() { printf "%s[$1;${2:-1}H" "$ESC"; }
-    print_option() { printf "%s   %s " "$2" "$1"; }
-    print_selected() { printf "$2  %s[7m $1 %s[27m" "$ESC" "$ESC"; }
+    cursor_blink_on() { printf '%s[?25h' "$ESC"; }
+    cursor_blink_off() { printf '%s[?25l' "$ESC"; }
+    cursor_to() { printf '%s[%s;%sH' "$ESC" "$1" "${2:-1}"; }
+    print_option() { printf '%s   %s ' "$2" "$1"; }
+    print_selected() { printf '%s  %s[7m %s %s[27m' "$2" "$ESC" "$1" "$ESC"; }
     get_cursor_row() {
         IFS=';' read -rsdR -p $'\E[6n' ROW COL
         echo "${ROW#*[}"
@@ -201,41 +201,35 @@ select_option() {
     key_input() {
         local key
         IFS= read -rsn1 key 2>/dev/null >&2
-        [[ $key = "" ]] && echo enter
-        [[ $key = $'\x20' ]] && echo space
-        [[ $key = "k" ]] && echo up
-        [[ $key = "j" ]] && echo down
-        [[ $key = "h" ]] && echo left
-        [[ $key = "l" ]] && echo right
-        [[ $key = "a" ]] && echo all
-        [[ $key = "n" ]] && echo none
-        if [[ $key = $'\x1b' ]]; then
+        [[ $key == "" ]] && echo "enter"
+        [[ $key == $'\x20' ]] && echo "space"
+        [[ $key == "k" ]] && echo "up"
+        [[ $key == "j" ]] && echo "down"
+        [[ $key == "h" ]] && echo "left"
+        [[ $key == "l" ]] && echo "right"
+        [[ $key == "a" ]] && echo "all"
+        [[ $key == "n" ]] && echo "none"
+        if [[ $key == $'\x1b' ]]; then
             read -rsn2 key
-            [[ $key = [A || $key = k ]] && echo up
-            [[ $key = [B || $key = j ]] && echo down
-            [[ $key = [C || $key = l ]] && echo right
-            [[ $key = [D || $key = h ]] && echo left
+            [[ $key == "[A" || $key == "k" ]] && echo "up"
+            [[ $key == "[B" || $key == "j" ]] && echo "down"
+            [[ $key == "[C" || $key == "l" ]] && echo "right"
+            [[ $key == "[D" || $key == "h" ]] && echo "left"
         fi
     }
     print_options_multicol() {
-        # print options by overwriting the last lines
         local curr_col=$1
         local curr_row=$2
-        local curr_idx=0
-
         local idx=0
         local row=0
         local col=0
-
-        curr_idx=$((curr_col + curr_row * colmax))
+        local curr_idx=$((curr_col + curr_row * colmax))
 
         for option in "${options[@]}"; do
-
             row=$((idx / colmax))
-            col=$((idx - row * colmax))
-
+            col=$((idx % colmax))
             cursor_to $((startrow + row + 1)) $((offset * col + 1))
-            if [ "$idx" -eq "$curr_idx" ]; then
+            if [[ $idx -eq $curr_idx ]]; then
                 print_selected "$option"
             else
                 print_option "$option"
@@ -244,56 +238,59 @@ select_option() {
         done
     }
 
-    # initially print empty new lines (scroll down if at bottom of screen)
-    for opt; do printf "\n"; done
+    # Initialize
+    for _ in "$@"; do printf '\n'; done
 
-    # determine current screen position for overwriting the options
-    local return_value=$1
-    local lastrow=$(get_cursor_row)
-    local lastcol=$(get_cursor_col)
-    local startrow=$((lastrow - $#))
-    local startcol=1
-    local lines=$(tput lines)
-    local cols=$(tput cols)
-    local colmax=$2
-    local offset=$((cols / colmax))
+    # Determine current screen position for overwriting options
+    local lastrow
+    local lastcol
+    local startrow
+    local lines
+    local cols
+    local colmax
+    local offset
 
-    local size=$4
-    shift 4
+    # Assign values separately
+    lastrow=$(get_cursor_row)
+    lastcol=$(get_cursor_col)
+    startrow=$((lastrow - $#))
+    lines=$(tput lines)
+    cols=$(tput cols)
+    colmax=$2
+    offset=$((cols / colmax))
 
-    # ensure cursor and input echoing back on upon a ctrl+c during read -s
+    # Ensure proper cleanup on Ctrl+C
     trap "cursor_blink_on; stty echo; printf '\n'; exit" 2
     cursor_blink_off
 
     local active_row=0
     local active_col=0
+
     while true; do
-        print_options_multicol $active_col $active_row
-        # user key control
-        case $(key_input) in
-        enter) break ;;
-        up)
-            ((active_row--))
-            [ $active_row -lt 0 ] && active_row=0
-            ;;
-        down)
-            ((active_row++))
-            [ $active_row -ge $((${#options[@]} / colmax)) ] && active_row=$((${#options[@]} / colmax))
-            ;;
-        left)
-            ((active_col--))
-            [ $active_col -lt 0 ] && active_col=0
-            ;;
-        right)
-            ((active_col++))
-            [ $active_col -ge "$colmax" ] && active_col=$((colmax - 1))
-            ;;
+        print_options_multicol "$active_col" "$active_row"
+        case "$(key_input)" in
+            enter) break ;;
+            up)
+                ((active_row--))
+                [[ $active_row -lt 0 ]] && active_row=0
+                ;;
+            down)
+                ((active_row++))
+                [[ $active_row -ge $((${#options[@]} / colmax)) ]] && active_row=$((${#options[@]} / colmax))
+                ;;
+            left)
+                ((active_col--))
+                [[ $active_col -lt 0 ]] && active_col=0
+                ;;
+            right)
+                ((active_col++))
+                [[ $active_col -ge colmax ]] && active_col=$((colmax - 1))
+                ;;
         esac
     done
 
-    # cursor position back to normal
     cursor_to "$lastrow"
-    printf "\n"
+    printf '\n'
     cursor_blink_on
 
     return $((active_col + active_row * colmax))
@@ -302,14 +299,6 @@ select_option() {
 
 # @description Sources file to be used by the script
 # @arg $1 File to source
-# source_file() {
-#     if [[ -f "$1" ]]; then
-#         source "$1"
-#     else
-#         echo "ERROR! Missing file: $1"
-#         exit 0
-#     fi
-# }
 source_file() {
     if [[ -f "$1" ]]; then
         source "$1" || { echo "ERROR! Failed to source file: $1"; exit 1; }

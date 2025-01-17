@@ -17,12 +17,14 @@
       { "package": "i3blocks" },
       { "package": "i3lock" },
       { "package": "i3status" },
+      { "package": "ibus" },
+      { "package": "xss-lock" },
       { "package": "kitty" },
       { "package": "lxappearance" },
       { "package": "picom" },
       { "package": "xwallpaper" },
       { "package": "lightdm" },
-      { "package": "lightdm-gtk-greeter" }
+      { "package": "lightdm-slick-greeter" }
     ],
     "aur": [
       { "package": "asdf-vm" }
@@ -46,6 +48,7 @@
       { "package": "ttf-meslo-nerd" },
       { "package": "ttf-opensans" },
       { "package": "ttf-roboto" },
+      { "package": "ibus-kkc" },
       { "package": "gamemode" },
       { "package": "lf" },
       { "package": "kvantum" },

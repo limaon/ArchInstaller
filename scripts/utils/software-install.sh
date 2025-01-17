@@ -56,6 +56,7 @@ network_install() {
         networkmanager-pptp \
         networkmanager-strongswan \
         network-manager-sstp \
+        network-manager-applet \
         iproute2 \
         bind-tools \
         traceroute \
@@ -205,7 +206,7 @@ desktop_environment_install() {
             if [[ "$AUR_HELPER" != NONE ]]; then
                 "$AUR_HELPER" -S "$line" --noconfirm --needed --color=always
             else
-                pacman -S "$line" --noconfirm --needed --color=always
+                sudo pacman -S "$line" --noconfirm --needed --color=always
             fi
         done
     )
@@ -233,7 +234,7 @@ btrfs_install() {
                 if [[ "$AUR_HELPER" != NONE ]]; then
                     "$AUR_HELPER" -S "$line" --noconfirm --needed --color=always
                 else
-                    pacman -S "$line" --noconfirm --needed --color=always
+                    sudo pacman -S "$line" --noconfirm --needed --color=always
                 fi
             done
         )
@@ -257,18 +258,37 @@ user_theming() {
             konsave -i ~/archinstaller/configs/kde/kde.knsv
             sleep 1
             konsave -a kde
+
         elif [[ "$DESKTOP_ENV" == "openbox" ]]; then
             git clone https://github.com/stojshic/dotfiles-openbox ~/dotfiles-openbox
             ./dotfiles-openbox/install-titus.sh
+
         elif [[ "$DESKTOP_ENV" == "awesome" ]]; then
             cd ~/archinstaller/ && git submodule update --init
             cp -r ~/archinstaller/configs/awesome/home/. ~/
             sudo cp -r ~/archinstaller/configs/awesome/etc/xdg/awesome /etc/xdg/awesome
-            sudo mkdir -p /usr/share/wallpapers/
-            sudo cp ~/archinstaller/configs/base/usr/share/wallpapers/butterfly.png /usr/share/wallpapers/butterfly.png
+            sudo mkdir -p /usr/share/backgrounds/
+            sudo cp ~/archinstaller/configs/base/usr/share/backgrounds/butterfly.png /usr/share/backgrounds/butterfly.png
+
+        elif [[ "$DESKTOP_ENV" == "i3-wm" ]]; then
+            echo -e "Applying theming for i3-wm..."
+            # Setup system directory config files
+            sudo cp -r ~/archinstaller/configs/i3-wm/. /
+
+            # Setup some wallpaper
+            sudo mkdir -p /usr/share/backgrounds/
+            sudo cp ~/archinstaller/configs/base/usr/share/wallpapers/butterfly.png /usr/share/backgrounds/butterfly.png
+
+            # Add configured wallpaper line to config i3 file
+            if ! grep -q "xwallpaper --zoom /usr/share/backgrounds/butterfly.png" ~/.config/i3/config; then
+                echo 'exec_always --no-startup-id xwallpaper --zoom /usr/share/backgrounds/butterfly.png' >> ~/.config/i3/config
+            fi
+
         else
             echo -e "No theming setup for $DESKTOP_ENV"
         fi
+    else
+        echo -e "Skipping theming setup for $DESKTOP_ENV (Minimal or Server install)"
     fi
 }
 
@@ -291,6 +311,39 @@ essential_services() {
     echo -e "Periodic Trim enabled \n"
 
     if [[ ${INSTALL_TYPE} == "FULL" ]]; then
+
+        echo -ne "
+-------------------------------------------------------------------------
+                    Configuring UFW Firewall
+-------------------------------------------------------------------------
+"
+        echo "Disabling IPv6 in UFW configuration"
+        if grep -q '^IPV6=' /etc/ufw/ufw.conf; then
+            sed -i 's/^IPV6=.*/IPV6=no/' /etc/ufw/ufw.conf
+        else
+            echo 'IPV6=no' >> /etc/ufw/ufw.conf
+        fi
+
+        echo "Enabling UFW"
+        systemctl enable ufw.service
+
+        echo "Setting UFW rules for home user"
+
+        ufw default allow outgoing
+        ufw default deny incoming
+
+        # Allow inbound connections for essential services
+        ufw allow in 22/tcp   # SSH
+        ufw allow in 80/tcp   # HTTP
+        ufw allow in 443/tcp  # HTTPS
+
+        # Allow local sharing (home network)
+        ufw allow in 5353/udp  # mDNS (Avahi)
+        ufw allow in 631/tcp   # Printers (CUPS)
+
+        echo "Enabling UFW"
+        ufw --force enable
+        echo -e "UFW configured and enabled \n"
 
         # services part of full installation
         echo "Enabling Cups"

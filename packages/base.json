@@ -36,6 +36,7 @@
 			{ "package": "bluez-utils" },
 			{ "package": "bridge-utils" },
 			{ "package": "dnsmasq" },
+			{ "package": "dex" },
 			{ "package": "openssh" },
 			{ "package": "btrfs-progs" },
 			{ "package": "ntfs-3g" },
@@ -51,6 +52,7 @@
 			{ "package": "python-pip" },
 			{ "package": "python-psutil" },
 			{ "package": "python-pyqt5" },
+			{ "package": "plymouth" },
 			{ "package": "gamemode" },
 			{ "package": "neofetch" },
 			{ "package": "ntfs-3g" },
@@ -75,8 +77,8 @@
 			{ "package": "mkinitcpio-firmware" },
 			{ "package": "needrestart" },
 			{ "package": "pacman-cleanup-hook" },
-			{ "package": "plymouth-git" },
-			{ "package": "vscodium-bin " }
+			{ "package": "vscodium-bin " },
+			{ "package": "grub-theme-arch-linux" }
 		]
 	}
 }

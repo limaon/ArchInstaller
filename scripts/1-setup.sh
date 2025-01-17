@@ -46,10 +46,6 @@ locale_config
 sed -Ei 's/^# (%wheel ALL=\(ALL(:ALL)?\) NOPASSWD: ALL)/\1/' /etc/sudoers
 
 
-# Add parallel downloading
-# sed -i '/^#ParallelDownloads/s/^#//' /etc/pacman.conf
-
-
 # Enables the multilib repository and adds the chaotic-aur repository
 # to the system's package manager configuration 'system-config.sh'
 extra_repos
@@ -74,11 +70,6 @@ graphics_install
 if ! source ${HOME}/archinstaller/configs/setup.conf; then
     user_info
 fi
-
-
-# Adds a new user with the specified username and password, creates a
-# home directory and assign to groups 'system-config.sh'
-add_user
 
 
 # Check if the filesystem is LUKS; if so, update mkinitcpio

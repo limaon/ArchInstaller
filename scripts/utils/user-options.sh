@@ -69,10 +69,10 @@ user_info() {
 # @description Choose whether to do full or minimal installation.
 # @noargs
 install_type() {
-    echo -ne "Please select type of installation:\n\n
-  Full install: Installs full featured desktop enviroment, with added apps and themes needed for everyday use\n
-  Minimal Install: Installs only apps few selected apps to get you started\n
-  Server Install: Installs only base system without a desktop environment\n"
+    echo -ne "Please select type of installation:\n
+  ${BOLD}${BRED}Full Install:${RESET} Installs full featured desktop enviroment, with added apps and themes needed for everyday use.
+  ${BOLD}${BRED}Minimal Install:${RESET} Installs only apps few selected apps to get you started.
+  ${BOLD}${BRED}Server Install${RESET} Installs only base system without a desktop environment.\n"
     options=(FULL MINIMAL SERVER)
     select_option $? 4 "${options[@]}"
     install_type="${options[$?]}"
@@ -223,13 +223,31 @@ System detected your timezone to be '$time_zone' \n"
 }
 
 
+# @description Set system language (locale)
+# @noargs
+locale_selection() {
+    echo -ne "
+Please select your system language (locale) from the list below:
+"
+    # Lista de locais comumente usados
+    options=("en_US.UTF-8" "pt_BR.UTF-8" "es_ES.UTF-8" "fr_FR.UTF-8" "de_DE.UTF-8" "it_IT.UTF-8" "ja_JP.UTF-8" "zh_CN.UTF-8")
+
+    select_option $? 4 "${options[@]}"
+    locale="${options[$?]}"
+
+    echo -ne "Selected system language: ${locale} \n"
+    set_option LOCALE "$locale"
+}
+
+
 # @description Set user's keyboard mapping.
 # @noargs
 keymap() {
     echo -ne "
-Please select keyboard layout from this list"
+Please select keyboard layout from this list:
+"
     # These are default key maps as presented in official arch repo archinstall
-    options=("us" "by" "ca" "cf" "cz" "de" "dk" "es" "et" "fa" "fi" "fr" "gr" "hu" "il" "it" "lt" "lv" "mk" "nl" "no" "pl" "ro" "ru" "sg" "ua" "uk")
+    options=("us" "br-abnt2" "by" "ca" "cf" "cz" "de" "dk" "es" "et" "fa" "fi" "fr" "gr" "hu" "il" "it" "lt" "lv" "mk" "nl" "no" "pl" "ro" "ru" "sg" "ua" "uk")
 
     select_option $? 4 "${options[@]}"
     keymap="${options[$?]}"
@@ -257,14 +275,14 @@ show_configurations() {
         echo -e "
 ------------------------------------------------------------------------
 Do you want to redo any step? Select an option below, or press Enter to proceed:
-1) Full Name
-2) Username and Password
-3) Installation Type
-4) AUR Helper
-5) Desktop Environment
-6) Disk Selection
-7) File System
-8) Timezone
+1) Full Name, Username and Password
+2) Installation Type
+3) AUR Helper
+4) Desktop Environment
+5) Disk Selection
+6) File System
+7) Timezone
+8) System Language (Locale)
 9) Keyboard Layout
 ------------------------------------------------------------------------
 "
@@ -277,24 +295,14 @@ Do you want to redo any step? Select an option below, or press Enter to proceed:
 
         # Processa a escolha do usuário
         case $choice in
-            1)
-                while true; do
-                    read -rp "Please enter your full name (e.g., Jose da Silva): " real_name
-                    if [[ -n "$real_name" ]]; then
-                        set_option REAL_NAME "$real_name"
-                        break
-                    else
-                        echo "Full name cannot be empty."
-                    fi
-                done
-                ;;
-            2) user_info ;;
-            3) install_type ;;
-            4) aur_helper ;;
-            5) desktop_environment ;;
-            6) disk_select ;;
-            7) filesystem ;;
-            8) timezone ;;
+            1) user_info ;;
+            2) install_type ;;
+            3) aur_helper ;;
+            4) desktop_environment ;;
+            5) disk_select ;;
+            6) filesystem ;;
+            7) timezone ;;
+            8) locale_selection ;;
             9) keymap ;;
             *)
                 echo "Invalid option. Please try again."

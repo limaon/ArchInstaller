@@ -7,73 +7,6 @@
 # @stderror Output routed to install.log
 
 
-# @description Check if script is run with root
-# @noargs
-root_check() {
-    if [[ "$(id -u)" != "0" ]]; then
-        echo -ne "ERROR! This script must be run under the 'root' user!\n"
-        exit 0
-    fi
-}
-
-
-# @description Check if script is being ran in an arch linux distro
-# @noargs
-arch_check() {
-    if [[ ! -e /etc/arch-release ]]; then
-        echo -ne "ERROR! This script must be run in Arch Linux!\n"
-        exit 0
-    fi
-}
-
-
-# @description Checks if pacman lock exists
-# @noargs
-pacman_check() {
-    if [[ -f /var/lib/pacman/db.lck ]]; then
-        echo "ERROR! Pacman is blocked."
-        echo -ne "If not running remove /var/lib/pacman/db.lck.\n"
-        exit 0
-    fi
-}
-
-
-# @description Checks if script run inside docker container
-# @noargs
-docker_check() {
-    if awk -F/ '$2 == "docker"' /proc/self/cgroup | read -r; then
-        echo -ne "ERROR! Docker container is not supported (at the moment)\n"
-        exit 0
-    elif [[ -f /.dockerenv ]]; then
-        echo -ne "ERROR! Docker container is not supported (at the moment)\n"
-        exit 0
-    fi
-}
-
-
-# @description Checks if drive is mounted
-# @noargs
-mount_check() {
-    if ! grep -qs '/mnt' /proc/mounts; then
-        echo "Drive is not mounted can not continue"
-        echo "Rebooting in 3 Seconds ..." && sleep 1
-        echo "Rebooting in 2 Seconds ..." && sleep 1
-        echo "Rebooting in 1 Second ..." && sleep 1
-        reboot now
-    fi
-}
-
-
-# @description Run all checks necessary before running script
-# @noargs
-background_checks() {
-    root_check
-    arch_check
-    pacman_check
-    docker_check
-}
-
-
 # @description Update mirrorlist to improve download speeds using rankmirrors if reflector is unavailable
 # @noargs
 mirrorlist_update() {
@@ -265,28 +198,51 @@ cpu_config() {
 }
 
 
-# @description Set locale, timezone, and keymap
+# @description Set locale, timezone, keymap, and vconsole configuration
 # @noargs
 locale_config() {
     echo -ne "
 -------------------------------------------------------------------------
-                    Setup Language to US and set locale
+                    Setting Locale, Timezone, and Keymap
 -------------------------------------------------------------------------
 "
-    # Active locale to en_US.UTF-8
-    sed -i '/^#en_US.UTF-8 /s/^#//' /etc/locale.gen
-    locale-gen
+    # Enable selected locale and create /etc/locale.conf file with complete settings
+    sed -i "s/^#\(${LOCALE}.*\)/\1/" /etc/locale.gen
+    {
+        echo "LANG=${LOCALE}"
+        echo "LC_ADDRESS=${LOCALE}"
+        echo "LC_IDENTIFICATION=${LOCALE}"
+        echo "LC_MEASUREMENT=${LOCALE}"
+        echo "LC_MONETARY=${LOCALE}"
+        echo "LC_NAME=${LOCALE}"
+        echo "LC_NUMERIC=${LOCALE}"
+        echo "LC_PAPER=${LOCALE}"
+        echo "LC_TELEPHONE=${LOCALE}"
+        echo "LC_TIME=${LOCALE}"
+    } > /etc/locale.conf
+    echo "Generating locales..."
+    locale-gen || { echo "ERROR: Failed to generate locales."; exit 1; }
+    localectl --no-ask-password set-locale LANG="${LOCALE}" LC_TIME="${LOCALE}"
+    echo "Locales generated successfully."
 
-    # Set timezone and sync hours
+    # Configure timezone and synchronize hours
     timedatectl --no-ask-password set-timezone "${TIMEZONE}"
     timedatectl --no-ask-password set-ntp 1
+    hwclock --systohc
+    ln -sf /usr/share/zoneinfo/"${TIMEZONE}" /etc/localtime
+    echo "Timezone configured: ${TIMEZONE}"
 
-    # Define locale for system
-    localectl --no-ask-password set-locale LANG="en_US.UTF-8" LC_TIME="en_US.UTF-8"
-    ln -s /usr/share/zoneinfo/"${TIMEZONE}" /etc/localtime
-
-    # Set keymaps
+    # Configure keymap and remap keys
+    pacman -S --noconfirm --needed --color=always kbd xkeyboard-config
     localectl --no-ask-password set-keymap "${KEYMAP}"
+    echo "Keymap configured: ${KEYMAP}"
+
+    # Create /etc/vconsole.conf for console keymap configuration
+    echo -e "KEYMAP=${KEYMAP}\nFONT=Lat2-Terminus16\nFONT_MAP=" > /etc/vconsole.conf
+
+    echo -ne "
+    Locale, Timezone, Keymap, and VConsole configuration completed.
+    "
 }
 
 
@@ -368,43 +324,47 @@ add_user() {
 }
 
 
-# @description Theme grub
+# @description Configure GRUB and set a wallpaper (if not SERVER installation)
 # @noargs
 grub_config() {
     echo -ne "
 -------------------------------------------------------------------------
-               Creating (and Theming) Grub Boot Menu
+               Configuring Grub Boot Menu
 -------------------------------------------------------------------------
 "
-    # set kernel parameter for decrypting the drive
+    # Configure kernel parameter for decrypting the drive
     if [[ "${FS}" == "luks" ]]; then
         sed -i "s%GRUB_CMDLINE_LINUX_DEFAULT=\"%GRUB_CMDLINE_LINUX_DEFAULT=\"cryptdevice=UUID=${ENCRYPTED_PARTITION_UUID}:ROOT root=/dev/mapper/ROOT %g" /etc/default/grub
     fi
-    # set kernel parameter for adding splash screen
+
+    # Configure kernel parameter to add splash screen
     sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="[^"]*/& splash /' /etc/default/grub
 
-    echo -e "Installing Vimix Grub theme..."
-    THEME_DIR="/boot/grub/themes"
-    THEME_NAME=Vimix
+    # Set GRUB_DISABLE_OS_PROBER to true
+    sed -i 's/^GRUB_DISABLE_OS_PROBER=.*/GRUB_DISABLE_OS_PROBER=true/' /etc/default/grub
 
-    echo -e "\n Creating the theme directory..."
-    mkdir -p "${THEME_DIR}"/"${THEME_NAME}"
+    # Apply wallpaper only if the installation type is not SERVER
+    if [[ "$INSTALL_TYPE" != "SERVER" ]]; then
+        echo -e "\n Setting wallpaper for GRUB..."
 
-    echo -e "\n Copying the theme..."
-    cd "${HOME}"/archinstaller || return
-    cp -a configs/base"${THEME_DIR}"/"${THEME_NAME}"/* "${THEME_DIR}"/"${THEME_NAME}"
+        # Define the wallpaper path
+        WALLPAPER_PATH="/boot/grub/distro-grub-wallpaper.png"
 
-    echo -e "\n Backing up Grub config..."
-    cp -an /etc/default/grub /etc/default/grub.bak
+        # Copy the wallpaper to the GRUB directory
+        cp "${HOME}/archinstaller/configs/base/boot/grub/distro-grub-wallpaper.png" /boot/grub/
 
-    echo -e "\n Setting the theme as the default..."
-    grep "GRUB_THEME=" /etc/default/grub >/dev/null 2>&1 && sed -i '/GRUB_THEME=/d' /etc/default/grub
-    echo "GRUB_THEME=\"${THEME_DIR}"/"${THEME_NAME}"/theme.txt\" >>/etc/default/grub
+        # Update GRUB configuration to use the wallpaper
+        grep "GRUB_BACKGROUND=" /etc/default/grub >/dev/null 2>&1 && sed -i '/GRUB_BACKGROUND=/d' /etc/default/grub
+        echo "GRUB_BACKGROUND=\"$WALLPAPER_PATH\"" >>/etc/default/grub
+    else
+        echo -e "\n Skipping wallpaper setup for SERVER installation."
+    fi
 
+    # Update grub configuration
     echo -e "\n Updating grub..."
     grub-mkconfig -o /boot/grub/grub.cfg
 
-    echo -e "\n All set!"
+    echo -e "\n All set! GRUB configuration is complete."
 }
 
 
@@ -439,6 +399,7 @@ display_manager() {
             # Set default lightdm greeter to lightdm-webkit2-greeter
             sed -i 's/#greeter-session=example.*/greeter-session=lightdm-webkit2-greeter/g' /etc/lightdm/lightdm.conf
         fi
+
     elif [[ "${DESKTOP_ENV}" == "awesome" ]]; then
         systemctl enable lightdm.service
         if [[ "${INSTALL_TYPE}" == "FULL" ]]; then
@@ -446,6 +407,23 @@ display_manager() {
             cp ~/archinstaller/configs/awesome/etc/lightdm/slick-greeter.conf /etc/lightdm/slick-greeter.conf
             sed -i 's/#greeter-session=example.*/greeter-session=lightdm-slick-greeter/g' /etc/lightdm/lightdm.conf
         fi
+
+    elif [[ "${DESKTOP_ENV}" == "i3-wm" ]]; then
+        systemctl enable lightdm.service
+        echo -e "Configuring LightDM for i3-wm..."
+        # Set lightdm greeter to lightdm-slick-greeter
+        sed -i 's/#greeter-session=example.*/greeter-session=lightdm-slick-greeter/g' /etc/lightdm/lightdm.conf
+
+        # Configure lightdm-slick-greeter
+        mkdir -p /etc/lightdm
+        cat <<EOL >/etc/lightdm/slick-greeter.conf
+[Greeter]
+background=/usr/share/backgrounds/distro-grub-arch.png
+theme-name=Adwaita-dark
+icon-theme-name=Adwaita
+font-name=Noto Sans 11
+EOL
+
     # If none of the above, use lightdm as fallback
     else
         if [[ ! "${INSTALL_TYPE}" == "SERVER" ]]; then
@@ -460,10 +438,10 @@ display_manager() {
 # @noargs
 snapper_config() {
     echo -ne "
-  -------------------------------------------------------------------------
-                      Creating Snapper Config
-  -------------------------------------------------------------------------
-  "
+-------------------------------------------------------------------------
+                    Creating Snapper Config
+-------------------------------------------------------------------------
+"
 
     SNAPPER_CONF="$HOME"/archinstaller/configs/base/etc/snapper/configs/root
     mkdir -p /etc/snapper/configs/
@@ -479,10 +457,10 @@ snapper_config() {
 # @noargs
 plymouth_config() {
     echo -ne "
-  -------------------------------------------------------------------------
-                Enabling (and Theming) Plymouth Boot Splash
-  -------------------------------------------------------------------------
-  "
+-------------------------------------------------------------------------
+            Enabling (and Theming) Plymouth Boot Splash
+-------------------------------------------------------------------------
+"
     PLYMOUTH_THEMES_DIR="$HOME"/archinstaller/configs/base/usr/share/plymouth/themes
     PLYMOUTH_THEME="arch-glow" # can grab from config later if we allow selection
     mkdir -p "/usr/share/plymouth/themes"

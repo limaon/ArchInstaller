@@ -17,9 +17,9 @@ CONFIGS_DIR="${SCRIPT_DIR}/configs"
 CONFIG_FILE="${CONFIGS_DIR}/setup.conf"
 LOG_FILE="${SCRIPT_DIR}/install.log"
 
-BOLD='\e[1m'
-RESET='\e[0m'
-BRED='\e[91m'
+export BOLD='\e[1m'
+export RESET='\e[0m'
+export BRED='\e[91m'
 
 set +a
 
@@ -30,15 +30,15 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 
 
 # Load utility scripts
-for filename in ${SCRIPTS_DIR}/utils/*.sh; do
+for filename in "$SCRIPTS_DIR"/utils/*.sh; do
   [ -e "$filename" ] || continue
   # shellcheck source=${SCRIPTS_DIR}/utils/*.sh
   source "$filename"
 done
 
 # Actual install sequence
-setfont ter-v22b
-show_logo # function from 'install-helper.sh'
+setfont ter-v18b
+show_logo
 source "${SCRIPTS_DIR}/configuration.sh"
 source_file "$CONFIG_FILE"
 sequence

@@ -40,6 +40,9 @@ show_logo
 timezone
 clear
 show_logo
+locale_selection
+clear
+show_logo
 keymap
 clear
 

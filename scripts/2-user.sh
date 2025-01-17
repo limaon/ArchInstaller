@@ -30,15 +30,20 @@ aur_helper_install
 desktop_environment_install
 
 
+# Function to apply desktop environment theming based on user selection
+# during FULL installation on 'software-install.sh'
+user_theming
+
+
 # Installs Btrfs packages based on the specified filesystem type, utilizing JQ
 # to parse a JSON file for package names and installing them via Pacman or an
 # AUR helper if specified on 'software-install.sh'
 btrfs_install
 
 
-# Function to apply desktop environment theming based on user selection
-# during FULL installation on 'software-install.sh'
-user_theming
+# Adds a new user with the specified username and password, creates a
+# home directory and assign to groups 'system-config.sh'
+add_user
 
 
 echo -ne "
