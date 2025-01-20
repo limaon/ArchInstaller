@@ -255,15 +255,11 @@ btrfs_install() {
 user_theming() {
     echo -ne "
 -------------------------------------------------------------------------
-                    Theming Desktop Environment
+            Theming Desktop Environment ($INSTALL_TYPE)
 -------------------------------------------------------------------------
 "
     # Theming DE if not user chose SERVER installation
     if [[ ! "$INSTALL_TYPE" == SERVER ]]; then
-
-        # Copy basic system files
-        cp -rfv ~/archinstaller/configs/base/. /
-
         if [[ "$DESKTOP_ENV" == "kde" ]]; then
             cp -r ~/archinstaller/configs/kde/home/. ~/
             pip install konsave
@@ -283,8 +279,6 @@ user_theming() {
             sudo cp ~/archinstaller/configs/base/usr/share/backgrounds/butterfly.png /usr/share/backgrounds/butterfly.png
 
         elif [[ "$DESKTOP_ENV" == "i3-wm" ]]; then
-            echo -e "Applying theming for i3-wm..."
-            # Setup system directory config files
             sudo cp -r ~/archinstaller/configs/i3-wm/. /
         else
             echo -e "No theming setup for $DESKTOP_ENV"

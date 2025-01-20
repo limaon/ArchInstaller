@@ -338,14 +338,14 @@ grub_config() {
     sed -i 's/^#GRUB_DISABLE_OS_PROBER=.*/GRUB_DISABLE_OS_PROBER=true/' /etc/default/grub
 
     # Apply wallpaper only if the installation type is not SERVER
-    if [[ ! "$INSTALL_TYPE" != SERVER ]]; then
+    if [[ ! "$INSTALL_TYPE" == SERVER ]]; then
         echo -e "\n Setting wallpaper for GRUB..."
 
         # Define the wallpaper path
         WALLPAPER_PATH="/usr/share/backgrounds/distro-grub-wallpaper.png"
 
         # Update GRUB configuration to use the wallpaper
-        sed -i "s/^#GRUB_BACKGROUND=.*/GRUB_BACKGROUND=\"$WALLPAPER_PATH\"/" /etc/default/grub
+        sed -i "s/^#GRUB_BACKGROUND=.*/GRUB_BACKGROUND=\"$WALLPAPER_PATH\"/g" /etc/default/grub
 
     else
         echo -e "\n Skipping wallpaper setup for SERVER installation."
@@ -407,7 +407,7 @@ display_manager() {
         CONFIG_FILE="/etc/lightdm/lightdm-gtk-greeter.conf"
         declare -A greeter_config=(
             ["background"]="/usr/share/backgrounds/Wall100.jpg"
-            ["theme-name"]="Materia-light-compact"
+            ["theme-name"]="Materia-dark-compact"
             ["icon-theme-name"]="Qogir-dark"
             ["font-name"]="Noto Sans 12"
             ["xft-antialias"]="true"
@@ -420,7 +420,6 @@ display_manager() {
             ["screensaver-timeout"]="300"
             ["round-user-image"]="false"
             ["panel-position=bottom"]="top"
-            ["indicators"]="~host;~spacer;~a11y;~language;~session;~power;~clock;~layout;sound;network"
         )
 
         for key in "${!greeter_config[@]}"; do
