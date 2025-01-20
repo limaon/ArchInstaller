@@ -66,10 +66,20 @@ microcode_install
 graphics_install
 
 
+# Function to apply desktop environment theming based on user selection
+# during FULL installation on 'software-install.sh'
+user_theming
+
+
 # If this file run without configuration, ask for basic user info before setting up user
 if ! source ${HOME}/archinstaller/configs/setup.conf; then
     user_info
 fi
+
+
+# Adds a new user with the specified username and password, creates a
+# home directory and assign to groups 'system-config.sh'
+add_user
 
 
 # Check if the filesystem is LUKS; if so, update mkinitcpio

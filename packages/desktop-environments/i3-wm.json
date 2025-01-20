@@ -2,6 +2,7 @@
   "minimal": {
     "pacman": [
       { "package": "adobe-source-code-pro-fonts" },
+      { "package": "terminus-font" },
       { "package": "noto-fonts" },
       { "package": "noto-fonts-cjk" },
       { "package": "ttf-dejavu" },
@@ -40,7 +41,6 @@
       { "package": "otf-firamono-nerd" },
       { "package": "ttf-ubuntu-font-family" },
       { "package": "ttf-ubuntu-mono-nerd" },
-      { "package": "terminus-font" },
       { "package": "ttf-comfortaa" },
       { "package": "ttf-droid" },
       { "package": "ttf-jetbrains-mono-nerd" },

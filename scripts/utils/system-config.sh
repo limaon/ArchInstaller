@@ -418,10 +418,33 @@ display_manager() {
         mkdir -p /etc/lightdm
         cat <<EOL >/etc/lightdm/slick-greeter.conf
 [Greeter]
-background=/usr/share/backgrounds/distro-grub-arch.png
-theme-name=Adwaita-dark
+background=/usr/share/backgrounds/Wall100.jpg
+
+draw-user-backgrounds=false
+draw-grid=true
+show-hostname=true
+show-power=true
+show-a11y=true
+show-keyboard=true
+show-clock=true
+show-quit=true
+
+theme-name=Adwaita
 icon-theme-name=Adwaita
 font-name=Noto Sans 11
+
+xft-antialias=true
+xft-dpi=96
+xft-hintstyle=hintfull
+xft-rgba=rgb
+
+onscreen-keyboard=false
+high-contrast=false
+screen-reader=false
+play-ready-sound=/usr/share/sounds/freedesktop/stereo/complete.oga
+
+enable-hidpi=auto
+only-on-monitor=0
 EOL
 
     # If none of the above, use lightdm as fallback

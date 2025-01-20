@@ -7,7 +7,16 @@ Xft.autohint: false
 Xft.hintstyle: hintslight
 Xft.lcdfilter: lcddefault
 
-! Cores do terminal
+! Window title
+xterm*Title: XTerm
+
+! Window definitions
+xterm*geometry: 106x54
+xterm*internalBorder: 2
+xterm*transparent: true
+xterm*shading: 20
+
+! Color theme
 xterm*background: #1E1E1E
 xterm*foreground: #C5C8C6
 xterm*cursorColor: #51C0BF
@@ -31,29 +40,16 @@ xterm*color13: #FF79C6
 xterm*color14: #51C0BF
 xterm*color15: #FFFFFF
 
-! Configurações do cursor e do scroll
-xterm*scrollBar: false
-xterm*cursorBlink: true
+! History and scrolling
 xterm*saveLines: 10000
+xterm*scrollBar: false
+xterm*scrollLines: 1
 
-! Fontes
+! Typeface
 xterm*faceName: Terminus
-xterm*faceSize: 14
+xterm*faceSize: 13
+xterm*boldMode: true
 xterm*boldFace: Terminus:bold
-xterm*boldFaceSize: 14
 
-! Comportamento do terminal
-xterm*selectToClipboard: true
-xterm*VT100*translations: #override \
-    Shift <Control> C: string(0x0) \n\
-    Shift <Control> V: string(0x0)
-
-! Estilo de borda e transparência
-xterm*borderWidth: 0
-xterm*transparent: true
-xterm*shading: 20
-
-! Configurações adicionais
-xterm*geometry: 80x24
-xterm*loginShell: true
-xterm*depth: 32
+! Copy-paste
+XTerm.vt100.selectToClipboard: true

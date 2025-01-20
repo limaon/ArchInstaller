@@ -1,5 +1,0 @@
-[Desktop Entry]
-Exec=/usr/bin/ibus-daemon -rxRd
-Name=ibus-daemon
-Comment=daemon program for ibus
-Type=Application

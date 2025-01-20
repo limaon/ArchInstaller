@@ -57,7 +57,6 @@ network_install() {
         networkmanager-strongswan \
         network-manager-sstp \
         network-manager-applet \
-        iproute2 \
         bind-tools \
         traceroute \
         nmap \
@@ -82,21 +81,32 @@ network_install() {
 base_install() {
     echo -ne "
 -------------------------------------------------------------------------
-                    Installing Base System
+            Installing Base System for $INSTALL_TYPE
 -------------------------------------------------------------------------
 "
-if [[ ! "$INSTALL_TYPE" == SERVER ]]; then
-        # JQ Filters
+    if [[ "$INSTALL_TYPE" != "SERVER" ]]; then
+        # Define JQ filters
         MINIMAL_PACMAN_FILTER=".minimal.pacman[].package"
-        FULL_PACMAN_FILTER=$([ "$INSTALL_TYPE" == "FULL" ] && echo ", .full.pacman[].package" || echo "")
+        FULL_PACMAN_FILTER=$([[ "$INSTALL_TYPE" == "FULL" ]] && echo ", .full.pacman[].package")
 
-        # Parse file with JQ to determine packages to install
-        jq --raw-output "${MINIMAL_PACMAN_FILTER}""${FULL_PACMAN_FILTER}" "$HOME"/archinstaller/packages/base.json | (
-            while read -r line; do
-                echo "Installing $line"
-                pacman -S "$line" --noconfirm --needed --color=always
-            done
-        )
+        # Path to the package list JSON file
+        PACKAGE_LIST_FILE="$HOME/archinstaller/packages/base.json"
+
+        # Check if the package list file exists
+        if [[ ! -f "$PACKAGE_LIST_FILE" ]]; then
+            echo "Error: Package list file not found at $PACKAGE_LIST_FILE"
+            return 1
+        fi
+
+        # Combine and parse filters, then install packages
+        jq --raw-output "${MINIMAL_PACMAN_FILTER}${FULL_PACMAN_FILTER}" "$PACKAGE_LIST_FILE" | while read -r package; do
+            if [[ -n "$package" ]]; then
+                echo "Installing $package..."
+                if ! pacman -S "$package" --noconfirm --needed --color=always; then
+                    echo "Error: Failed to install $package"
+                fi
+            fi
+        done
     fi
 }
 
@@ -250,8 +260,12 @@ user_theming() {
                     Theming Desktop Environment
 -------------------------------------------------------------------------
 "
-    # Theming DE if user chose FULL installation
-    if [[ "$INSTALL_TYPE" == "FULL" ]]; then
+    # Theming DE if not user chose SERVER installation
+    if [[ ! "$INSTALL_TYPE" == SERVER ]]; then
+
+        # Copy basic system files
+        cp -rfv ~/archinstaller/configs/base/. /
+
         if [[ "$DESKTOP_ENV" == "kde" ]]; then
             cp -r ~/archinstaller/configs/kde/home/. ~/
             pip install konsave
@@ -274,15 +288,6 @@ user_theming() {
             echo -e "Applying theming for i3-wm..."
             # Setup system directory config files
             sudo cp -r ~/archinstaller/configs/i3-wm/. /
-
-            # Setup some wallpaper
-            sudo mkdir -p /usr/share/backgrounds/
-            sudo cp ~/archinstaller/configs/base/usr/share/wallpapers/butterfly.png /usr/share/backgrounds/butterfly.png
-
-            # Add configured wallpaper line to config i3 file
-            if ! grep -q "xwallpaper --zoom /usr/share/backgrounds/butterfly.png" ~/.config/i3/config; then
-                echo 'exec_always --no-startup-id xwallpaper --zoom /usr/share/backgrounds/butterfly.png' >> ~/.config/i3/config
-            fi
 
         else
             echo -e "No theming setup for $DESKTOP_ENV"

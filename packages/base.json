@@ -1,7 +1,9 @@
 {
 	"minimal": {
 		"pacman": [
+			{ "package": "accountsservice" },
 			{ "package": "binutils" },
+			{ "package": "dex" },
 			{ "package": "dosfstools" },
 			{ "package": "linux-headers" },
 			{ "package": "linux-lts-headers" },
@@ -36,7 +38,6 @@
 			{ "package": "bluez-utils" },
 			{ "package": "bridge-utils" },
 			{ "package": "dnsmasq" },
-			{ "package": "dex" },
 			{ "package": "openssh" },
 			{ "package": "btrfs-progs" },
 			{ "package": "ntfs-3g" },
@@ -77,8 +78,7 @@
 			{ "package": "mkinitcpio-firmware" },
 			{ "package": "needrestart" },
 			{ "package": "pacman-cleanup-hook" },
-			{ "package": "vscodium-bin " },
-			{ "package": "grub-theme-arch-linux" }
+			{ "package": "vscodium-bin " }
 		]
 	}
 }
