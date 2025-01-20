@@ -15,9 +15,7 @@ arch_install() {
                     Arch Install on Main Drive
 -------------------------------------------------------------------------
 "
-    pacstrap /mnt base base-devel linux linux-firmware linux-lts \
-        jq neovim wget libnewt man-db man-pages sudo usbutils reflector \
-        --noconfirm --needed --color=always
+    pacstrap /mnt base base-devel linux linux-firmware linux-lts jq neovim sudo wget libnewt --noconfirm --needed --color=always
 }
 
 
@@ -288,7 +286,6 @@ user_theming() {
             echo -e "Applying theming for i3-wm..."
             # Setup system directory config files
             sudo cp -r ~/archinstaller/configs/i3-wm/. /
-
         else
             echo -e "No theming setup for $DESKTOP_ENV"
         fi

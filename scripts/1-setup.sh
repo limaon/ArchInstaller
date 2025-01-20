@@ -72,7 +72,7 @@ user_theming
 
 
 # If this file run without configuration, ask for basic user info before setting up user
-if ! source ${HOME}/archinstaller/configs/setup.conf; then
+if ! source "$HOME"/archinstaller/configs/setup.conf; then
     user_info
 fi
 

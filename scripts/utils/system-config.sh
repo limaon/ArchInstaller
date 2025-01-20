@@ -332,30 +332,21 @@ grub_config() {
                Configuring Grub Boot Menu
 -------------------------------------------------------------------------
 "
-    # Configure kernel parameter for decrypting the drive
-    if [[ "${FS}" == "luks" ]]; then
-        sed -i "s%GRUB_CMDLINE_LINUX_DEFAULT=\"%GRUB_CMDLINE_LINUX_DEFAULT=\"cryptdevice=UUID=${ENCRYPTED_PARTITION_UUID}:ROOT root=/dev/mapper/ROOT %g" /etc/default/grub
-    fi
-
-    # Configure kernel parameter to add splash screen
+    # Update GRUB parameters
+    [[ "${FS}" == "luks" ]] && sed -i "s%GRUB_CMDLINE_LINUX_DEFAULT=\"%GRUB_CMDLINE_LINUX_DEFAULT=\"cryptdevice=UUID=${ENCRYPTED_PARTITION_UUID}:ROOT root=/dev/mapper/ROOT %g" /etc/default/grub
     sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="[^"]*/& splash /' /etc/default/grub
-
-    # Set GRUB_DISABLE_OS_PROBER to true
-    sed -i 's/^GRUB_DISABLE_OS_PROBER=.*/GRUB_DISABLE_OS_PROBER=true/' /etc/default/grub
+    sed -i 's/^#GRUB_DISABLE_OS_PROBER=.*/GRUB_DISABLE_OS_PROBER=true/' /etc/default/grub
 
     # Apply wallpaper only if the installation type is not SERVER
-    if [[ "$INSTALL_TYPE" != "SERVER" ]]; then
+    if [[ ! "$INSTALL_TYPE" != SERVER ]]; then
         echo -e "\n Setting wallpaper for GRUB..."
 
         # Define the wallpaper path
-        WALLPAPER_PATH="/boot/grub/distro-grub-wallpaper.png"
-
-        # Copy the wallpaper to the GRUB directory
-        cp "${HOME}/archinstaller/configs/base/boot/grub/distro-grub-wallpaper.png" /boot/grub/
+        WALLPAPER_PATH="/usr/share/backgrounds/distro-grub-wallpaper.png"
 
         # Update GRUB configuration to use the wallpaper
-        grep "GRUB_BACKGROUND=" /etc/default/grub >/dev/null 2>&1 && sed -i '/GRUB_BACKGROUND=/d' /etc/default/grub
-        echo "GRUB_BACKGROUND=\"$WALLPAPER_PATH\"" >>/etc/default/grub
+        sed -i "s/^#GRUB_BACKGROUND=.*/GRUB_BACKGROUND=\"$WALLPAPER_PATH\"/" /etc/default/grub
+
     else
         echo -e "\n Skipping wallpaper setup for SERVER installation."
     fi
@@ -363,7 +354,6 @@ grub_config() {
     # Update grub configuration
     echo -e "\n Updating grub..."
     grub-mkconfig -o /boot/grub/grub.cfg
-
     echo -e "\n All set! GRUB configuration is complete."
 }
 
@@ -411,41 +401,35 @@ display_manager() {
     elif [[ "${DESKTOP_ENV}" == "i3-wm" ]]; then
         systemctl enable lightdm.service
         echo -e "Configuring LightDM for i3-wm..."
-        # Set lightdm greeter to lightdm-slick-greeter
-        sed -i 's/#greeter-session=example.*/greeter-session=lightdm-slick-greeter/g' /etc/lightdm/lightdm.conf
+        # Set lightdm greeter to lightdm-gtk-greeter
+        sed -i 's/#greeter-session=example.*/greeter-session=lightdm-gtk-greeter/g' /etc/lightdm/lightdm.conf
 
-        # Configure lightdm-slick-greeter
-        mkdir -p /etc/lightdm
-        cat <<EOL >/etc/lightdm/slick-greeter.conf
-[Greeter]
-background=/usr/share/backgrounds/Wall100.jpg
+        CONFIG_FILE="/etc/lightdm/lightdm-gtk-greeter.conf"
+        declare -A greeter_config=(
+            ["background"]="/usr/share/backgrounds/Wall100.jpg"
+            ["theme-name"]="Materia-light-compact"
+            ["icon-theme-name"]="Qogir-dark"
+            ["font-name"]="Noto Sans 12"
+            ["xft-antialias"]="true"
+            ["xft-dpi"]="96"
+            ["xft-hintstyle"]="hintfull"
+            ["xft-rgba"]="rgb"
+            ["show-clock"]="true"
+            ["clock-format"]=" %I:%M:%S %p"
+            ["active-monitor"]="1"
+            ["screensaver-timeout"]="300"
+            ["round-user-image"]="false"
+            ["panel-position=bottom"]="top"
+            ["indicators"]="~host;~spacer;~a11y;~language;~session;~power;~clock;~layout;sound;network"
+        )
 
-draw-user-backgrounds=false
-draw-grid=true
-show-hostname=true
-show-power=true
-show-a11y=true
-show-keyboard=true
-show-clock=true
-show-quit=true
-
-theme-name=Adwaita
-icon-theme-name=Adwaita
-font-name=Noto Sans 11
-
-xft-antialias=true
-xft-dpi=96
-xft-hintstyle=hintfull
-xft-rgba=rgb
-
-onscreen-keyboard=false
-high-contrast=false
-screen-reader=false
-play-ready-sound=/usr/share/sounds/freedesktop/stereo/complete.oga
-
-enable-hidpi=auto
-only-on-monitor=0
-EOL
+        for key in "${!greeter_config[@]}"; do
+            if grep -q "^#${key}=" "$CONFIG_FILE"; then
+                sed -i "s|^#${key}=.*|${key}=${greeter_config[$key]}|" "$CONFIG_FILE"
+            else
+                echo "${key}=${greeter_config[$key]}" >> "$CONFIG_FILE"
+            fi
+        done
 
     # If none of the above, use lightdm as fallback
     else
