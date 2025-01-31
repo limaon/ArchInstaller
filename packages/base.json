@@ -17,8 +17,7 @@
 			{ "package": "xorg-drivers" },
 			{ "package": "xorg-server" },
 			{ "package": "xorg-xinit" },
-			{ "package": "xorg-xkill" },
-			{ "package": "xterm" }
+			{ "package": "xorg-xkill" }
 		],
 		"aur": []
 	},
