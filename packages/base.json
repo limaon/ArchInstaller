@@ -8,7 +8,7 @@
 			{ "package": "linux-headers" },
 			{ "package": "linux-lts-headers" },
 			{ "package": "usbutils" },
-			{ "package": "xdg-user-dirs" },
+			{ "package": "xdg-user-dirs-gtk" },
 			{ "package": "man-db" },
 			{ "package": "man-pages" },
 			{ "package": "mesa" },
@@ -24,6 +24,7 @@
 	},
 	"full": {
 		"pacman": [
+			{ "package": "archlinux-wallpaper" },
 			{ "package": "pipewire-alsa" },
 			{ "package": "pipewire-jack" },
 			{ "package": "pipewire-pulse" },
@@ -77,7 +78,7 @@
 			{ "package": "mkinitcpio-firmware" },
 			{ "package": "needrestart" },
 			{ "package": "pacman-cleanup-hook" },
-			{ "package": "vscodium-bin " }
+			{ "package": "vscodium-bin" }
 		]
 	}
 }

@@ -155,26 +155,38 @@ do_btrfs() {
 }
 
 
-# @description Configure swap on low memory systems
+# @description Configure zram for systems with low memory
 # @noargs
 low_memory_config() {
     echo -ne "
 -------------------------------------------------------------------------
-                    Checking for low memory systems <8G
+          Configuring ZRAM (compressed swap) for <8G RAM
 -------------------------------------------------------------------------
 "
     TOTAL_MEM=$(grep </proc/meminfo -i 'memtotal' | grep -o '[[:digit:]]*')
     if [[ "$TOTAL_MEM" -lt 8000000 ]]; then
-        # Put swap into the actual system, not into RAM disk, otherwise there is no point in it, it'll cache RAM into RAM. So, /mnt/ everything.
-        mkdir -p /mnt/opt/swap  # make a dir that we can apply NOCOW to to make it btrfs-friendly.
-        chattr +C /mnt/opt/swap # apply NOCOW, btrfs needs that.
-        dd if=/dev/zero of=/mnt/opt/swap/swapfile bs=1M count=2048 status=progress
-        chmod 600 /mnt/opt/swap/swapfile # set permissions.
-        chown root /mnt/opt/swap/swapfile
-        mkswap /mnt/opt/swap/swapfile
-        swapon /mnt/opt/swap/swapfile
-        # The line below is written to /mnt/ but doesn't contain /mnt/, since it's just / for the system itself.
-        echo "/opt/swap/swapfile	none	swap	sw	0	0" >>/mnt/etc/fstab # Add swap to fstab, so it KEEPS working after installation.
+        echo "Installing zram-generator..."
+        arch-chroot /mnt pacman -S zram-generator --noconfirm
+
+        echo "Configuring zram-generator..."
+        mkdir -p /mnt/etc/systemd/
+        cat <<EOF > /mnt/etc/systemd/zram-generator.conf
+[zram0]
+zram-size = ram * 2
+swap-priority = 100
+compression-algorithm = zstd
+EOF
+
+        echo "Loading zram module..."
+        modprobe zram
+
+        echo "Regenerating initramfs..."
+        arch-chroot /mnt mkinitcpio -P
+
+        echo "Enabling systemd-zram-setup@zram0.service..."
+        arch-chroot /mnt systemctl enable systemd-zram-setup@zram0.service
+
+        echo "ZRAM configured to use 200% of RAM as compressed swap (zstd algorithm)"
     fi
 }
 
@@ -342,10 +354,10 @@ grub_config() {
         echo -e "\n Setting wallpaper for GRUB..."
 
         # Define the wallpaper path
-        WALLPAPER_PATH="/usr/share/backgrounds/distro-grub-wallpaper.png"
+        WALLPAPER_PATH="/usr/share/backgrounds/archlinux/simple.png"
 
         # Update GRUB configuration to use the wallpaper
-        sed -i "s/^#GRUB_BACKGROUND=.*/GRUB_BACKGROUND=\"$WALLPAPER_PATH\"/g" /etc/default/grub
+        sed -Ei "s|^#GRUB_BACKGROUND=.*|GRUB_BACKGROUND=\"$WALLPAPER_PATH\"|" /etc/default/grub
 
     else
         echo -e "\n Skipping wallpaper setup for SERVER installation."
@@ -406,20 +418,26 @@ display_manager() {
 
         CONFIG_FILE="/etc/lightdm/lightdm-gtk-greeter.conf"
         declare -A greeter_config=(
-            ["background"]="/usr/share/backgrounds/Wall100.jpg"
-            ["theme-name"]="Materia-dark-compact"
-            ["icon-theme-name"]="Qogir-dark"
-            ["font-name"]="Noto Sans 12"
+            ["background"]="/usr/share/backgrounds/archlinux/mountain.jpg"
+            ["user-background"]="true"
+            ["font-name"]="Ubuntu 12"
             ["xft-antialias"]="true"
-            ["xft-dpi"]="96"
+            ["icon-theme-name"]="Pop"
+            ["cursor-theme-name"]="Pop"
+            ["transition-duration"]="1000"
+            ["transition-type"]="linear"
+            ["screensaver-timeout"]="60"
+            ["show-clock"]="false"
+            ["theme-name"]="Yaru-blue-dark"
+            ["default-user-image"]="#archlinux"
             ["xft-hintstyle"]="hintfull"
+            ["clock-format"]=""
+            ["panel-position"]="top"
+            ["xft-dpi"]="96"
             ["xft-rgba"]="rgb"
-            ["show-clock"]="true"
-            ["clock-format"]=" %I:%M:%S %p"
             ["active-monitor"]="1"
-            ["screensaver-timeout"]="300"
             ["round-user-image"]="false"
-            ["panel-position=bottom"]="top"
+            ["indicators"]="~host;~spacer;~clock;~spacer;~language;~session;~a11y;~power"
         )
 
         for key in "${!greeter_config[@]}"; do

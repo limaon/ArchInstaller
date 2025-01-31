@@ -24,6 +24,11 @@ show_logo
 aur_helper_install
 
 
+# Installs system fonts by reading a JSON file that specifies font packages
+# and uses pacman to install them. 'software-install.sh'
+install_fonts
+
+
 # Installs the specified desktop environment packages based on the user's selection
 # of minimal or full installation types, utilizing either the AUR helper or pacman
 # for package management on 'software-install.sh'.

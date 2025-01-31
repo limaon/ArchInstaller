@@ -1,17 +1,12 @@
 {
   "minimal": {
     "pacman": [
-      { "package": "adobe-source-code-pro-fonts" },
-      { "package": "terminus-font" },
-      { "package": "noto-fonts" },
-      { "package": "noto-fonts-cjk" },
-      { "package": "ttf-dejavu" },
-      { "package": "ttf-hack" },
       { "package": "firefox" },
       { "package": "alsa-utils" },
       { "package": "pamixer" },
       { "package": "brightnessctl" },
-      { "package": "pcmanfm-qt" },
+      { "package": "pcmanfm-gtk3" },
+      { "package": "xarchiver" },
       { "package": "dmenu" },
       { "package": "dunst" },
       { "package": "i3-wm" },
@@ -23,50 +18,38 @@
       { "package": "kitty" },
       { "package": "lxappearance" },
       { "package": "picom" },
-      { "package": "materia-gtk-theme" },
-      { "package": "qogir-icon-theme" },
+      { "package": "polkit" },
+      { "package": "polkit-gnome" },
       { "package": "kvantum" },
       { "package": "kvantum-qt5" },
       { "package": "qt5-base" },
       { "package": "qt5ct" },
       { "package": "qt6-base" },
       { "package": "qt6ct" },
-      { "package": "adwaita-qt5" },
-      { "package": "adwaita-qt6" },
       { "package": "xwallpaper" },
       { "package": "lightdm" },
       { "package": "lightdm-gtk-greeter" }
     ],
     "aur": [
-      { "package": "asdf-vm" }
+      { "package": "xautocfg" }
     ]
   },
   "full": {
     "pacman": [
-      { "package": "adobe-source-han-sans-cn-fonts" },
-      { "package": "adobe-source-han-sans-jp-fonts" },
-      { "package": "adobe-source-han-sans-kr-fonts" },
-      { "package": "awesome-terminal-fonts" },
-      { "package": "inter-font" },
-      { "package": "otf-firamono-nerd" },
-      { "package": "ttf-ubuntu-font-family" },
-      { "package": "ttf-ubuntu-mono-nerd" },
-      { "package": "ttf-comfortaa" },
-      { "package": "ttf-droid" },
-      { "package": "ttf-jetbrains-mono-nerd" },
-      { "package": "ttf-liberation" },
-      { "package": "ttf-meslo-nerd" },
-      { "package": "ttf-opensans" },
-      { "package": "ttf-roboto" },
       { "package": "ibus-kkc" },
-			{ "package": "qbittorrent" },
+      { "package": "xed" },
+      { "package": "pop-icon-theme" },
+      { "package": "keepassxc" },
+      { "package": "qbittorrent" },
       { "package": "gamemode" },
       { "package": "lf" },
       { "package": "xclip" },
       { "package": "xdotool" }
     ],
     "aur": [
-      { "package": "bluetuith" }
+      { "package": "yaru-gtk-theme" },
+      { "package": "kvantum-theme-vimix-git" },
+      { "package": "asdf-vm" }
     ]
   }
 }

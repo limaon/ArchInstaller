@@ -1,4 +1,4 @@
-! Configurações de DPI e Antialiasing
+! DPI and Antialiasing
 Xft.dpi: 96
 Xft.antialias: true
 Xft.hinting: true
@@ -6,6 +6,10 @@ Xft.rgba: rgb
 Xft.autohint: false
 Xft.hintstyle: hintslight
 Xft.lcdfilter: lcddefault
+
+! Cursor settings
+Xcursor.theme: Pop
+Xcursor.size: 24
 
 ! Window title
 xterm*Title: XTerm
@@ -22,7 +26,6 @@ xterm*foreground: #C5C8C6
 xterm*cursorColor: #51C0BF
 xterm*pointerColor: #51C0BF
 
-! Cores personalizadas
 xterm*color0: #1E1E1E
 xterm*color1: #FF6C6B
 xterm*color2: #A8FF60

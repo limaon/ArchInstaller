@@ -74,6 +74,59 @@ network_install() {
 }
 
 
+# @description Installs fonts for the system if the installation type is not SERVER
+# @noargs
+install_fonts() {
+    echo -ne "
+-------------------------------------------------------------------------
+            Installing Fonts for the System
+-------------------------------------------------------------------------
+"
+
+    # Check if installation type is SERVER
+    if [[ "$INSTALL_TYPE" == "SERVER" ]]; then
+        echo "Skipping font installation (SERVER installation type detected)."
+        return 0
+    fi
+
+    # Path to the JSON file containing the list of fonts
+    FONTS_LIST_FILE="$HOME/archinstaller/packages/optional/fonts.json"
+
+    # Check if the fonts list file exists
+    if [[ ! -f "$FONTS_LIST_FILE" ]]; then
+        echo "Error: Fonts list file not found at $FONTS_LIST_FILE"
+        return 1
+    fi
+
+    # Define JQ filters for pacman and AUR packages
+    PACMAN_FILTER=".pacman[].package"
+    AUR_FILTER=$([ "$AUR_HELPER" != NONE ] && echo ", .aur[].package" || echo "")
+
+    # Parse the JSON file and install the fonts
+    jq --raw-output "${PACMAN_FILTER}${AUR_FILTER}" "$FONTS_LIST_FILE" | while read -r font; do
+        if [[ -n "$font" ]]; then
+            echo "Installing font: $font..."
+            if pacman -Qi "$font" &>/dev/null || [[ "$AUR_HELPER" != NONE && "$($AUR_HELPER -Qi "$font" &>/dev/null; echo $?)" -eq 0 ]]; then
+                echo "Font $font is already installed."
+                continue
+            fi
+
+            if [[ "$AUR_HELPER" != NONE && $(pacman -Si "$font" &>/dev/null; echo $?) -ne 0 ]]; then
+                echo "Installing $font via AUR helper ($AUR_HELPER)..."
+                if ! "$AUR_HELPER" -S "$font" --noconfirm --needed --color=always; then
+                    echo "Error: Failed to install font $font via $AUR_HELPER"
+                fi
+            else
+                echo "Installing $font via pacman..."
+                if ! sudo pacman -S "$font" --noconfirm --needed --color=always; then
+                    echo "Error: Failed to install font $font via pacman"
+                fi
+            fi
+        fi
+    done
+}
+
+
 # @description Installs base arch linux system
 # @noargs
 base_install() {
@@ -89,6 +142,7 @@ base_install() {
 
         # Path to the package list JSON file
         PACKAGE_LIST_FILE="$HOME/archinstaller/packages/base.json"
+        FONTS_LIST_FILE="$HOME/archinstaller/packages/optional/fonts.json"
 
         # Check if the package list file exists
         if [[ ! -f "$PACKAGE_LIST_FILE" ]]; then
@@ -279,7 +333,11 @@ user_theming() {
             sudo cp ~/archinstaller/configs/base/usr/share/backgrounds/butterfly.png /usr/share/backgrounds/butterfly.png
 
         elif [[ "$DESKTOP_ENV" == "i3-wm" ]]; then
+            sudo chmod -R a+rX ~/archinstaller/configs/i3-wm/etc
             sudo cp -r ~/archinstaller/configs/i3-wm/. /
+            sudo chmod ug+r ~/archinstaller/configs/i3-wm/etc/snapper/configs/*
+            sudo mkdir -p /usr/share/backgrounds/
+
         else
             echo -e "No theming setup for $DESKTOP_ENV"
         fi
@@ -343,8 +401,18 @@ essential_services() {
 
         # services part of full installation
         echo "Enabling Cups"
-        systemctl enable cups.service
-        echo -e "  Cups enabled \n"
+        if systemctl enable cups.service; then
+            echo -e "  Cups enabled \n"
+        else
+            echo -e "The cups.service not found, skipping. \n"
+        fi
+
+        echo "Enabling Keyboard Repeat Rate"
+        if systemctl enable --user xautocfg.service; then
+            echo -e "  Xautocfg enabled \n"
+        else
+            echo -e "The xautocfg.service not found, skipping.\n"
+        fi
 
         echo "Syncing time with ntp"
         ntpd -qg

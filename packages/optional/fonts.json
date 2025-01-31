@@ -1,17 +1,31 @@
 {
-	"pacman": [
-		{ "package": "awesome-terminal-fonts" },
-		{ "package": "font-manager" },
-		{ "package": "powerline-fonts" },
-		{ "package": "terminus-font" },
-		{ "package": "ttc-iosevka" },
-		{ "package": "ttf-droid" },
-		{ "package": "ttf-fantasque-sans-mono" },
-		{ "package": "ttf-fira-code" },
-		{ "package": "ttf-hack" },
-		{ "package": "ttf-iosevka-nerd" },
-		{ "package": "ttf-liberation" },
-		{ "package": "ttf-roboto" }
-	],
-	"aur": [{ "package": "nerd-fonts-fantasque-sans-mono" }, { "package": "nerd-fonts-fira-code" }, { "package": "noto-fonts-emoji" }]
+  "pacman": [
+    { "package": "adobe-source-code-pro-fonts" },
+    { "package": "adobe-source-han-sans-cn-fonts" },
+    { "package": "adobe-source-han-sans-jp-fonts" },
+    { "package": "adobe-source-han-sans-kr-fonts" },
+    { "package": "awesome-terminal-fonts" },
+    { "package": "font-manager" },
+    { "package": "inter-font" },
+    { "package": "noto-fonts" },
+    { "package": "noto-fonts-cjk" },
+    { "package": "noto-fonts-emoji" },
+    { "package": "powerline-fonts" },
+    { "package": "terminus-font" },
+    { "package": "ttc-iosevka" },
+    { "package": "ttf-comfortaa" },
+    { "package": "ttf-dejavu" },
+    { "package": "ttf-droid" },
+    { "package": "ttf-fira-code" },
+    { "package": "ttf-hack" },
+    { "package": "ttf-iosevka-nerd" },
+    { "package": "ttf-jetbrains-mono-nerd" },
+    { "package": "ttf-liberation" },
+    { "package": "ttf-opensans" },
+    { "package": "ttf-ubuntu-font-family" },
+    { "package": "ttf-ubuntu-mono-nerd" }
+  ],
+  "aur": [
+    { "package": "ttf-misans" }
+  ]
 }
