@@ -407,13 +407,6 @@ essential_services() {
             echo -e "The cups.service not found, skipping. \n"
         fi
 
-        echo "Enabling Keyboard Repeat Rate"
-        if systemctl enable --user xautocfg.service; then
-            echo -e "  Xautocfg enabled \n"
-        else
-            echo -e "The xautocfg.service not found, skipping.\n"
-        fi
-
         echo "Syncing time with ntp"
         ntpd -qg
         echo -e "Time synced \n"

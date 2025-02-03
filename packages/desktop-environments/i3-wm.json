@@ -28,6 +28,7 @@
       { "package": "qt6ct" },
       { "package": "udiskie" },
       { "package": "xwallpaper" },
+      { "package": "xterm" },
       { "package": "lightdm" },
       { "package": "lightdm-gtk-greeter" }
     ],

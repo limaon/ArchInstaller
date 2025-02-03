@@ -1,6 +1,5 @@
 {
   "pacman": [
-    { "package": "adobe-source-code-pro-fonts" },
     { "package": "adobe-source-han-sans-cn-fonts" },
     { "package": "adobe-source-han-sans-jp-fonts" },
     { "package": "adobe-source-han-sans-kr-fonts" },
@@ -26,6 +25,5 @@
     { "package": "ttf-ubuntu-mono-nerd" }
   ],
   "aur": [
-    { "package": "ttf-misans" }
   ]
 }
