@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Name=udiskie
+Exec=udiskie -n -q -s --no-event-hook
+Comment=Automount removable drives with udiskie
+X-GNOME-Autostart-enabled=true

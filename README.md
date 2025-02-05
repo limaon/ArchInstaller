@@ -9,10 +9,10 @@ This README outlines the process for installing and configuring a fully-function
 Download ArchISO from <https://archlinux.org/download/> and put on a USB drive with [Etcher](https://www.balena.io/etcher/), [Ventoy](https://www.ventoy.net/en/index.html), or [Rufus](https://rufus.ie/en/)
 
 
-- New single command quicklaunch
+- New single command quick launch
 
 ```
-bash <(curl -L raw.githubusercontent.com/limaon/ArchInstaller/refs/heads/main/scripts/curl-install.sh)
+bash <(curl -L tinyurl.com/4b3jcbpd)
 ```
 
 

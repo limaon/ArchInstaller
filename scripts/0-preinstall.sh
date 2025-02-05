@@ -66,7 +66,7 @@ bootloader_install
 
 
 # Configure swap memory settings for systems with limited resources, function is located on 'system-config.sh'
-# low_memory_config
+low_memory_config
 
 
 echo -ne "

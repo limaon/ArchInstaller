@@ -36,49 +36,46 @@ mirrorlist_update() {
 }
 
 
-# @description Format disk before creating filesystem
+# @description Format disk before creating filesystem(s)
 # @noargs
 format_disk() {
+    echo -ne "
+-------------------------------------------------------------------------
+                    Installing Prerequisites
+-------------------------------------------------------------------------
+"
+    pacman -S --noconfirm --needed --color=always gptfdisk glibc
+
     echo -ne "
 -------------------------------------------------------------------------
                     Formatting ${DISK}
 -------------------------------------------------------------------------
 "
-    pacman -S --noconfirm --needed --color=always gptfdisk glibc
+
     mkdir -p /mnt &>/dev/null
     umount -A --recursive /mnt &>/dev/null
 
     set -e
 
-    TOTAL_MEM_KB=$(grep -i '^MemTotal:' /proc/meminfo | awk '{print $2}')
-    if [ -z "$TOTAL_MEM_KB" ] || [ "$TOTAL_MEM_KB" -eq 0 ]; then
-        echo "Could not detect the total memory. Using default value of 2GB."
-        TOTAL_MEM_KB=2097152  # 2GB em kB
-    fi
-    SWAP_SIZE_G=$(( (TOTAL_MEM_KB + 1048575) / 1048576 ))
-
+    # Preparar o disco
     sgdisk -Z "${DISK}"
     sgdisk -a 2048 -o "${DISK}"
 
-    echo -e "\n Creating first partition: BIOSBOOT"
-    sgdisk -n 1::+256M --typecode=1:ef02 --change-name=1:'BIOSBOOT' "${DISK}"
-
-    echo -e "\n Creating second partition: EFIBOOT"
-    sgdisk -n 2::+512M --typecode=2:ef00 --change-name=2:'EFIBOOT' "${DISK}"
-
-    if [[ "$TOTAL_MEM_KB" -lt 8388608 ]]; then
-        echo "Low-memory system detected: $((TOTAL_MEM_KB / 1024)) MB RAM"
-        echo "Creating SWAP partition of size ${SWAP_SIZE_G}G"
-        sgdisk -n 3::+${SWAP_SIZE_G}G --typecode=3:8200 --change-name=3:'SWAP' "${DISK}"
-        sgdisk -n 4::-0 --typecode=4:8300 --change-name=4:'ROOT' "${DISK}"
+    if [[ -d "/sys/firmware/efi" ]]; then
+        echo -e "\nCriando partição EFI (UEFI Boot Partition)"
+        sgdisk -n 1::+300M --typecode=1:ef00 --change-name=1:"EFIBOOT" "${DISK}"  # Partição EFI de 300M
+        echo -e "\nCriando partição ROOT"
+        sgdisk -n 2::-0 --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"           # Partição raiz (restante)
     else
-        echo "Sufficient memory detected; no dynamic SWAP partition for hibernation needed."
-        sgdisk -n 3::-0 --typecode=3:8300 --change-name=3:'ROOT' "${DISK}"
+        echo -e "\nCriando partição BIOS Boot (sem filesystem)"
+        sgdisk -n 1::+256M --typecode=1:ef02 --change-name=1:"BIOSBOOT" "${DISK}"        # Partição BIOS boot de 1M
+        echo -e "\nCriando partição ROOT"
+        sgdisk -n 2::-0 --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"             # Partição raiz (restante)
+        sgdisk -A 1:set:2 "${DISK}"
     fi
 
-    [[ ! -d "/sys/firmware/efi" ]] && sgdisk -A 1:set:2 "${DISK}"
-
     partprobe "${DISK}"
+
     set +e
 }
 
@@ -93,54 +90,44 @@ create_filesystems() {
 "
     set -e
 
-    if [[ "$TOTAL_MEM_KB" -lt 8388608 ]]; then
-        if [[ "${DISK}" =~ "nvme" || "${DISK}" =~ "mmc" ]]; then
-            partition2="${DISK}"p2   # EFIBOOT
-            partition3="${DISK}"p3   # SWAP
-            partition4="${DISK}"p4   # ROOT
+    if [[ "${DISK}" =~ "nvme" || "${DISK}" =~ "mmc" ]]; then
+        if [[ -d "/sys/firmware/efi" ]]; then
+            boot_partition="${DISK}p1"
+            root_partition="${DISK}p2"
         else
-            partition2="${DISK}"2
-            partition3="${DISK}"3
-            partition4="${DISK}"4
+            boot_partition=""
+            root_partition="${DISK}p2"
         fi
-
-        echo "Creating FAT32 boot filesystem on ${partition2}"
-        mkfs.vfat -F32 -n "EFIBOOT" "${partition2}"
-
-        echo "Formatting swap partition on ${partition3}"
-        mkswap "${partition3}"
-        swapon "${partition3}"
-
     else
-        if [[ "${DISK}" =~ "nvme" || "${DISK}" =~ "mmc" ]]; then
-            partition2="${DISK}"p2   # EFIBOOT
-            partition3="${DISK}"p3   # ROOT
+        if [[ -d "/sys/firmware/efi" ]]; then
+            boot_partition="${DISK}1"
+            root_partition="${DISK}2"
         else
-            partition2="${DISK}"2
-            partition3="${DISK}"3   # ROOT
+            boot_partition=""
+            root_partition="${DISK}1"
+            [[ $(sgdisk -p "${DISK}" | grep -c "BIOSBOOT") -gt 0 ]] && root_partition="${DISK}2"
         fi
+    fi
 
-        echo "Creating FAT32 boot filesystem on ${partition2}"
-        mkfs.vfat -F32 -n "EFIBOOT" "${partition2}"
+    if [[ -n "${boot_partition}" ]]; then
+        echo "Creating FAT32 EFI boot filesystem on ${boot_partition}"
+        mkfs.vfat -F32 -n "EFIBOOT" "${boot_partition}"
     fi
 
     if [[ "${FS}" == "btrfs" ]]; then
-        do_btrfs "ROOT" "${partition4:-$partition3}"
-    elif [[ "${FS}" == "ext4" ]]; then
-        echo "Creating EXT4 root filesystem on ${partition4:-$partition3}"
-        mkfs.ext4 -L ROOT "${partition4:-$partition3}"
-        mount -t ext4 "${partition4:-$partition3}" /mnt
-    elif [[ "${FS}" == "luks" ]]; then
-        echo -n "${LUKS_PASSWORD}" | cryptsetup -y -v luksFormat "${partition4:-$partition3}" -
-        echo -n "${LUKS_PASSWORD}" | cryptsetup open "${partition4:-$partition3}" ROOT -
-        do_btrfs "ROOT" "${partition4:-$partition3}"
-        echo ENCRYPTED_PARTITION_UUID="$(blkid -s UUID -o value "${partition4:-$partition3}")" >> "$CONFIGS_DIR"/setup.conf
-    fi
+        do_btrfs "ROOT" "${root_partition}"
 
-    if [[ "$TOTAL_MEM_KB" -lt 8388608 ]]; then
-        mkdir -p /mnt/etc
-        echo "Adding swap entry to /mnt/etc/fstab"
-        echo "${partition3}	none	swap	defaults	0	0" >> /mnt/etc/fstab
+    elif [[ "${FS}" == "ext4" ]]; then
+        echo "Creating EXT4 root filesystem on ${root_partition}"
+        mkfs.ext4 -L ROOT "${root_partition}"
+        mount -t ext4 "${root_partition}" /mnt
+
+    elif [[ "${FS}" == "luks" ]]; then
+        echo "Configuring LUKS on ${root_partition}"
+        echo -n "${LUKS_PASSWORD}" | cryptsetup -y -v luksFormat "${root_partition}" -
+        echo -n "${LUKS_PASSWORD}" | cryptsetup open "${root_partition}" ROOT -
+        do_btrfs "ROOT" "/dev/mapper/ROOT"
+        echo ENCRYPTED_PARTITION_UUID="$(blkid -s UUID -o value "${root_partition}")" >>"$CONFIGS_DIR"/setup.conf
     fi
 
     set +e
@@ -187,7 +174,7 @@ low_memory_config() {
           Configuring ZRAM (compressed swap) for <8G RAM
 -------------------------------------------------------------------------
 "
-    TOTAL_MEM=$(grep </proc/meminfo -i 'memtotal' | grep -o '[[:digit:]]*')
+    TOTAL_MEM=$(grep -i 'memtotal' /proc/meminfo | grep -o '[[:digit:]]*')
     if [[ "$TOTAL_MEM" -lt 8000000 ]]; then
         echo "Installing zram-generator..."
         arch-chroot /mnt pacman -S zram-generator --noconfirm
@@ -365,41 +352,38 @@ add_user() {
 grub_config() {
     echo -ne "
 -------------------------------------------------------------------------
-               Configuring Grub Boot Menu
+               Configuring GRUB Boot Menu
 -------------------------------------------------------------------------
 "
-
+    # Atualiza os parâmetros do GRUB
     if [[ "${FS}" == "luks" ]]; then
         sed -i "s%GRUB_CMDLINE_LINUX_DEFAULT=\"%GRUB_CMDLINE_LINUX_DEFAULT=\"cryptdevice=UUID=${ENCRYPTED_PARTITION_UUID}:ROOT root=/dev/mapper/ROOT %g" /etc/default/grub
     fi
-
-    TOTAL_MEM_KB=$(grep -i '^MemTotal:' /proc/meminfo | awk '{print $2}')
-    if [[ "$TOTAL_MEM_KB" -lt 8388608 ]]; then
-        if [[ "${DISK}" =~ "nvme" || "${DISK}" =~ "mmc" ]]; then
-            swap_part="${DISK}p3"
-        else
-            swap_part="${DISK}3"
-        fi
-
-        SWAP_UUID=$(blkid -s UUID -o value "${swap_part}")
-        echo "Configuring hibernation: resume=UUID=${SWAP_UUID}"
-        sed -i "s|^GRUB_CMDLINE_LINUX_DEFAULT=\"|GRUB_CMDLINE_LINUX_DEFAULT=\"resume=UUID=${SWAP_UUID} |" /etc/default/grub
-    fi
-
     sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="[^"]*/& splash /' /etc/default/grub
     sed -i 's/^#GRUB_DISABLE_OS_PROBER=.*/GRUB_DISABLE_OS_PROBER=true/' /etc/default/grub
 
-    if [[ ! "$INSTALL_TYPE" == SERVER ]]; then
-        echo -e "\n Setting wallpaper for GRUB..."
+    # Instala o GRUB de acordo com o firmware detectado
+    if [[ -d "/sys/firmware/efi" ]]; then
+        echo "Installing GRUB for UEFI..."
+        grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
+    else
+        echo "Installing GRUB for Legacy BIOS..."
+        grub-install --target=i386-pc "${DISK}"
+    fi
+
+    # Aplica wallpaper somente se não for instalação SERVER
+    if [[ "$INSTALL_TYPE" != "SERVER" ]]; then
+        echo -e "\nSetting wallpaper for GRUB..."
         WALLPAPER_PATH="/usr/share/backgrounds/archlinux/simple.png"
         sed -Ei "s|^#GRUB_BACKGROUND=.*|GRUB_BACKGROUND=\"$WALLPAPER_PATH\"|" /etc/default/grub
     else
-        echo -e "\n Skipping wallpaper setup for SERVER installation."
+        echo -e "\nSkipping wallpaper setup for SERVER installation."
     fi
 
-    echo -e "\n Updating grub..."
+    # Atualiza a configuração do GRUB
+    echo -e "\nUpdating GRUB configuration..."
     grub-mkconfig -o /boot/grub/grub.cfg
-    echo -e "\n All set! GRUB configuration is complete."
+    echo -e "\nGRUB configuration complete."
 }
 
 
