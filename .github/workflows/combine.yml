@@ -1,3 +1,6 @@
+permissions:
+  contents: read
+
 name: "Combine Dependabot PRs"
 on:
   workflow_dispatch:
