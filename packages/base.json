@@ -76,8 +76,7 @@
 			{ "package": "dxvk-bin" },
 			{ "package": "mkinitcpio-firmware" },
 			{ "package": "needrestart" },
-			{ "package": "pacman-cleanup-hook" },
-			{ "package": "vscodium-bin" }
+			{ "package": "pacman-cleanup-hook" }
 		]
 	}
 }

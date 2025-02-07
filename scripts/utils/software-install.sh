@@ -425,6 +425,8 @@ essential_services() {
 
         if [[ "${FS}" == "luks" || "${FS}" == "btrfs" ]]; then
             snapper_config
+            systemctl enable snapper-timeline.timer
+            systemctl status snapper-cleanup.timer
         fi
 
         plymouth_config

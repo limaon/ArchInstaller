@@ -5,6 +5,6 @@
 	],
 	"aur": [
 		{ "package": "btrfsmaintenance" },
-		{ "package": "btrfs-assistant-git" }
+		{ "package": "snapper-gui-git" }
 	]
 }
