@@ -387,9 +387,9 @@ essential_services() {
         ufw default deny incoming
 
         # Allow inbound connections for essential services
-        ufw allow in 22/tcp   # SSH
-        ufw allow in 80/tcp   # HTTP
-        ufw allow in 443/tcp  # HTTPS
+        ufw allow in 22/tcp    # SSH
+        ufw allow in 80/tcp    # HTTP
+        ufw allow in 443/tcp   # HTTPS
 
         # Allow local sharing (home network)
         ufw allow in 5353/udp  # mDNS (Avahi)

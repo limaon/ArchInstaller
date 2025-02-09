@@ -53,7 +53,8 @@ echo -e "\n Copying pacman file configuration to /mnt/etc/pacman.conf"
 cp "/etc/pacman.conf" "/mnt/etc/pacman.conf"
 
 echo -e "\n Generating fstab"
-genfstab -L /mnt >>/mnt/etc/fstab
+# genfstab -L /mnt >>/mnt/etc/fstab
+genfstab -U /mnt >>/mnt/etc/fstab
 
 echo "
   Generated /etc/fstab:

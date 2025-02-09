@@ -251,8 +251,8 @@ locale_config() {
     # Configure timezone and synchronize hours
     timedatectl --no-ask-password set-timezone "${TIMEZONE}"
     timedatectl --no-ask-password set-ntp 1
-    hwclock --systohc
     ln -sf /usr/share/zoneinfo/"${TIMEZONE}" /etc/localtime
+    hwclock --systohc
     echo "Timezone configured: ${TIMEZONE}"
 
     # Configure keymap and remap keys
