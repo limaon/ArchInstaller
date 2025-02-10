@@ -119,19 +119,22 @@ disk_select() {
 
     PS3='
 Select the disk to install on: '
-    options=("$(lsblk -n --output TYPE,KNAME,SIZE | awk '$1=="disk"{print "/dev/"$2"|"$3}')")
 
-    select_option $? 1 "${options[@]}"
-    disk="${options[$?]%|*}"
+    mapfile -t options < <(lsblk -n --output TYPE,KNAME,SIZE | awk '$1=="disk"{print "/dev/"$2"|"$3}')
 
-    echo -e "\n${disk%|*} selected \n"
-    set_option DISK "${disk%|*}"
+    select_option ${#options[@]} 1
+
+    selected_index=$?
+    disk="${options[$selected_index]%%|*}"
+
+    echo -e "\n${disk} selected \n"
+    set_option DISK "${disk}"
+
     if [[ "$(lsblk -n --output TYPE,ROTA | awk '$1=="disk"{print $2}')" -eq "0" ]]; then
         set_option "MOUNT_OPTION" "defaults,noatime,compress=zstd,ssd,commit=120"
     else
         set_option "MOUNT_OPTION" "defaults,noatime,compress=zstd,commit=120"
     fi
-
 }
 
 
@@ -169,12 +172,12 @@ Please Select your file system for both boot and root
 set_btrfs() {
     echo "Please enter your btrfs subvolumes separated by space"
     echo "usualy they start with @."
-    echo "like @home, [defaults are @home, @var, @tmp, @.snapshots]"
+    echo "like @home, [defaults are @, @docker, @flatpak, @home, @opt, @snapshots, @var_cache, @var_log, @var_tmp]"
     echo " "
     read -r -p "press enter to use default: " -a ARR
 
     if [[ -z "${ARR[*]}" ]]; then
-        set_option "SUBVOLUMES" "(@ @home @var @tmp @.snapshots)"
+        set_option "SUBVOLUMES" "(@ @docker @flatpak @home @opt @snapshots @var_cache @var_log @var_tmp)"
     else
         NAMES=(@)
         for i in "${ARR[@]}"; do

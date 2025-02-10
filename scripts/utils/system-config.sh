@@ -63,14 +63,14 @@ format_disk() {
 
     if [[ -d "/sys/firmware/efi" ]]; then
         echo -e "\nCriando partição EFI (UEFI Boot Partition)"
-        sgdisk -n 1::+300M --typecode=1:ef00 --change-name=1:"EFIBOOT" "${DISK}"  # Partição EFI de 300M
+        sgdisk -n 1::+1G --typecode=1:ef00 --change-name=1:"EFIBOOT" "${DISK}"
         echo -e "\nCriando partição ROOT"
-        sgdisk -n 2::-0 --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"           # Partição raiz (restante)
+        sgdisk -n 2::-0 --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
     else
         echo -e "\nCriando partição BIOS Boot (sem filesystem)"
-        sgdisk -n 1::+256M --typecode=1:ef02 --change-name=1:"BIOSBOOT" "${DISK}"        # Partição BIOS boot de 1M
+        sgdisk -n 1::+256M --typecode=1:ef02 --change-name=1:"BIOSBOOT" "${DISK}"
         echo -e "\nCriando partição ROOT"
-        sgdisk -n 2::-0 --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"             # Partição raiz (restante)
+        sgdisk -n 2::-0 --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
         sgdisk -A 1:set:2 "${DISK}"
     fi
 
@@ -139,7 +139,7 @@ create_filesystems() {
 do_btrfs() {
     echo -ne "
 -------------------------------------------------------------------------
-                    Creating btrfs device
+                    Creating btrfs filesystem and subvolumes
 -------------------------------------------------------------------------
 "
     echo -e "Creating btrfs device $1 on $2 \n"
@@ -154,14 +154,20 @@ do_btrfs() {
     done
 
     umount "$MOUNTPOINT"
+
     mount -o "$MOUNT_OPTIONS",subvol=@ "$2" "$MOUNTPOINT"
 
     for z in "${SUBVOLUMES[@]:1}"; do
-        w="${z[*]//@/}"
+        w="${z//@/}"
         mkdir -p /mnt/"${w}"
 
-        echo -e "\n Mounting $z at /$MOUNTPOINT/$w"
-        mount -o "$MOUNT_OPTIONS",subvol="${z}" "$2" "$MOUNTPOINT"/"${w}"
+        echo -e "\nMounting subvolume $z at /mnt/${w}"
+        mount -o "$MOUNT_OPTIONS",subvol="${z}" "$2" "/mnt/${w}"
+
+        if [[ "$z" == "@var_cache" || "$z" == "@var_log" || "$z" == "@var_tmp" ]]; then
+            echo "Disabling copy-on-write on /mnt/${w}"
+            chattr +C "/mnt/${w}"
+        fi
     done
 }
 
@@ -355,23 +361,15 @@ grub_config() {
                Configuring GRUB Boot Menu
 -------------------------------------------------------------------------
 "
-    # Atualiza os parâmetros do GRUB
     if [[ "${FS}" == "luks" ]]; then
         sed -i "s%GRUB_CMDLINE_LINUX_DEFAULT=\"%GRUB_CMDLINE_LINUX_DEFAULT=\"cryptdevice=UUID=${ENCRYPTED_PARTITION_UUID}:ROOT root=/dev/mapper/ROOT %g" /etc/default/grub
     fi
     sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="[^"]*/& splash /' /etc/default/grub
     sed -i 's/^#GRUB_DISABLE_OS_PROBER=.*/GRUB_DISABLE_OS_PROBER=true/' /etc/default/grub
 
-    # Instala o GRUB de acordo com o firmware detectado
-    if [[ -d "/sys/firmware/efi" ]]; then
-        echo "Installing GRUB for UEFI..."
-        grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
-    else
-        echo "Installing GRUB for Legacy BIOS..."
-        grub-install --target=i386-pc "${DISK}"
-    fi
+    echo -e "\n Backing up Grub config..."
+    cp -an /etc/default/grub /etc/default/grub.bak
 
-    # Aplica wallpaper somente se não for instalação SERVER
     if [[ "$INSTALL_TYPE" != "SERVER" ]]; then
         echo -e "\nSetting wallpaper for GRUB..."
         WALLPAPER_PATH="/usr/share/backgrounds/archlinux/simple.png"
@@ -380,7 +378,6 @@ grub_config() {
         echo -e "\nSkipping wallpaper setup for SERVER installation."
     fi
 
-    # Atualiza a configuração do GRUB
     echo -e "\nUpdating GRUB configuration..."
     grub-mkconfig -o /boot/grub/grub.cfg
     echo -e "\nGRUB configuration complete."
