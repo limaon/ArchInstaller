@@ -1,0 +1,23 @@
+repo:
+    - '*'
+
+GitHub-Action:
+    - .github/workflows/*
+
+Configs:
+    - configs/**/*
+
+Package-Files:
+    - packages/**/*
+
+scripts:
+    - scripts/**/*
+
+debug:
+    - scripts/debug/**/*
+
+helpers:
+    - scripts/helpers/**/*
+
+installers:
+    - scripts/installers/**/*
