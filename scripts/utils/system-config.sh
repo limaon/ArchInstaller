@@ -347,6 +347,13 @@ add_user() {
         echo "$NAME_OF_MACHINE" >/etc/hostname
         echo "Hostname set to $NAME_OF_MACHINE."
 
+        # Setup hosts file
+        cat >> /etc/hosts << EOF
+127.0.0.1   localhost
+::1         localhost
+127.0.1.1   arch.localdomain arch
+EOF
+
     else
         echo "You are already a user, proceed with AUR installs."
     fi
@@ -488,6 +495,36 @@ snapper_config() {
     SNAPPER_CONF_D="$HOME"/archinstaller/configs/base/etc/conf.d/snapper
     mkdir -p /etc/conf.d/
     cp -rfv "${SNAPPER_CONF_D}" /etc/conf.d/
+
+    snapper -c root create --description "Initial snapshot"
+    sudo chown :users /.snapshots
+}
+
+
+# @description Configures TLP for power management on laptops.
+# @noargs
+configure_tlp() {
+    if [ -d "/sys/class/power_supply/BAT0" ] || acpi -b &>/dev/null; then
+        echo "Battery detected. Installing and configuring TLP..."
+
+        sudo pacman -S --noconfirm tlp tlp-rdw
+        sudo systemctl enable tlp.service
+
+        sudo systemctl mask systemd-rfkill.service
+        sudo systemctl mask systemd-rfkill.socket
+
+        # Apply recommended configurations
+        TLP_CONF="/etc/tlp.conf"
+
+        sudo sed -i 's/^#\?USB_AUTOSUSPEND=.*/USB_AUTOSUSPEND=0/' "$TLP_CONF"
+        sudo sed -i 's/^#\?RUNTIME_PM_ON_AC=.*/RUNTIME_PM_ON_AC=auto/' "$TLP_CONF"
+        sudo sed -i 's/^#\?CPU_ENERGY_PERF_POLICY_ON_AC=.*/CPU_ENERGY_PERF_POLICY_ON_AC=balance_performance/' "$TLP_CONF"
+        sudo sed -i 's/^#\?CPU_ENERGY_PERF_POLICY_ON_BAT=.*/CPU_ENERGY_PERF_POLICY_ON_BAT=balance_power/' "$TLP_CONF"
+
+        echo "TLP installed and configured successfully."
+    else
+        echo "No battery detected. Skipping TLP configuration."
+    fi
 }
 
 

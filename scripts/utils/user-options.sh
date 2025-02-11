@@ -131,9 +131,9 @@ Select the disk to install on: '
     set_option DISK "${disk}"
 
     if [[ "$(lsblk -n --output TYPE,ROTA | awk '$1=="disk"{print $2}')" -eq "0" ]]; then
-        set_option "MOUNT_OPTION" "defaults,noatime,compress=zstd,ssd,commit=120"
+        set_option "MOUNT_OPTION" "defaults,noatime,compress=zstd,ssd,discard=async,commit=120"
     else
-        set_option "MOUNT_OPTION" "defaults,noatime,compress=zstd,commit=120"
+        set_option "MOUNT_OPTION" "defaults,noatime,compress=zstd,discard=async,commit=120"
     fi
 }
 

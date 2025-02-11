@@ -28,7 +28,7 @@ bootloader_install() {
 -------------------------------------------------------------------------
 "
     if [[ ! -d "/sys/firmware/efi" ]]; then
-        grub-install --boot-directory=/mnt/boot "${DISK}"
+        grub-install --target=x86_64-efi --efi-directory=/boot "${DISK}" --bootloader-id=GRUB
     else
         pacstrap /mnt efibootmgr --noconfirm --needed --color=always
     fi
@@ -57,7 +57,6 @@ network_install() {
         network-manager-applet \
         bind-tools \
         traceroute \
-        nmap \
         tcpdump \
         dialog \
         dnsmasq \
@@ -363,6 +362,10 @@ essential_services() {
     echo "Enabling Periodic Trim"
     systemctl enable fstrim.timer
     echo -e "Periodic Trim enabled \n"
+
+    echo "Configuring TLP for battery management"
+    configure_tlp
+    echo -e "TLP configuration complete \n"
 
     if [[ ${INSTALL_TYPE} == "FULL" ]]; then
 

@@ -57,7 +57,6 @@
 			{ "package": "python-pyqt5" },
 			{ "package": "plymouth" },
 			{ "package": "neofetch" },
-			{ "package": "ntfs-3g" },
 			{ "package": "git" },
 			{ "package": "gptfdisk" },
 			{ "package": "lsof" },

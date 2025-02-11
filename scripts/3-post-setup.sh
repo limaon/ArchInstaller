@@ -23,7 +23,7 @@ echo -ne "
   GRUB EFI Bootloader Install & Check
 "
 
-[[ -d "/sys/firmware/efi" ]] && grub-install --efi-directory=/boot "${DISK}"
+[[ -d "/sys/firmware/efi" ]] && grub-install --target=x86_64-efi --efi-directory=/boot "${DISK}" --bootloader-id=GRUB
 
 
 # Function to configure and theme the GRUB boot menu, including setting
