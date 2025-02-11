@@ -172,12 +172,12 @@ Please Select your file system for both boot and root
 set_btrfs() {
     echo "Please enter your btrfs subvolumes separated by space"
     echo "usualy they start with @."
-    echo "like @home, [defaults are @, @docker, @flatpak, @home, @opt, @snapshots, @var_cache, @var_log, @var_tmp]"
+    echo "like @home, [defaults are @, @docker, @flatpak, @home, @opt, @.snapshots, @var_cache, @var_log, @var_tmp]"
     echo " "
     read -r -p "press enter to use default: " -a ARR
 
     if [[ -z "${ARR[*]}" ]]; then
-        set_option "SUBVOLUMES" "(@ @docker @flatpak @home @opt @snapshots @var_cache @var_log @var_tmp)"
+        set_option "SUBVOLUMES" "(@ @docker @flatpak @home @opt @.snapshots @var_cache @var_log @var_tmp)"
     else
         NAMES=(@)
         for i in "${ARR[@]}"; do
