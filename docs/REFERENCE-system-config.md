@@ -15,6 +15,7 @@ Contains the functions used to modify the system
 * [grub_config()](#grub_config)
 * [display_manager()](#display_manager)
 * [snapper_config()](#snapper_config)
+* [configure_tlp()](#configure_tlp)
 * [plymouth_config()](#plymouth_config)
 
 
@@ -95,6 +96,12 @@ _Function has no arguments._
 ## snapper_config()
 
 Configure snapper default setup
+
+_Function has no arguments._
+
+## configure_tlp()
+
+Configures TLP for power management on laptops.
 
 _Function has no arguments._
 
