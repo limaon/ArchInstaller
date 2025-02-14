@@ -155,12 +155,36 @@ do_btrfs() {
 
     umount "$MOUNTPOINT"
 
+    # Mount the root subvolume (@) to the mountpoint
     mount -o "$MOUNT_OPTIONS",subvol=@ "$2" "$MOUNTPOINT"
 
+    # Mount the remaining subvolumes in their respective directories
     for z in "${SUBVOLUMES[@]:1}"; do
-        w="${z//@/}"
-        mkdir -p /mnt/"${w}"
+        case "$z" in
+            "@docker")
+                w="var/lib/docker"
+                ;;
+            "@flatpak")
+                w="var/lib/flatpak"
+                ;;
+            "@snapshots")
+                w=".snapshots"
+                ;;
+            "@var_cache")
+                w="var/cache"
+                ;;
+            "@var_log")
+                w="var/log"
+                ;;
+            "@var_tmp")
+                w="var/tmp"
+                ;;
+            *)
+                w="${z//@/}"
+                ;;
+        esac
 
+        mkdir -p /mnt/"${w}"
         echo -e "\nMounting subvolume $z at /mnt/${w}"
         mount -o "$MOUNT_OPTIONS",subvol="${z}" "$2" "/mnt/${w}"
 
@@ -349,9 +373,12 @@ add_user() {
 
         # Setup hosts file
         cat >> /etc/hosts << EOF
-127.0.0.1   localhost
-::1         localhost
-127.0.1.1   arch.localdomain arch
+127.0.0.1  localhost
+::1        localhost ip6-localhost ip6-loopback
+ff02::1    ip6-allnodes
+ff02::2    ip6-allrouters
+# This host address
+127.0.1.1  archlinux
 EOF
 
     else
@@ -379,7 +406,7 @@ grub_config() {
 
     if [[ "$INSTALL_TYPE" != "SERVER" ]]; then
         echo -e "\nSetting wallpaper for GRUB..."
-        WALLPAPER_PATH="/usr/share/backgrounds/archlinux/simple.png"
+        WALLPAPER_PATH="/usr/share/backgrounds/archlinux/archwave.png"
         sed -Ei "s|^#GRUB_BACKGROUND=.*|GRUB_BACKGROUND=\"$WALLPAPER_PATH\"|" /etc/default/grub
     else
         echo -e "\nSkipping wallpaper setup for SERVER installation."
@@ -439,7 +466,7 @@ display_manager() {
 
         CONFIG_FILE="/etc/lightdm/lightdm-gtk-greeter.conf"
         declare -A greeter_config=(
-            ["background"]="/usr/share/backgrounds/archlinux/mountain.jpg"
+            ["background"]="/usr/share/backgrounds/archlinux/geolanes.png"
             ["user-background"]="true"
             ["font-name"]="Ubuntu 12"
             ["xft-antialias"]="true"
@@ -496,8 +523,13 @@ snapper_config() {
     mkdir -p /etc/conf.d/
     cp -rfv "${SNAPPER_CONF_D}" /etc/conf.d/
 
+    sed -i "s/ALLOW_USERS=\".*\"/ALLOW_USERS=\"$(whoami)\"/" /etc/snapper/configs/root
+    sed -i "s/ALLOW_GROUPS=\".*\"/ALLOW_GROUPS=\"$(whoami)\"/" /etc/snapper/configs/root
+    systemctl enable snapper-timeline.timer
+    systemctl enable snapper-cleanup.timer
+    systemctl enable grub-btrfsd.service
     snapper -c root create --description "Initial snapshot"
-    sudo chown :users /.snapshots
+    chown :users /.snapshots
 }
 
 

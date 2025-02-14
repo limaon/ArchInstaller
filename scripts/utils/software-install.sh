@@ -28,7 +28,7 @@ bootloader_install() {
 -------------------------------------------------------------------------
 "
     if [[ ! -d "/sys/firmware/efi" ]]; then
-        grub-install --target=x86_64-efi --efi-directory=/boot "${DISK}" --bootloader-id=GRUB
+        grub-install --target=x86_64-efi --efi-directory=/boot "${DISK}" --bootloader-id='Arch Linux'
     else
         pacstrap /mnt efibootmgr --noconfirm --needed --color=always
     fi

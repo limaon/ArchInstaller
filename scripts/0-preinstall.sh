@@ -54,7 +54,8 @@ cp "/etc/pacman.conf" "/mnt/etc/pacman.conf"
 
 echo -e "\n Generating fstab"
 # genfstab -L /mnt >>/mnt/etc/fstab
-genfstab -U /mnt >>/mnt/etc/fstab
+genfstab -U /mnt >> /mnt/etc/fstab
+sed -i 's/subvolid=.*,//' /mnt/etc/fstab
 
 echo "
   Generated /etc/fstab:

@@ -187,7 +187,7 @@ bar {
 }
 
 # Load Wallpaper
-exec --no-startup-id xwallpaper --zoom /usr/share/backgrounds/archlinux/mountain.jpg
+exec --no-startup-id xwallpaper --zoom /usr/share/backgrounds/archlinux/geolanes.jpg
 exec --no-startup-id systemctl start --user xautocfg.service
 
 

@@ -170,23 +170,25 @@ Please Select your file system for both boot and root
 # @description Set btrfs subvolumes to be used during install
 # @noargs
 set_btrfs() {
-    echo "Please enter your btrfs subvolumes separated by space"
-    echo "usualy they start with @."
-    echo "like @home, [defaults are @, @docker, @flatpak, @home, @opt, @.snapshots, @var_cache, @var_log, @var_tmp]"
+    echo "Please enter your btrfs subvolumes separated by space."
+    echo "Usually they start with @."
+    echo "For example, enter: @docker @flatpak @home @opt @snapshots @var_cache @var_log @var_tmp"
     echo " "
-    read -r -p "press enter to use default: " -a ARR
+    read -r -p "Press enter to use the default subvolumes: " -a ARR
 
+    # If no subvolumes are provided, use the defaults as per the article
     if [[ -z "${ARR[*]}" ]]; then
-        set_option "SUBVOLUMES" "(@ @docker @flatpak @home @opt @.snapshots @var_cache @var_log @var_tmp)"
+        set_option "SUBVOLUMES" "(@ @docker @flatpak @home @opt @snapshots @var_cache @var_log @var_tmp)"
     else
-        NAMES=(@)
+        NAMES=("@")
         for i in "${ARR[@]}"; do
-            if [[ $i =~ [@] ]]; then
+            if [[ $i =~ ^@ ]]; then
                 NAMES+=("$i")
             else
-                NAMES+=(@"${i}")
+                NAMES+=("@${i}")
             fi
         done
+        # Remove duplicates
         IFS=" " read -r -a SUBS <<<"$(tr ' ' '\n' <<<"${NAMES[@]}" | awk '!x[$0]++' | tr '\n' ' ')"
         set_option "SUBVOLUMES" "${SUBS[*]}"
     fi
