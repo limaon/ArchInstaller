@@ -42,6 +42,8 @@
       { "package": "ibus-kkc" },
       { "package": "xed" },
       { "package": "pop-icon-theme" },
+      { "package": "gvfs" },
+      { "package": "gvfs-smb" },
       { "package": "keepassxc" },
       { "package": "qbittorrent" },
       { "package": "gamemode" },

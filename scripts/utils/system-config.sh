@@ -406,8 +406,8 @@ grub_config() {
 
     if [[ "$INSTALL_TYPE" != "SERVER" ]]; then
         echo -e "\nSetting wallpaper for GRUB..."
-        WALLPAPER_PATH="/usr/share/backgrounds/archlinux/archwave.png"
-        sed -Ei "s|^#GRUB_BACKGROUND=.*|GRUB_BACKGROUND=\"$WALLPAPER_PATH\"|" /etc/default/grub
+        # WALLPAPER_PATH="/usr/share/backgrounds/archlinux/archwave.png"
+        # sed -Ei "s|^#GRUB_BACKGROUND=.*|GRUB_BACKGROUND=\"$WALLPAPER_PATH\"|" /etc/default/grub
     else
         echo -e "\nSkipping wallpaper setup for SERVER installation."
     fi
