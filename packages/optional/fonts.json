@@ -11,6 +11,7 @@
     { "package": "noto-fonts-emoji" },
     { "package": "powerline-fonts" },
     { "package": "terminus-font" },
+    { "package": "ttf-terminus-nerd" },
     { "package": "ttc-iosevka" },
     { "package": "ttf-comfortaa" },
     { "package": "ttf-dejavu" },

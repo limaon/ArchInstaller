@@ -541,6 +541,7 @@ configure_tlp() {
 
         sudo pacman -S --noconfirm tlp tlp-rdw
         sudo systemctl enable tlp.service
+        sudo systemctl enable NetworkManager-dispatcher.service
 
         sudo systemctl mask systemd-rfkill.service
         sudo systemctl mask systemd-rfkill.socket
@@ -548,11 +549,33 @@ configure_tlp() {
         # Apply recommended configurations
         TLP_CONF="/etc/tlp.conf"
 
+        # Configure TLP to manage power settings for specific disks:
+        # sets moderate APM level (128) on battery for power saving,
+        # and maximum performance (254) on AC; targets nvme0n1 and sda devices.
+        sudo sed -i 's/^#\?DISK_DEVICES=.*/DISK_DEVICES="nvme0n1 sda"/' "$TLP_CONF"
+        sudo sed -i 's/^#\?DISK_APM_LEVEL_ON_BAT=.*/DISK_APM_LEVEL_ON_BAT="128"/' "$TLP_CONF"
+        sudo sed -i 's/^#\?DISK_APM_LEVEL_ON_AC=.*/DISK_APM_LEVEL_ON_AC="254"/' "$TLP_CONF"
+
+        # Bluetooth hangs when not used
+        sudo sed -i 's/^#\?DEVICES_TO_DISABLE_ON_BAT=.*/DEVICES_TO_DISABLE_ON_BAT="bluetooth"/' "$TLP_CONF"
+
+        # Defines aggressiveness in the scaling of the CPU
+        sudo sed -i 's/^#\?CPU_SCALING_GOVERNOR_ON_BAT=.*/CPU_SCALING_GOVERNOR_ON_BAT=powersave/' "$TLP_CONF"
+        sudo sed -i 's/^#\?CPU_SCALING_GOVERNOR_ON_AC=.*/CPU_SCALING_GOVERNOR_ON_AC=ondemand/' "$TLP_CONF"
+
+        # Configure TLP to disable USB autosuspend, enable runtime power management on AC,
+        # and set CPU energy/performance policies: balanced performance on AC, balanced power on battery.
         sudo sed -i 's/^#\?USB_AUTOSUSPEND=.*/USB_AUTOSUSPEND=0/' "$TLP_CONF"
         sudo sed -i 's/^#\?RUNTIME_PM_ON_AC=.*/RUNTIME_PM_ON_AC=auto/' "$TLP_CONF"
         sudo sed -i 's/^#\?CPU_ENERGY_PERF_POLICY_ON_AC=.*/CPU_ENERGY_PERF_POLICY_ON_AC=balance_performance/' "$TLP_CONF"
         sudo sed -i 's/^#\?CPU_ENERGY_PERF_POLICY_ON_BAT=.*/CPU_ENERGY_PERF_POLICY_ON_BAT=balance_power/' "$TLP_CONF"
 
+        # Logind configuration to suspend when closing the lid
+        echo "Configuring lid close behavior via systemd-logind..."
+        sudo sed -i 's/^#\?HandleLidSwitch=.*/HandleLidSwitch=suspend/' /etc/systemd/logind.conf
+        sudo sed -i 's/^#\?HandleLidSwitchDocked=.*/HandleLidSwitchDocked=ignore/' /etc/systemd/logind.conf
+
+        sudo systemctl restart systemd-logind
         echo "TLP installed and configured successfully."
     else
         echo "No battery detected. Skipping TLP configuration."
