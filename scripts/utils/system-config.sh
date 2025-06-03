@@ -156,7 +156,7 @@ do_btrfs() {
     umount "$MOUNTPOINT"
 
     # Mount the root subvolume (@) to the mountpoint
-    mount -o "$MOUNT_OPTIONS",subvol=@ "$2" "$MOUNTPOINT"
+    mount -o "$MOUNT_OPTION",subvol=@ "$2" "$MOUNTPOINT"
 
     # Mount the remaining subvolumes in their respective directories
     for z in "${SUBVOLUMES[@]:1}"; do
@@ -186,7 +186,7 @@ do_btrfs() {
 
         mkdir -p /mnt/"${w}"
         echo -e "\nMounting subvolume $z at /mnt/${w}"
-        mount -o "$MOUNT_OPTIONS",subvol="${z}" "$2" "/mnt/${w}"
+        mount -o "$MOUNT_OPTION",subvol="${z}" "$2" "/mnt/${w}"
 
         if [[ "$z" == "@var_cache" || "$z" == "@var_log" || "$z" == "@var_tmp" ]]; then
             echo "Disabling copy-on-write on /mnt/${w}"
