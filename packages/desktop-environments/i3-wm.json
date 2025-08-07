@@ -13,6 +13,7 @@
       { "package": "i3blocks" },
       { "package": "i3lock" },
       { "package": "i3status" },
+      { "package": "gnome-keyring" },
       { "package": "ibus" },
       { "package": "xss-lock" },
       { "package": "kitty" },
@@ -20,6 +21,7 @@
       { "package": "picom" },
       { "package": "polkit" },
       { "package": "polkit-gnome" },
+      { "package": "webkit2gtk-4.1" },
       { "package": "kvantum" },
       { "package": "kvantum-qt5" },
       { "package": "qt5-base" },
@@ -28,7 +30,6 @@
       { "package": "qt6ct" },
       { "package": "udiskie" },
       { "package": "xwallpaper" },
-      { "package": "xterm" },
       { "package": "lightdm" },
       { "package": "lightdm-gtk-greeter" }
     ],
@@ -39,16 +40,25 @@
   "full": {
     "pacman": [
       { "package": "blueman" },
-      { "package": "ibus-kkc" },
-      { "package": "xed" },
-      { "package": "pop-icon-theme" },
-      { "package": "keepassxc" },
-      { "package": "qbittorrent" },
       { "package": "gamemode" },
+      { "package": "gvfs" },
+      { "package": "gvfs-smb" },
+      { "package": "hsetroot" },
+      { "package": "ibus-kkc" },
+      { "package": "imagemagick" },
+      { "package": "keepassxc" },
       { "package": "lf" },
+      { "package": "maim" },
+      { "package": "mpv" },
+      { "package": "nsxiv" },
+      { "package": "pop-icon-theme" },
+      { "package": "qbittorrent" },
+      { "package": "ripgrep" },
+      { "package": "xcolor" },
+      { "package": "unclutter" },
       { "package": "xclip" },
-      { "package": "clipcat" },
       { "package": "xdotool" },
+      { "package": "xed" },
       { "package": "zathura" },
       { "package": "zathura-cb" },
       { "package": "zathura-djvu" },
@@ -56,9 +66,9 @@
       { "package": "zathura-ps" }
     ],
     "aur": [
-      { "package": "yaru-gtk-theme" },
+      { "package": "asdf-vm" },
       { "package": "kvantum-theme-vimix-git" },
-      { "package": "asdf-vm" }
+      { "package": "yaru-gtk-theme" }
     ]
   }
 }

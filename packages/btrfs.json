@@ -3,6 +3,7 @@
 		{ "package": "grub-btrfs" },
 		{ "package": "snap-pac" },
 		{ "package": "snapper" }
+		{ "package": "inotify-tools" }
 	],
 	"aur": [
 		{ "package": "btrfs-assistant" },
