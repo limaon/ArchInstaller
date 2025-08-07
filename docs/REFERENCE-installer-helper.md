@@ -1,4 +1,4 @@
-# Installer Helper# 
+# Installer Helper
 
 Contains the functions used to facilitate the installer
 
@@ -12,68 +12,68 @@ Contains the functions used to facilitate the installer
 * [end_script()](#end_script)
 
 
-## exit_on_error()## 
+## exit_on_error()
 
 Exits script if previous command fails
 
-### Output on stdout### 
+### Output on stdout
 
-* Output routed to install.log* 
+* Output routed to install.log
 
-### Output on stderr### 
+### Output on stderr
 
-* # @stderror Output routed to install.log* 
+* # @stderror Output routed to install.log
 
-### Arguments### 
+### Arguments
 
-* **$1** (string): Exit code of previous command* 
+* **$1** (string): Exit code of previous command
 
-### Arguments### 
+### Arguments
 
-* **$2** (string): Previous command* 
+* **$2** (string): Previous command
 
-## show_logo()## 
+## show_logo()
 
 display archinstaller logo
 
-_Function has no arguments.___
+_Function has no arguments._
 
-## function multiselect {## 
+## function multiselect {
 
 Select multiple options
 
-_Function has no arguments.___
+_Function has no arguments._
 
-## sequence()## 
+## sequence()
 
 Sequence to call scripts
 
-_Function has no arguments.___
+_Function has no arguments._
 
-## set_option()## 
+## set_option()
 
 set options in setup.conf
 
-### Arguments### 
+### Arguments
 
-* **$1** (string): Configuration variable.* 
+* **$1** (string): Configuration variable.
 
-### Arguments### 
+### Arguments
 
-* **$2** (string): Configuration value.* 
+* **$2** (string): Configuration value.
 
-## source_file()## 
+## source_file()
 
 Sources file to be used by the script
 
-### Arguments### 
+### Arguments
 
-* **$1** (File): to source* 
+* **$1** (File): to source
 
-## end_script()## 
+## end_script()
 
 Copy logs to installed system and exit script
 
-_Function has no arguments.___
+_Function has no arguments._
 
 

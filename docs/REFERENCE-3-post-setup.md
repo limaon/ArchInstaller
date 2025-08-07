@@ -1,4 +1,4 @@
-# Post-Setup# 
+# Post-Setup
 
 Finalizing installation configurations and cleaning up after script.
 
