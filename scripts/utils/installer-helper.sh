@@ -96,7 +96,8 @@ function multiselect {
     done
 
     # determine current screen position for overwriting the options
-    local lastrow=$(get_cursor_row)
+    local lastrow
+    lastrow=$(get_cursor_row)
     local startrow=$((lastrow - ${#options[@]}))
 
     # ensure cursor and input echoing back on upon a ctrl+c during read -s
@@ -299,6 +300,7 @@ select_option() {
 
 # @description Sources file to be used by the script
 # @arg $1 File to source
+# shellcheck disable=SC1090
 source_file() {
     if [[ -f "$1" ]]; then
         source "$1" || { echo "ERROR! Failed to source file: $1"; exit 1; }

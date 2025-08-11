@@ -343,8 +343,7 @@ add_user() {
         done
 
         # Add new user and full name
-        useradd -m -G wheel,libvirt,vboxusers,gamemode,docker -s /bin/bash -c "$REAL_NAME" "$USERNAME"
-        if [[ $? -ne 0 ]]; then
+        if ! useradd -m -G wheel,libvirt,vboxusers,gamemode,docker -s /bin/bash -c "$REAL_NAME" "$USERNAME"; then
             echo "ERROR! Failed to create user $USERNAME."
             exit 1
         fi
