@@ -1,4 +1,4 @@
-# System Checks# 
+# System Checks
 
 Contains the functions used to perform various checks to safely run program
 
@@ -11,48 +11,48 @@ Contains the functions used to perform various checks to safely run program
 * [background_checks()](#background_checks)
 
 
-## root_check()## 
+## root_check()
 
 Check if script is run with root
 
-### Output on stdout### 
+### Output on stdout
 
-* Output routed to install.log* 
+* Output routed to install.log
 
-### Output on stderr### 
+### Output on stderr
 
-* # @stderror Output routed to install.log* 
+* # @stderror Output routed to install.log
 
-_Function has no arguments.___
+_Function has no arguments._
 
-## arch_check()## 
+## arch_check()
 
 Check if script is being ran in an arch linux distro
 
-_Function has no arguments.___
+_Function has no arguments._
 
-## pacman_check()## 
+## pacman_check()
 
 Checks if pacman lock exists
 
-_Function has no arguments.___
+_Function has no arguments._
 
-## docker_check()## 
+## docker_check()
 
 Checks if script run inside docker container
 
-_Function has no arguments.___
+_Function has no arguments._
 
-## mount_check()## 
+## mount_check()
 
 Checks if drive is mounted
 
-_Function has no arguments.___
+_Function has no arguments._
 
-## background_checks()## 
+## background_checks()
 
 Run all checks necessary before running script
 
-_Function has no arguments.___
+_Function has no arguments._
 
 
