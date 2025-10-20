@@ -4,26 +4,3 @@ archnikus.code-workspace
 configs/setup.conf
 # keep logs out
 configs/*.log
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-.pythonlibs/
-*.egg-info/
-dist/
-build/
-.venv/
-venv/
-ENV/
-
-# Flask
-instance/
-.webassets-cache
-
-# Replit
-.upm/
-.cache/
-.config/

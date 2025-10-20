@@ -1,107 +1,111 @@
-# ArchInstaller Web Assistant
+# Overview
 
-## Project Overview
+This is an automated Arch Linux installation script that streamlines the process of installing and configuring a complete Arch Linux desktop system. The installer provides a guided, interactive setup that allows users to customize their installation with different desktop environments, window managers, AUR helpers, and package sets (minimal or full). The script handles everything from disk partitioning and filesystem creation to desktop environment installation and system configuration.
 
-This is a web-based documentation viewer and configuration generator for the ArchInstaller project. The original ArchInstaller is a collection of bash scripts designed to automate the installation of Arch Linux on bare metal or virtual machines.
+# User Preferences
 
-**Purpose:** Since the original installation scripts cannot be executed in the Replit environment (they require booting from an Arch Linux ISO and formatting physical disks), this web application provides a useful interface to:
-1. Browse and read the installation documentation
-2. Generate custom configuration files for Arch Linux installations
-3. Explore available desktop environments and package options
+Preferred communication style: Simple, everyday language.
 
-## Current State
+# System Architecture
 
-The project is fully functional and includes:
-- ✅ Flask web application serving on port 5000
-- ✅ Documentation viewer for browsing markdown reference files
-- ✅ Interactive configuration generator
-- ✅ Clean, responsive UI with navigation
-- ✅ Deployment configuration using Gunicorn
-- ✅ Python 3.11 with Flask, Markdown2, and Pygments
+## Installation Flow
 
-## Project Architecture
+The installer follows a sequential, multi-phase architecture:
 
-### Backend (Flask)
-- **app.py** - Main Flask application with routes for:
-  - Home page
-  - Documentation browser and viewer
-  - Configuration generator
-  - README viewer
+1. **Pre-installation (0-preinstall.sh)** - Handles disk partitioning, filesystem creation, and pacstrap of base system
+2. **System Setup (1-setup.sh)** - Configures the installed system, sets up locales, users, and installs base packages
+3. **User Configuration (2-user.sh)** - Applies user-specific customizations and installs AUR packages
+4. **Post-Setup (3-post-setup.sh)** - Finalizes configuration and cleanup
 
-### Frontend
-- **templates/** - Jinja2 HTML templates
-  - base.html - Base layout with navigation
-  - index.html - Home page with overview
-  - docs.html - Documentation list
-  - doc_view.html - Individual document viewer
-  - config.html - Interactive config generator
-- **static/css/** - Styling
-  - style.css - Main stylesheet with responsive design
-- **static/js/** - Client-side functionality
-  - config.js - Configuration form handling and download
+**Rationale**: This phased approach separates concerns cleanly - system installation, configuration, user setup, and finalization each have distinct responsibilities. This makes the installation process more maintainable and easier to debug.
 
-### Original ArchInstaller Files
-- **scripts/** - Bash installation scripts (for reference only)
-- **packages/** - JSON files defining package groups
-- **configs/** - Sample configuration files
-- **docs/** - Markdown documentation
+## Configuration Management
 
-## Recent Changes (October 20, 2025)
+The system uses a centralized configuration file (`setup.conf`) that stores all user preferences collected during the interactive setup phase. All installation scripts read from this single source of truth.
 
-- Created Flask web application to make the project functional in Replit
-- Implemented documentation viewer using markdown2 and pygments
-- Built interactive configuration generator that reads package JSON files
-- Created responsive UI with clean navigation
-- Set up workflow to run Flask dev server on port 5000
-- Configured deployment with Gunicorn for production use
-- Added Python-specific entries to .gitignore
+**Rationale**: Centralizing configuration prevents duplication and ensures consistency across all installation phases. The `set_option()` and `source_file()` helper functions provide standardized access to configuration values.
 
-## How to Use
+## Package Management Strategy
 
-### Development
-The Flask server runs automatically on port 5000. Changes to Python files will trigger automatic reloads.
+Packages are defined in JSON files organized by:
+- Installation type (minimal vs full)
+- Desktop environment
+- Package source (pacman vs AUR)
+- Special categories (fonts, btrfs tools)
 
-### Production Deployment
-The project is configured to deploy using Gunicorn as an autoscale deployment, which is suitable for this stateless web application.
+**Rationale**: JSON-based package definitions separate package lists from installation logic, making it easy to add new desktop environments or modify package sets without changing code. The minimal/full split allows users to choose between lightweight and feature-rich installations.
 
-### Features
+## Filesystem Support
 
-1. **Documentation Browser** - View all reference documentation for the ArchInstaller scripts
-2. **README Viewer** - Read the main project README with formatted markdown
-3. **Config Generator** - Create custom setup.conf files by filling out a form with:
-   - Username and hostname
-   - Timezone and keymap
-   - Desktop environment selection
-   - AUR helper choice
-   - Installation type (full/minimal)
+The installer supports multiple filesystems with special handling for Btrfs:
+- Automatic subvolume creation for system organization
+- Snapshot configuration via Snapper
+- GRUB-Btrfs integration for boot-time snapshots
 
-## Important Notes
+**Rationale**: Btrfs requires additional setup (subvolumes, snapshots) that ext4 doesn't need. The modular approach allows the installer to provide advanced features for Btrfs while keeping simpler filesystems straightforward.
 
-- This web application is a **viewer and helper tool** for the ArchInstaller project
-- The actual installation scripts **cannot run** in Replit
-- To use the actual installer, you must:
-  1. Download Arch Linux ISO
-  2. Boot from the ISO on physical hardware or a VM
-  3. Clone the repository and run ./archinstall.sh
-- This web interface helps you understand the installer and prepare configuration files
+## Bootloader Configuration
 
-## Technology Stack
+Uses GRUB as the bootloader with automatic configuration for:
+- UEFI vs BIOS boot modes
+- Filesystem-specific options (especially Btrfs)
+- Microcode installation (Intel/AMD)
 
-- **Backend:** Python 3.11, Flask 3.1.2
-- **Templating:** Jinja2
-- **Markdown Processing:** markdown2 with Pygments for syntax highlighting
-- **Production Server:** Gunicorn 23.0.0
-- **Frontend:** Vanilla JavaScript, CSS3
-- **Environment:** Replit NixOS
+**Rationale**: GRUB provides broad compatibility and integrates well with Btrfs snapshots. The installer detects boot mode automatically to handle both legacy and modern systems.
 
-## User Preferences
+## Desktop Environment Architecture
 
-None specified yet.
+Supports multiple desktop environments and window managers through a plugin-like system:
+- Each DE has its own package JSON file
+- Display manager automatically selected based on DE choice
+- Theming and configuration files organized per DE
 
-## Dependencies
+**Rationale**: This modular approach makes it easy to add new desktop environments without modifying core installation logic. Each DE can define its own dependencies and configuration requirements.
 
-All dependencies are managed via uv and defined in pyproject.toml:
-- flask
-- markdown2
-- pygments
-- gunicorn
+## Error Handling and Logging
+
+All scripts implement:
+- Centralized error handling via `exit_on_error()` function
+- Comprehensive logging to `.log` files for each installation phase
+- System checks before installation (root privileges, Arch detection, mount points)
+
+**Rationale**: Automated installations can fail in unexpected ways. Detailed logging and pre-flight checks help users troubleshoot issues. The `exit_on_error()` wrapper ensures failures are caught and logged immediately.
+
+## User Interaction Pattern
+
+The installer uses:
+- Interactive prompts for configuration choices
+- Multi-select menus for features with multiple options
+- Configuration review screen before proceeding
+
+**Rationale**: While automation is the goal, user choice is essential for a customized installation. The review screen prevents mistakes by showing all selections before making irreversible changes.
+
+# External Dependencies
+
+## Package Managers
+- **pacman** - Official Arch Linux package manager
+- **AUR helpers** (user-selectable) - yay, paru, or others for AUR package installation
+
+## Display Managers
+- **SDDM** - Used with KDE Plasma
+- **LightDM** - Used with lightweight DEs/WMs (i3, Awesome, Openbox)
+- **GDM** - Used with GNOME-based environments
+
+## System Tools
+- **git** - Required to clone the installer repository
+- **reflector/rankmirrors** - For optimizing pacman mirror lists
+- **grub** - Bootloader
+- **btrfs-progs** - Btrfs filesystem utilities (when using Btrfs)
+- **snapper** - Snapshot management (Btrfs installations)
+
+## Desktop Components
+Varies by selected desktop environment, but commonly includes:
+- **X.org** - Display server (all graphical environments)
+- **PipeWire/ALSA** - Audio subsystem
+- **NetworkManager** - Network management
+- **Bluez** - Bluetooth support
+
+## Optional Services
+- **TLP** - Laptop power management
+- **Plymouth** - Boot splash screen
+- **Docker** - Containerization (checks to prevent running in containers)

@@ -23,7 +23,6 @@ export BRED='\e[91m'
 
 set +a
 
-
 # Delete existing log file and log output of script
 [[ -f "$LOG_FILE" ]] && rm -f "$LOG_FILE"
 exec > >(tee -a "$LOG_FILE") 2>&1
