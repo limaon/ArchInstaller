@@ -347,6 +347,30 @@ footer a:hover {
     text-decoration: underline;
 }
 
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.checkbox-label:hover {
+    background-color: #f8f9fa;
+}
+
+.optional-checkbox {
+    width: auto;
+    cursor: pointer;
+}
+
+.package-count {
+    color: #666;
+    font-size: 0.9rem;
+}
+
 @media (max-width: 768px) {
     .nav-container {
         flex-direction: column;

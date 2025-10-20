@@ -100,6 +100,14 @@ def generate_config():
     if data.get('install_type'):
         config_content += f"INSTALL_TYPE={data['install_type']}\n"
     
+    optional_packages = data.get('optional_packages', [])
+    if optional_packages:
+        config_content += f"\n# Optional Package Groups\n"
+        config_content += f"OPTIONAL_PACKAGES={','.join(optional_packages)}\n"
+        config_content += f"\n# Note: The following optional groups are selected:\n"
+        for pkg in optional_packages:
+            config_content += f"#   - {pkg}\n"
+    
     return jsonify({'config': config_content})
 
 @app.route('/readme')

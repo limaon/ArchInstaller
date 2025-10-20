@@ -63,11 +63,30 @@
             <div class="form-group">
                 <label for="install_type">Installation Type:</label>
                 <select id="install_type" name="install_type">
-                    <option value="full">Full Installation</option>
-                    <option value="minimal">Minimal Installation</option>
+                    <option value="full">Full Installation (includes all DE packages)</option>
+                    <option value="minimal">Minimal Installation (base DE only)</option>
                 </select>
             </div>
         </div>
+        
+        {% if packages.optional %}
+        <div class="form-section">
+            <h2>Optional Package Groups</h2>
+            <p class="subtitle">Select additional package groups to include in your installation</p>
+            
+            {% for opt in packages.optional %}
+            <div class="form-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" name="optional_packages" value="{{ opt.id }}" class="optional-checkbox">
+                    <strong>{{ opt.name }}</strong>
+                    {% if opt.packages.pacman %}
+                    <span class="package-count">({{ opt.packages.pacman|length }} packages)</span>
+                    {% endif %}
+                </label>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
         
         <button type="submit" class="btn btn-primary">Generate Configuration</button>
     </form>

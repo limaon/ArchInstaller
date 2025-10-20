@@ -1,6 +1,9 @@
 document.getElementById('configForm').addEventListener('submit', async function(e) {
     e.preventDefault();
     
+    const optionalPackages = Array.from(document.querySelectorAll('.optional-checkbox:checked'))
+        .map(checkbox => checkbox.value);
+    
     const formData = {
         username: document.getElementById('username').value,
         hostname: document.getElementById('hostname').value,
@@ -8,7 +11,8 @@ document.getElementById('configForm').addEventListener('submit', async function(
         keymap: document.getElementById('keymap').value,
         desktop_environment: document.getElementById('desktop_environment').value,
         aur_helper: document.getElementById('aur_helper').value,
-        install_type: document.getElementById('install_type').value
+        install_type: document.getElementById('install_type').value,
+        optional_packages: optionalPackages
     };
     
     try {
