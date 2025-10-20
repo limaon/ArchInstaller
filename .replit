@@ -6,6 +6,27 @@ expertMode = true
 channel = "stable-25_05"
 
 [workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Info"
+
+[[workflows.workflow]]
+name = "Info"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"ℹ️  This is a Bash script repository for manual Arch Linux installation. Clone this repo inside an Arch Linux ISO VM and run ./archinstall.sh to install. See docs/ for complete documentation.\""
+
+[workflows.workflow.metadata]
+outputType = "console"
 
 [[ports]]
 localPort = 5000
