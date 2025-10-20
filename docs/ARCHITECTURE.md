@@ -1,201 +1,201 @@
-# Arquitetura do Sistema
+# System Architecture
 
-Este documento descreve a arquitetura completa do ArchInstaller, incluindo decisões de design, fluxo de dados e estrutura modular.
-
----
-
-## 📐 Visão Geral Arquitetural
-
-### Princípios de Design
-
-1. **Modularidade**: Cada script tem responsabilidade única e bem definida
-2. **Separação de Fases**: Instalação dividida em 4 fases sequenciais
-3. **Configuração Centralizada**: Único arquivo `setup.conf` como fonte de verdade
-4. **Detecção Automática**: Hardware detectado automaticamente sempre que possível
-5. **Idempotência**: Funções podem ser executadas múltiplas vezes com segurança
-6. **Logging Completo**: Tudo registrado em `install.log` para debug
+This document describes the complete architecture of ArchInstaller, including design decisions, data flow, and modular structure.
 
 ---
 
-## 🔄 Modelo de Execução em 4 Fases
+## 📐 Architectural Overview
 
-### Por que 4 Fases?
+### Design Principles
 
-A instalação é dividida em fases devido aos diferentes contextos de execução:
+1. **Modularity**: Each script has a single, well-defined responsibility
+2. **Phase Separation**: Installation divided into 4 sequential phases
+3. **Centralized Configuration**: Single `setup.conf` file as source of truth
+4. **Automatic Detection**: Hardware detected automatically whenever possible
+5. **Idempotency**: Functions can be executed multiple times safely
+6. **Complete Logging**: Everything logged to `install.log` for debugging
+
+---
+
+## 🔄 4-Phase Execution Model
+
+### Why 4 Phases?
+
+The installation is divided into phases due to different execution contexts:
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ FASE 0: Live ISO Environment (Antes do Chroot)              │
-│ - Sistema live do Arch ISO                                  │
-│ - Acesso total ao hardware                                  │
-│ - Sem sistema instalado ainda                               │
+│ PHASE 0: Live ISO Environment (Before Chroot)               │
+│ - Arch ISO live system                                      │
+│ - Full hardware access                                      │
+│ - No installed system yet                                   │
 └──────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────┐
-│ FASE 1: Chroot como Root                                    │
-│ - Dentro do sistema recém-instalado                         │
-│ - Privilégios de root                                        │
-│ - Configuração de sistema                                   │
+│ PHASE 1: Chroot as Root                                     │
+│ - Inside freshly installed system                           │
+│ - Root privileges                                            │
+│ - System configuration                                       │
 └──────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────┐
-│ FASE 2: Como Usuário Normal                                 │
-│ - Contexto do usuário criado                                │
-│ - Instalação de AUR packages                                │
-│ - Configurações de usuário                                  │
+│ PHASE 2: As Normal User                                     │
+│ - Created user context                                       │
+│ - AUR package installation                                   │
+│ - User configurations                                        │
 └──────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────┐
-│ FASE 3: Chroot como Root (Finalização)                      │
-│ - Volta ao contexto root                                    │
-│ - Configuração de serviços do sistema                       │
-│ - Cleanup final                                             │
+│ PHASE 3: Chroot as Root (Finalization)                      │
+│ - Back to root context                                       │
+│ - System service configuration                               │
+│ - Final cleanup                                              │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-### Transição Entre Fases
+### Phase Transitions
 
 ```bash
-# Em installer-helper.sh -> sequence()
+# In installer-helper.sh -> sequence()
 sequence() {
-    # FASE 0: Live ISO
+    # PHASE 0: Live ISO
     . "$SCRIPTS_DIR"/0-preinstall.sh
     
-    # FASE 1: Root no chroot
+    # PHASE 1: Root in chroot
     arch-chroot /mnt "$HOME"/archinstaller/scripts/1-setup.sh
     
-    # FASE 2: Usuário no chroot (só se não for SERVER)
+    # PHASE 2: User in chroot (only if not SERVER)
     if [[ ! "$INSTALL_TYPE" == SERVER ]]; then
         arch-chroot /mnt /usr/bin/runuser -u "$USERNAME" -- \
             /home/"$USERNAME"/archinstaller/scripts/2-user.sh
     fi
     
-    # FASE 3: Root no chroot novamente
+    # PHASE 3: Root in chroot again
     arch-chroot /mnt "$HOME"/archinstaller/scripts/3-post-setup.sh
 }
 ```
 
-**Razão**: AUR packages não podem ser compilados como root. Precisamos mudar para contexto de usuário na FASE 2.
+**Rationale**: AUR packages cannot be compiled as root. We need to switch to user context in PHASE 2.
 
 ---
 
-## 📦 Sistema de Módulos (Scripts Utilitários)
+## 📦 Module System (Utility Scripts)
 
 ### 1. installer-helper.sh
 
-**Responsabilidade**: Funções auxiliares genéricas
+**Responsibility**: Generic helper functions
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ installer-helper.sh                                     │
 ├─────────────────────────────────────────────────────────┤
-│ • exit_on_error()      → Tratamento de erros           │
-│ • show_logo()          → Exibição visual                │
-│ • multiselect()        → Menu multi-seleção             │
-│ • select_option()      → Menu seleção única             │
-│ • sequence()           → Orquestração das 4 fases       │
-│ • set_option()         → Salva em setup.conf            │
-│ • source_file()        → Carrega arquivo com validação  │
-│ • end_script()         → Finaliza e copia logs          │
+│ • exit_on_error()      → Error handling                 │
+│ • show_logo()          → Visual display                 │
+│ • multiselect()        → Multi-select menu              │
+│ • select_option()      → Single-select menu             │
+│ • sequence()           → Orchestrates 4 phases          │
+│ • set_option()         → Saves to setup.conf            │
+│ • source_file()        → Loads file with validation     │
+│ • end_script()         → Finalizes and copies logs      │
 └─────────────────────────────────────────────────────────┘
 ```
 
-**Design Pattern**: Helper/Utility Module - funções reutilizáveis sem estado.
+**Design Pattern**: Helper/Utility Module - reusable stateless functions.
 
 ---
 
 ### 2. system-checks.sh
 
-**Responsabilidade**: Verificações de pré-condições
+**Responsibility**: Precondition verification
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ system-checks.sh                                        │
 ├─────────────────────────────────────────────────────────┤
-│ • root_check()         → Verifica privilégios root      │
-│ • arch_check()         → Verifica se é Arch Linux       │
-│ • pacman_check()       → Verifica lock do pacman        │
-│ • docker_check()       → Impede execução em container   │
-│ • mount_check()        → Verifica montagem /mnt         │
-│ • background_checks()  → Executa todas as verificações  │
+│ • root_check()         → Verifies root privileges       │
+│ • arch_check()         → Verifies Arch Linux            │
+│ • pacman_check()       → Verifies pacman lock           │
+│ • docker_check()       → Prevents container execution   │
+│ • mount_check()        → Verifies /mnt mount            │
+│ • background_checks()  → Executes all checks            │
 └─────────────────────────────────────────────────────────┘
 ```
 
-**Design Pattern**: Guard Clauses - falha rápida se pré-condições não satisfeitas.
+**Design Pattern**: Guard Clauses - fail fast if preconditions not met.
 
-**Quando Executar**:
-- `background_checks()`: No início do `configuration.sh`
-- `mount_check()`: Antes das fases 1-3 (que precisam de /mnt montado)
+**When to Execute**:
+- `background_checks()`: At the start of `configuration.sh`
+- `mount_check()`: Before phases 1-3 (which need /mnt mounted)
 
 ---
 
 ### 3. user-options.sh
 
-**Responsabilidade**: Coleta interativa de configurações do usuário
+**Responsibility**: Interactive configuration collection
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ user-options.sh                                         │
 ├─────────────────────────────────────────────────────────┤
-│ • set_password()           → Coleta senha com confirmação│
-│ • user_info()              → Nome, username, hostname   │
+│ • set_password()           → Collects password with confirmation │
+│ • user_info()              → Name, username, hostname   │
 │ • install_type()           → FULL/MINIMAL/SERVER        │
-│ • aur_helper()             → Escolha AUR helper         │
-│ • desktop_environment()    → Lê JSONs disponíveis       │
-│ • disk_select()            → Seleciona disco            │
+│ • aur_helper()             → AUR helper selection       │
+│ • desktop_environment()    → Reads available JSONs      │
+│ • disk_select()            → Selects disk               │
 │ • filesystem()             → btrfs/ext4/luks            │
-│ • set_btrfs()              → Define subvolumes          │
-│ • timezone()               → Detecta e confirma         │
-│ • locale_selection()       → Idioma do sistema          │
-│ • keymap()                 → Layout do teclado          │
-│ • show_configurations()    → Resumo + permite refazer   │
+│ • set_btrfs()              → Defines subvolumes         │
+│ • timezone()               → Detects and confirms       │
+│ • locale_selection()       → System language            │
+│ • keymap()                 → Keyboard layout            │
+│ • show_configurations()    → Summary + allows redo      │
 └─────────────────────────────────────────────────────────┘
 ```
 
 **Design Pattern**: Wizard/Step-by-Step Configuration
 
-**Fluxo de Validação**:
+**Validation Flow**:
 ```
-Entrada → Validação → Retry se inválido → set_option() → Próxima etapa
+Input → Validation → Retry if invalid → set_option() → Next step
 ```
 
-**Show Configurations**: Permite ao usuário revisar TODAS as escolhas e refazer qualquer etapa antes de prosseguir. Isso evita reinstalações por erro de configuração.
+**Show Configurations**: Allows user to review ALL choices and redo any step before proceeding. This prevents reinstallations due to configuration errors.
 
 ---
 
 ### 4. software-install.sh
 
-**Responsabilidade**: Instalação de software e drivers
+**Responsibility**: Software and driver installation
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ software-install.sh                                     │
 ├─────────────────────────────────────────────────────────┤
-│ INSTALAÇÃO BASE:                                        │
-│ • arch_install()               → Pacstrap sistema base  │
+│ BASE INSTALLATION:                                      │
+│ • arch_install()               → Pacstrap base system   │
 │ • bootloader_install()         → GRUB UEFI/BIOS        │
 │ • network_install()            → NetworkManager + VPNs │
-│ • base_install()               → Lê base.json          │
+│ • base_install()               → Reads base.json       │
 │                                                         │
-│ DETECÇÃO DE HARDWARE:                                   │
-│ • microcode_install()          → Intel/AMD automático  │
+│ HARDWARE DETECTION:                                     │
+│ • microcode_install()          → Intel/AMD automatic   │
 │ • graphics_install()           → NVIDIA/AMD/Intel      │
 │                                                         │
-│ DESKTOP & TEMAS:                                        │
-│ • install_fonts()              → Lê fonts.json         │
-│ • desktop_environment_install()→ Lê DE JSON            │
-│ • user_theming()               → Aplica configs/temas  │
+│ DESKTOP & THEMES:                                       │
+│ • install_fonts()              → Reads fonts.json      │
+│ • desktop_environment_install()→ Reads DE JSON         │
+│ • user_theming()               → Applies configs/themes│
 │ • btrfs_install()              → Snapper, grub-btrfs   │
 │                                                         │
 │ AUR:                                                    │
-│ • aur_helper_install()         → Compila AUR helper    │
+│ • aur_helper_install()         → Compiles AUR helper   │
 │                                                         │
-│ SERVIÇOS:                                               │
-│ • essential_services()         → Habilita tudo         │
+│ SERVICES:                                               │
+│ • essential_services()         → Enables all services  │
 └─────────────────────────────────────────────────────────┘
 ```
 
-**Design Pattern**: Repository Pattern (JSON como "repositórios" de pacotes)
+**Design Pattern**: Repository Pattern (JSON as package "repositories")
 
 **Hardware Auto-Detection**:
 ```bash
@@ -222,122 +222,122 @@ fi
 
 ### 5. system-config.sh
 
-**Responsabilidade**: Configuração do sistema (disco, locale, usuários, bootloader)
+**Responsibility**: System configuration (disk, locale, users, bootloader)
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ system-config.sh                                        │
 ├─────────────────────────────────────────────────────────┤
-│ DISCO E FILESYSTEM:                                     │
+│ DISK AND FILESYSTEM:                                    │
 │ • mirrorlist_update()      → Reflector/rankmirrors     │
-│ • format_disk()            → sgdisk particionamento    │
+│ • format_disk()            → sgdisk partitioning       │
 │ • create_filesystems()     → mkfs.vfat/ext4/btrfs      │
-│ • do_btrfs()               → Subvolumes + montagem     │
+│ • do_btrfs()               → Subvolumes + mounting     │
 │                                                         │
-│ OTIMIZAÇÕES:                                            │
-│ • low_memory_config()      → ZRAM se <8GB RAM          │
+│ OPTIMIZATIONS:                                          │
+│ • low_memory_config()      → ZRAM if <8GB RAM          │
 │ • cpu_config()             → Makeflags multicore       │
 │                                                         │
-│ SISTEMA:                                                │
+│ SYSTEM:                                                 │
 │ • locale_config()          → Locale, timezone, keymap  │
 │ • extra_repos()            → Multilib, chaotic-aur     │
-│ • add_user()               → useradd + grupos          │
+│ • add_user()               → useradd + groups          │
 │                                                         │
 │ BOOTLOADER:                                             │
-│ • grub_config()            → Configura GRUB            │
-│ • display_manager()        → SDDM/GDM/LightDM + temas  │
+│ • grub_config()            → Configures GRUB           │
+│ • display_manager()        → SDDM/GDM/LightDM + themes │
 │                                                         │
-│ AVANÇADO:                                               │
-│ • snapper_config()         → Snapshots btrfs           │
-│ • configure_tlp()          → Power management laptops  │
+│ ADVANCED:                                               │
+│ • snapper_config()         → Btrfs snapshots           │
+│ • configure_tlp()          → Laptop power management   │
 │ • plymouth_config()        → Boot splash               │
 └─────────────────────────────────────────────────────────┘
 ```
 
 **Design Pattern**: Configuration Management
 
-**Particionamento GPT**:
+**GPT Partitioning**:
 ```
 UEFI:
 ┌─────────────┬──────────────────────────────────────┐
 │ EFIBOOT     │ ROOT                                 │
-│ 1GB (EF00)  │ Resto do disco (8300)                │
+│ 1GB (EF00)  │ Rest of disk (8300)                  │
 │ FAT32       │ ext4/btrfs/LUKS                      │
 └─────────────┴──────────────────────────────────────┘
 
 BIOS:
 ┌─────────────┬──────────────────────────────────────┐
 │ BIOSBOOT    │ ROOT                                 │
-│ 256MB(EF02) │ Resto do disco (8300)                │
-│ (sem FS)    │ ext4/btrfs/LUKS                      │
+│ 256MB(EF02) │ Rest of disk (8300)                  │
+│ (no FS)     │ ext4/btrfs/LUKS                      │
 └─────────────┴──────────────────────────────────────┘
 ```
 
-**Subvolumes Btrfs**:
+**Btrfs Subvolumes**:
 ```
 @              → /           (root)
-@home          → /home       (dados de usuário)
-@snapshots     → /.snapshots (snapshots do Snapper)
-@var_log       → /var/log    (logs, CoW desabilitado)
-@var_cache     → /var/cache  (cache, CoW desabilitado)
-@var_tmp       → /var/tmp    (temp, CoW desabilitado)
+@home          → /home       (user data)
+@snapshots     → /.snapshots (Snapper snapshots)
+@var_log       → /var/log    (logs, CoW disabled)
+@var_cache     → /var/cache  (cache, CoW disabled)
+@var_tmp       → /var/tmp    (temp, CoW disabled)
 @docker        → /var/lib/docker
 @flatpak       → /var/lib/flatpak
 ```
 
-**Razão**: Subvolumes separados permitem snapshots seletivos e melhor gerenciamento.
+**Rationale**: Separate subvolumes allow selective snapshots and better management.
 
 ---
 
-## 📄 Sistema de Configuração
+## 📄 Configuration System
 
-### setup.conf - Arquivo Central
+### setup.conf - Central File
 
 ```bash
-# Gerado por configuration.sh
-# Lido por TODAS as fases
+# Generated by configuration.sh
+# Read by ALL phases
 
-# Usuário
-REAL_NAME="João Silva"
-USERNAME=joao
-PASSWORD=hash_senha
-NAME_OF_MACHINE=meuarch
+# User
+REAL_NAME="John Doe"
+USERNAME=john
+PASSWORD=hashed_password
+NAME_OF_MACHINE=myarch
 
-# Instalação
-INSTALL_TYPE=FULL          # FULL, MINIMAL ou SERVER
+# Installation
+INSTALL_TYPE=FULL          # FULL, MINIMAL or SERVER
 AUR_HELPER=yay             # yay, paru, picaur, etc.
 DESKTOP_ENV=kde            # kde, gnome, i3-wm, etc.
 
-# Disco
+# Disk
 DISK=/dev/sda
-FS=btrfs                   # btrfs, ext4 ou luks
+FS=btrfs                   # btrfs, ext4 or luks
 SUBVOLUMES=(@ @home @snapshots ...)
 MOUNT_OPTION=defaults,noatime,compress=zstd,ssd,discard=async
 
-# Localização
-TIMEZONE=America/Sao_Paulo
-LOCALE=pt_BR.UTF-8
-KEYMAP=br-abnt2
+# Localization
+TIMEZONE=America/New_York
+LOCALE=en_US.UTF-8
+KEYMAP=us
 
-# LUKS (se FS=luks)
+# LUKS (if FS=luks)
 LUKS_PASSWORD=***
-ENCRYPTED_PARTITION_UUID=uuid-da-particao
+ENCRYPTED_PARTITION_UUID=partition-uuid
 ```
 
-**Padrão de Acesso**:
+**Access Pattern**:
 ```bash
-# Todos os scripts fazem:
+# All scripts do:
 source "$HOME"/archinstaller/configs/setup.conf
 
-# E depois usam as variáveis diretamente:
+# Then use variables directly:
 useradd -m -s /bin/bash "$USERNAME"
 ```
 
 ---
 
-## 📦 Sistema de Pacotes JSON
+## 📦 JSON Package System
 
-### Estrutura de Arquivos JSON
+### JSON File Structure
 
 ```json
 {
@@ -362,44 +362,44 @@ useradd -m -s /bin/bash "$USERNAME"
 }
 ```
 
-### Lógica de Instalação
+### Installation Logic
 
 ```bash
-# Define filtros JQ baseado no INSTALL_TYPE
+# Define JQ filters based on INSTALL_TYPE
 if [[ "$INSTALL_TYPE" == "FULL" ]]; then
     FILTER=".minimal.pacman[].package, .full.pacman[].package"
 else
     FILTER=".minimal.pacman[].package"
 fi
 
-# Se AUR helper instalado, inclui pacotes AUR
+# If AUR helper installed, include AUR packages
 if [[ "$AUR_HELPER" != NONE ]]; then
     FILTER="$FILTER, .minimal.aur[].package"
     [[ "$INSTALL_TYPE" == "FULL" ]] && FILTER="$FILTER, .full.aur[].package"
 fi
 
-# Instala
+# Install
 jq -r "$FILTER" package.json | while read -r pkg; do
     pacman -S "$pkg" --noconfirm --needed
 done
 ```
 
-**Razão**: JQ permite queries flexíveis em JSON. Separar minimal/full permite instalações leves ou completas.
+**Rationale**: JQ allows flexible JSON queries. Separating minimal/full allows lightweight or complete installations.
 
 ---
 
-## 🔐 Segurança e Validações
+## 🔐 Security and Validations
 
-### 1. Validação de Entrada do Usuário
+### 1. User Input Validation
 
 ```bash
-# Username: regex validado
+# Username: regex validated
 [[ "${username,,}" =~ ^[a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30}\$)$ ]]
 
-# Hostname: regex validado
+# Hostname: regex validated
 [[ "${hostname,,}" =~ ^[a-z][a-z0-9_.-]{0,62}[a-z0-9]$ ]]
 
-# Senha: confirmação obrigatória
+# Password: confirmation required
 set_password() {
     read -rs -p "Enter password: " PASS1
     read -rs -p "Re-enter password: " PASS2
@@ -407,19 +407,19 @@ set_password() {
 }
 ```
 
-### 2. Verificações Pré-Instalação
+### 2. Pre-Installation Checks
 
 ```bash
-# Deve ser root
+# Must be root
 [[ "$(id -u)" != "0" ]] && exit 1
 
-# Deve ser Arch
+# Must be Arch
 [[ ! -e /etc/arch-release ]] && exit 1
 
-# Pacman não pode estar travado
+# Pacman cannot be locked
 [[ -f /var/lib/pacman/db.lck ]] && exit 1
 
-# Não suporta Docker
+# Does not support Docker
 [[ -f /.dockerenv ]] && exit 1
 ```
 
@@ -435,33 +435,33 @@ exit_on_error() {
     fi
 }
 
-# Uso:
+# Usage:
 pacstrap /mnt base
 exit_on_error $? pacstrap /mnt base
 ```
 
 ---
 
-## 🎨 Temas e Configurações Personalizadas
+## 🎨 Themes and Custom Configurations
 
-### Sistema de Theming
+### Theming System
 
 ```
 configs/
-├── base/                           # Configs compartilhadas
-│   ├── etc/snapper/configs/root   # Config do Snapper
+├── base/                           # Shared configs
+│   ├── etc/snapper/configs/root   # Snapper config
 │   └── usr/share/plymouth/themes/ # Plymouth themes
 ├── kde/
-│   ├── home/                       # Dotfiles do usuário
+│   ├── home/                       # User dotfiles
 │   └── kde.knsv                    # Konsave profile
 ├── awesome/
-│   ├── home/.config/awesome/       # Config Awesome WM
-│   └── etc/xdg/awesome/            # Config global
+│   ├── home/.config/awesome/       # Awesome WM config
+│   └── etc/xdg/awesome/            # Global config
 └── i3-wm/
-    └── etc/                        # Configs i3
+    └── etc/                        # i3 configs
 ```
 
-**Aplicação de Temas**:
+**Theme Application**:
 ```bash
 user_theming() {
     case "$DESKTOP_ENV" in
@@ -481,9 +481,9 @@ user_theming() {
 
 ---
 
-## 🚀 Otimizações Implementadas
+## 🚀 Implemented Optimizations
 
-### 1. Compilação Paralela
+### 1. Parallel Compilation
 
 ```bash
 nc=$(grep -c ^processor /proc/cpuinfo)
@@ -493,14 +493,14 @@ sed -i "s/^#\(MAKEFLAGS=\"-j\)2\"/\1$nc\"/" /etc/makepkg.conf
 ### 2. Mirror Optimization
 
 ```bash
-# Reflector: seleciona 20 mirrors mais rápidos do país
+# Reflector: selects 20 fastest mirrors from country
 reflector -a 48 -c "$iso" -f 5 -l 20 --sort rate --save /etc/pacman.d/mirrorlist
 
-# Fallback: rankmirrors manual
+# Fallback: manual rankmirrors
 rankmirrors -n 5 /etc/pacman.d/mirrorlist
 ```
 
-### 3. ZRAM (Sistemas com <8GB RAM)
+### 3. ZRAM (Systems with <8GB RAM)
 
 ```bash
 TOTAL_MEM=$(grep -i 'memtotal' /proc/meminfo | grep -o '[[:digit:]]*')
@@ -514,12 +514,12 @@ EOF
 fi
 ```
 
-**Razão**: 2x RAM como ZRAM comprimido é mais eficiente que swap em disco.
+**Rationale**: 2x RAM as compressed ZRAM is more efficient than disk swap.
 
 ### 4. Btrfs Mount Options
 
 ```bash
-# SSD detectado
+# SSD detected
 if [[ "$(lsblk -n --output ROTA)" -eq "0" ]]; then
     MOUNT_OPTION="defaults,noatime,compress=zstd,ssd,discard=async"
 else
@@ -527,92 +527,92 @@ else
 fi
 ```
 
-- `noatime`: Não atualiza access time (performance)
-- `compress=zstd`: Compressão transparente
-- `ssd`: Otimizações para SSD
-- `discard=async`: TRIM assíncrono (melhor performance)
+- `noatime`: Don't update access time (performance)
+- `compress=zstd`: Transparent compression
+- `ssd`: SSD optimizations
+- `discard=async`: Asynchronous TRIM (better performance)
 
 ---
 
-## 📊 Fluxo de Dados
+## 📊 Data Flow
 
 ```
 ┌──────────────────┐
-│ Usuário          │
+│ User             │
 └────────┬─────────┘
-         │ Entrada interativa
+         │ Interactive input
          ↓
 ┌──────────────────────────┐
 │ configuration.sh         │
 │ + user-options.sh        │
 └────────┬─────────────────┘
-         │ Salva
+         │ Saves
          ↓
 ┌──────────────────────────┐
-│ configs/setup.conf       │ ← Fonte de verdade
+│ configs/setup.conf       │ ← Source of truth
 └────────┬─────────────────┘
-         │ Lido por todas as fases
+         │ Read by all phases
          ↓
 ┌──────────────────────────┐
-│ 0-preinstall.sh          │ → Cria partições + filesystem
+│ 0-preinstall.sh          │ → Creates partitions + filesystem
 └────────┬─────────────────┘
          │
 ┌──────────────────────────┐
-│ 1-setup.sh               │ → Instala base + configura sistema
+│ 1-setup.sh               │ → Installs base + configures system
 └────────┬─────────────────┘
          │
 ┌──────────────────────────┐
-│ 2-user.sh                │ → AUR + Desktop + Temas
+│ 2-user.sh                │ → AUR + Desktop + Themes
 └────────┬─────────────────┘
          │
 ┌──────────────────────────┐
-│ 3-post-setup.sh          │ → Serviços + Cleanup
+│ 3-post-setup.sh          │ → Services + Cleanup
 └────────┬─────────────────┘
          │
          ↓
-   Sistema Instalado
+   Installed System
 ```
 
 ---
 
-## 🎯 Decisões Arquiteturais Importantes
+## 🎯 Important Architectural Decisions
 
-### 1. Por que JSON para Pacotes?
+### 1. Why JSON for Packages?
 
-**Alternativas consideradas**: Shell arrays, TOML, YAML
+**Alternatives considered**: Shell arrays, TOML, YAML
 
-**Escolhido**: JSON com JQ
+**Chosen**: JSON with JQ
 
-**Razão**:
-- JQ está disponível no Arch ISO
-- Queries flexíveis (filtrar por minimal/full, pacman/aur)
-- Fácil de editar manualmente
-- Estrutura hierárquica clara
+**Rationale**:
+- JQ is available on Arch ISO
+- Flexible queries (filter by minimal/full, pacman/aur)
+- Easy to edit manually
+- Clear hierarchical structure
 
-### 2. Por que 4 Fases Separadas?
+### 2. Why 4 Separate Phases?
 
-**Alternativa**: Script monolítico
+**Alternative**: Monolithic script
 
-**Escolhido**: 4 fases distintas
+**Chosen**: 4 distinct phases
 
-**Razão**:
-- AUR não pode ser instalado como root
-- Separação de contextos (live ISO vs chroot)
-- Melhor para debug (pode re-executar fases específicas)
-- Logs separados por fase
+**Rationale**:
+- AUR cannot be installed as root
+- Separation of contexts (live ISO vs chroot)
+- Better for debugging (can re-run specific phases)
+- Separate logs per phase
 
-### 3. Por que setup.conf?
+### 3. Why setup.conf?
 
-**Alternativa**: Variáveis de ambiente, banco de dados
+**Alternative**: Environment variables, database
 
-**Escolhido**: Arquivo texto simples
+**Chosen**: Simple text file
 
-**Razão**:
-- Simples de ler/escrever em bash
-- Pode ser editado manualmente se necessário
-- Sobrevive a mudanças de contexto (chroot)
-- Humano-legível para debug
+**Rationale**:
+- Simple to read/write in bash
+- Can be manually edited if needed
+- Survives context changes (chroot)
+- Human-readable for debugging
 
 ---
 
-Esta arquitetura permite extensibilidade, manutenibilidade e robustez no processo de instalação do Arch Linux.
+This architecture allows for extensibility, maintainability, and robustness in the Arch Linux installation process.

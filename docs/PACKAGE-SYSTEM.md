@@ -1,37 +1,37 @@
-# Sistema de Pacotes JSON
+# JSON Package System
 
-Este documento explica como funciona o sistema de gerenciamento de pacotes baseado em JSON do ArchInstaller.
-
----
-
-## 🎯 Por que JSON?
-
-### Vantagens
-
-✅ **Separação de dados e lógica**: Listas de pacotes separadas do código  
-✅ **Fácil manutenção**: Adicionar/remover pacotes sem tocar em bash  
-✅ **Queries flexíveis**: JQ permite filtros complexos  
-✅ **Hierarquia clara**: minimal vs full, pacman vs aur  
-✅ **Comentários via descrição**: Cada pacote pode ter metadados  
-
-### Alternativas Consideradas
-
-- **Shell arrays**: Difícil de estruturar hierarquicamente
-- **YAML**: Requer parser extra não disponível na ISO
-- **TOML**: Mesma limitação do YAML
-- **Texto simples**: Sem estrutura, difícil filtrar
-
-**Escolhido**: JSON + JQ (já disponível na ISO do Arch)
+This document explains how the JSON-based package management system works in ArchInstaller.
 
 ---
 
-## 📂 Estrutura de Diretórios
+## 🎯 Why JSON?
+
+### Advantages
+
+✅ **Data and logic separation**: Package lists separate from code  
+✅ **Easy maintenance**: Add/remove packages without touching bash  
+✅ **Flexible queries**: JQ allows complex filters  
+✅ **Clear hierarchy**: minimal vs full, pacman vs aur  
+✅ **Comments via description**: Each package can have metadata  
+
+### Considered Alternatives
+
+- **Shell arrays**: Difficult to structure hierarchically
+- **YAML**: Requires extra parser not available in ISO
+- **TOML**: Same limitation as YAML
+- **Plain text**: No structure, difficult to filter
+
+**Chosen**: JSON + JQ (already available in Arch ISO)
+
+---
+
+## 📂 Directory Structure
 
 ```
 packages/
-├── base.json                    # Pacotes base do sistema
-├── btrfs.json                   # Ferramentas btrfs
-├── desktop-environments/        # Um JSON por DE
+├── base.json                    # Base system packages
+├── btrfs.json                   # Btrfs tools
+├── desktop-environments/        # One JSON per DE
 │   ├── kde.json
 │   ├── gnome.json
 │   ├── xfce.json
@@ -44,53 +44,53 @@ packages/
 │   ├── lxde.json
 │   └── mate.json
 └── optional/
-    └── fonts.json               # Fontes do sistema
+    └── fonts.json               # System fonts
 ```
 
 ---
 
-## 📋 Formato do JSON
+## 📋 JSON Format
 
-### Template Básico
+### Basic Template
 
 ```json
 {
   "minimal": {
     "pacman": [
-      {"package": "nome-do-pacote"}
+      {"package": "package-name"}
     ],
     "aur": [
-      {"package": "pacote-aur"}
+      {"package": "aur-package"}
     ]
   },
   "full": {
     "pacman": [
-      {"package": "pacote-extra"}
+      {"package": "extra-package"}
     ],
     "aur": [
-      {"package": "pacote-aur-extra"}
+      {"package": "extra-aur-package"}
     ]
   }
 }
 ```
 
-### Campos
+### Fields
 
-- **minimal**: Instalação mínima (sempre instalado se não SERVER)
-  - **pacman**: Pacotes oficiais
-  - **aur**: Pacotes do AUR (só se AUR_HELPER ≠ NONE)
+- **minimal**: Minimal installation (always installed if not SERVER)
+  - **pacman**: Official packages
+  - **aur**: AUR packages (only if AUR_HELPER ≠ NONE)
   
-- **full**: Instalação completa (só se INSTALL_TYPE=FULL)
-  - **pacman**: Pacotes oficiais extras
-  - **aur**: Pacotes AUR extras
+- **full**: Complete installation (only if INSTALL_TYPE=FULL)
+  - **pacman**: Extra official packages
+  - **aur**: Extra AUR packages
 
 ---
 
 ## 📦 base.json
 
-Pacotes fundamentais do sistema (não desktop).
+Fundamental system packages (not desktop).
 
-### Estrutura
+### Structure
 
 ```json
 {
@@ -124,27 +124,27 @@ Pacotes fundamentais do sistema (não desktop).
 }
 ```
 
-### Categorias Comuns
+### Common Categories
 
 **CLI Tools**: git, curl, wget, rsync, htop, neofetch  
-**Compressão**: zip, unzip, p7zip, unrar  
-**Desenvolvimento**: base-devel, gcc, make, cmake  
-**Rede**: net-tools, bind-tools, nmap  
-**Sistema**: man-db, man-pages, bash-completion  
+**Compression**: zip, unzip, p7zip, unrar  
+**Development**: base-devel, gcc, make, cmake  
+**Network**: net-tools, bind-tools, nmap  
+**System**: man-db, man-pages, bash-completion  
 
-**FULL adiciona**:  
+**FULL adds**:  
 **Browsers**: firefox, chromium  
-**Mídia**: vlc, ffmpeg, imagemagick  
+**Media**: vlc, ffmpeg, imagemagick  
 **Office**: libreoffice-fresh  
-**Gráficos**: gimp, inkscape  
+**Graphics**: gimp, inkscape  
 
 ---
 
 ## 🖥️ Desktop Environments
 
-Cada DE tem seu próprio JSON em `desktop-environments/`.
+Each DE has its own JSON in `desktop-environments/`.
 
-### Exemplo: kde.json
+### Example: kde.json
 
 ```json
 {
@@ -177,10 +177,10 @@ Cada DE tem seu próprio JSON em `desktop-environments/`.
 }
 ```
 
-### Estrutura Recomendada
+### Recommended Structure
 
 **minimal.pacman**:
-- Meta-pacote ou pacotes core do DE
+- Meta-package or core DE packages
 - Display manager (sddm, gdm, lightdm)
 - Terminal emulator
 - File manager
@@ -188,19 +188,19 @@ Cada DE tem seu próprio JSON em `desktop-environments/`.
 - Audio applet
 
 **full.pacman**:
-- Meta-pacote completo
-- Aplicativos do ecossistema
-- Ferramentas de produtividade
-- Extras e plugins
+- Complete meta-package
+- Ecosystem applications
+- Productivity tools
+- Extras and plugins
 
 **full.aur**:
-- Temas customizados
-- Plugins não-oficiais
-- Apps específicos da comunidade
+- Custom themes
+- Unofficial plugins
+- Community-specific apps
 
 ---
 
-### Exemplo: i3-wm.json
+### Example: i3-wm.json
 
 ```json
 {
@@ -241,9 +241,9 @@ Cada DE tem seu próprio JSON em `desktop-environments/`.
 
 ## 🔤 fonts.json
 
-Fontes do sistema (apenas FULL install).
+System fonts (FULL install only).
 
-### Estrutura
+### Structure
 
 ```json
 {
@@ -262,15 +262,15 @@ Fontes do sistema (apenas FULL install).
 }
 ```
 
-**Nota**: Não tem separação minimal/full - ou instala tudo ou nada.
+**Note**: No minimal/full separation - either installs all or nothing.
 
 ---
 
 ## 📁 btrfs.json
 
-Ferramentas específicas para btrfs (só instala se FS=btrfs).
+Btrfs-specific tools (only installs if FS=btrfs).
 
-### Estrutura
+### Structure
 
 ```json
 {
@@ -286,22 +286,22 @@ Ferramentas específicas para btrfs (só instala se FS=btrfs).
 }
 ```
 
-**Pacotes**:
-- **btrfs-progs**: Utilitários btrfs
-- **snapper**: Gerenciamento de snapshots
-- **snap-pac**: Snapshots automáticos ao usar pacman
-- **grub-btrfs**: Boot de snapshots via GRUB
+**Packages**:
+- **btrfs-progs**: Btrfs utilities
+- **snapper**: Snapshot management
+- **snap-pac**: Automatic snapshots when using pacman
+- **grub-btrfs**: Boot from snapshots via GRUB
 
 ---
 
-## 🔍 Queries JQ
+## 🔍 JQ Queries
 
-### Lógica de Instalação
+### Installation Logic
 
 ```bash
-# Exemplo de software-install.sh -> base_install()
+# Example from software-install.sh -> base_install()
 
-# Define filtros baseado em INSTALL_TYPE
+# Define filters based on INSTALL_TYPE
 MINIMAL_PACMAN_FILTER=".minimal.pacman[].package"
 FULL_PACMAN_FILTER=""
 
@@ -309,7 +309,7 @@ if [[ "$INSTALL_TYPE" == "FULL" ]]; then
     FULL_PACMAN_FILTER=", .full.pacman[].package"
 fi
 
-# Combina filtros e extrai pacotes
+# Combine filters and extract packages
 jq --raw-output "${MINIMAL_PACMAN_FILTER}${FULL_PACMAN_FILTER}" \
     "$PACKAGE_LIST_FILE" | while read -r package; do
     echo "Installing $package..."
@@ -317,9 +317,9 @@ jq --raw-output "${MINIMAL_PACMAN_FILTER}${FULL_PACMAN_FILTER}" \
 done
 ```
 
-### Queries Comuns
+### Common Queries
 
-**Apenas pacman minimal**:
+**Pacman minimal only**:
 ```bash
 jq -r '.minimal.pacman[].package' base.json
 ```
@@ -329,30 +329,30 @@ jq -r '.minimal.pacman[].package' base.json
 jq -r '.minimal.pacman[].package, .full.pacman[].package' base.json
 ```
 
-**Tudo (pacman + aur)**:
+**Everything (pacman + aur)**:
 ```bash
 jq -r '.minimal.pacman[].package, .minimal.aur[].package, 
        .full.pacman[].package, .full.aur[].package' base.json
 ```
 
-**Apenas AUR**:
+**AUR only**:
 ```bash
 jq -r '.minimal.aur[].package, .full.aur[].package' base.json
 ```
 
 ---
 
-## ➕ Adicionar Novo Desktop Environment
+## ➕ Adding New Desktop Environment
 
-### Passo 1: Criar JSON
+### Step 1: Create JSON
 
-Crie `packages/desktop-environments/meu-de.json`:
+Create `packages/desktop-environments/my-de.json`:
 
 ```json
 {
   "minimal": {
     "pacman": [
-      {"package": "meu-de-core"},
+      {"package": "my-de-core"},
       {"package": "display-manager"},
       {"package": "terminal"},
       {"package": "file-manager"}
@@ -361,99 +361,99 @@ Crie `packages/desktop-environments/meu-de.json`:
   },
   "full": {
     "pacman": [
-      {"package": "meu-de-apps"},
+      {"package": "my-de-apps"},
       {"package": "extras"}
     ],
     "aur": [
-      {"package": "temas-customizados"}
+      {"package": "custom-themes"}
     ]
   }
 }
 ```
 
-### Passo 2: Configurar Display Manager
+### Step 2: Configure Display Manager
 
-Em `system-config.sh -> display_manager()`:
+In `system-config.sh -> display_manager()`:
 
 ```bash
-elif [[ "${DESKTOP_ENV}" == "meu-de" ]]; then
-    systemctl enable meu-display-manager.service
+elif [[ "${DESKTOP_ENV}" == "my-de" ]]; then
+    systemctl enable my-display-manager.service
     
     if [[ "${INSTALL_TYPE}" == "FULL" ]]; then
-        echo "Configurando tema..."
-        # Aplicar configurações de tema
+        echo "Configuring theme..."
+        # Apply theme settings
     fi
 ```
 
-### Passo 3: (Opcional) Adicionar Theming
+### Step 3: (Optional) Add Theming
 
-Em `software-install.sh -> user_theming()`:
+In `software-install.sh -> user_theming()`:
 
 ```bash
-elif [[ "$DESKTOP_ENV" == "meu-de" ]]; then
-    cp -r ~/archinstaller/configs/meu-de/home/. ~/
-    # Aplicar dotfiles e configurações
+elif [[ "$DESKTOP_ENV" == "my-de" ]]; then
+    cp -r ~/archinstaller/configs/my-de/home/. ~/
+    # Apply dotfiles and configurations
 ```
 
-### Passo 4: Testar
+### Step 4: Test
 
 ```bash
 ./archinstall.sh
-# Escolher "meu-de" na lista
+# Choose "my-de" from list
 ```
 
-O instalador detectará automaticamente o novo JSON!
+The installer will detect the new JSON automatically!
 
 ---
 
-## 🔄 Fluxo de Instalação de Pacotes
+## 🔄 Package Installation Flow
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│ 1. Determinar INSTALL_TYPE (MINIMAL, FULL, SERVER)     │
+│ 1. Determine INSTALL_TYPE (MINIMAL, FULL, SERVER)      │
 └───────────────────┬─────────────────────────────────────┘
                     ↓
 ┌─────────────────────────────────────────────────────────┐
-│ 2. Determinar AUR_HELPER (yay, paru, NONE)             │
+│ 2. Determine AUR_HELPER (yay, paru, NONE)              │
 └───────────────────┬─────────────────────────────────────┘
                     ↓
 ┌─────────────────────────────────────────────────────────┐
-│ 3. Construir filtros JQ                                │
+│ 3. Build JQ filters                                     │
 │    MINIMAL: .minimal.pacman[].package                   │
 │    FULL:    + .full.pacman[].package                    │
 │    AUR:     + .minimal.aur[].package                    │
-│             + .full.aur[].package (se FULL)             │
+│             + .full.aur[].package (if FULL)             │
 └───────────────────┬─────────────────────────────────────┘
                     ↓
 ┌─────────────────────────────────────────────────────────┐
-│ 4. Ler JSON apropriado                                 │
+│ 4. Read appropriate JSON                                │
 │    - base.json                                          │
 │    - desktop-environments/$DESKTOP_ENV.json             │
-│    - fonts.json (se não SERVER)                         │
-│    - btrfs.json (se FS=btrfs)                           │
+│    - fonts.json (if not SERVER)                         │
+│    - btrfs.json (if FS=btrfs)                           │
 └───────────────────┬─────────────────────────────────────┘
                     ↓
 ┌─────────────────────────────────────────────────────────┐
-│ 5. Aplicar filtro JQ e extrair pacotes                 │
+│ 5. Apply JQ filter and extract packages                │
 └───────────────────┬─────────────────────────────────────┘
                     ↓
 ┌─────────────────────────────────────────────────────────┐
-│ 6. Loop de instalação                                  │
+│ 6. Installation loop                                    │
 │    for package in $(jq ...); do                         │
-│        pacman -S $package  ou  $AUR_HELPER -S $package  │
+│        pacman -S $package  or  $AUR_HELPER -S $package  │
 │    done                                                 │
 └─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📝 Melhores Práticas
+## 📝 Best Practices
 
-### 1. Organização
+### 1. Organization
 
-- Um pacote por linha
-- Ordem alfabética (facilita encontrar)
-- Comentários via campo "description" se necessário
+- One package per line
+- Alphabetical order (easier to find)
+- Comments via "description" field if needed
 
 ```json
 {
@@ -464,71 +464,71 @@ O instalador detectará automaticamente o novo JSON!
 }
 ```
 
-### 2. Dependências
+### 2. Dependencies
 
-JQ não valida dependências. Certifique-se de:
-- Pacotes base antes de extras
-- Display manager incluído no DE
-- Drivers de áudio/vídeo no minimal
+JQ doesn't validate dependencies. Ensure:
+- Base packages before extras
+- Display manager included in DE
+- Audio/video drivers in minimal
 
-### 3. Tamanho
+### 3. Size
 
-**minimal**: ~50-100 pacotes (instalação rápida)  
-**full**: ~200-400 pacotes (completa)
+**minimal**: ~50-100 packages (quick installation)  
+**full**: ~200-400 packages (complete)
 
-### 4. Testes
+### 4. Testing
 
-Sempre teste ambos:
-- MINIMAL install (rápido, funcional)
-- FULL install (completo, pode ser lento)
+Always test both:
+- MINIMAL install (fast, functional)
+- FULL install (complete, may be slow)
 
 ---
 
-## 🛠️ Manutenção
+## 🛠️ Maintenance
 
-### Adicionar Pacote
+### Add Package
 
 ```bash
-# Editar JSON
+# Edit JSON
 vim packages/base.json
 
-# Adicionar em minimal.pacman ou full.pacman
+# Add to minimal.pacman or full.pacman
 {
   "minimal": {
     "pacman": [
       ...
-      {"package": "novo-pacote"}
+      {"package": "new-package"}
     ]
   }
 }
 ```
 
-### Remover Pacote
+### Remove Package
 
-Simplesmente delete a linha do JSON.
+Simply delete the line from JSON.
 
-### Mudar de Categoria
+### Change Category
 
-Mova o pacote de `minimal` para `full` ou vice-versa.
+Move package from `minimal` to `full` or vice versa.
 
-### Verificar Validade do JSON
+### Verify JSON Validity
 
 ```bash
-jq . packages/base.json > /dev/null && echo "JSON válido" || echo "JSON inválido"
+jq . packages/base.json > /dev/null && echo "Valid JSON" || echo "Invalid JSON"
 ```
 
 ---
 
-## 🎯 Exemplos de Uso
+## 🎯 Usage Examples
 
-### Listar Todos os Pacotes de um DE
+### List All Packages from DE
 
 ```bash
 jq -r '.minimal.pacman[].package, .full.pacman[].package' \
     packages/desktop-environments/kde.json
 ```
 
-### Contar Pacotes
+### Count Packages
 
 ```bash
 # Minimal
@@ -541,14 +541,14 @@ jq '.full.pacman | length' packages/base.json
 jq '[.minimal.pacman[], .full.pacman[]] | length' packages/base.json
 ```
 
-### Procurar Pacote
+### Search for Package
 
 ```bash
-# Em qual JSON está o firefox?
+# Which JSON contains firefox?
 grep -r "firefox" packages/
 ```
 
-### Validar Todos os JSONs
+### Validate All JSONs
 
 ```bash
 for json in packages/**/*.json; do
@@ -558,4 +558,4 @@ done
 
 ---
 
-Este sistema permite fácil customização e manutenção das listas de pacotes sem tocar no código bash!
+This system allows easy customization and maintenance of package lists without touching bash code!

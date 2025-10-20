@@ -1,196 +1,196 @@
-# ArchInstaller - Documentação Completa
+# ArchInstaller - Complete Documentation
 
-## 📖 Índice da Documentação
+## 📖 Documentation Index
 
-1. **[README.md](README.md)** - Este arquivo (visão geral)
-2. **[ARCHITECTURE.md](ARCHITECTURE.md)** - Arquitetura completa do sistema
-3. **[USER-GUIDE.md](USER-GUIDE.md)** - Guia de uso e instalação
-4. **[FUNCTIONS-REFERENCE.md](FUNCTIONS-REFERENCE.md)** - Referência de todas as funções
-5. **[PACKAGE-SYSTEM.md](PACKAGE-SYSTEM.md)** - Sistema de pacotes JSON
-6. **[DEVELOPMENT-GUIDE.md](DEVELOPMENT-GUIDE.md)** - Guia para desenvolvedores
-
----
-
-## 🎯 O que é o ArchInstaller?
-
-O **ArchInstaller** é um instalador automatizado e interativo do Arch Linux que transforma a instalação manual complexa em um processo guiado e simplificado. Ele instala um sistema Arch Linux completo com:
-
-- ✅ Particionamento automático de disco
-- ✅ Suporte a múltiplos filesystems (ext4, btrfs, LUKS)
-- ✅ Detecção automática de hardware (CPU, GPU, bateria)
-- ✅ Instalação de ambientes desktop completos
-- ✅ Configuração de drivers, microcodes e otimizações
-- ✅ Sistema de snapshots (btrfs + Snapper)
-- ✅ Temas e configurações pré-aplicadas
+1. **[README.md](README.md)** - This file (overview)
+2. **[ARCHITECTURE.md](ARCHITECTURE.md)** - Complete system architecture
+3. **[USER-GUIDE.md](USER-GUIDE.md)** - Installation and usage guide
+4. **[FUNCTIONS-REFERENCE.md](FUNCTIONS-REFERENCE.md)** - Complete function reference
+5. **[PACKAGE-SYSTEM.md](PACKAGE-SYSTEM.md)** - JSON package system
+6. **[DEVELOPMENT-GUIDE.md](DEVELOPMENT-GUIDE.md)** - Developer guide
 
 ---
 
-## 🚀 Início Rápido
+## 🎯 What is ArchInstaller?
 
-### Pré-requisitos
-- Boot em uma ISO do Arch Linux
-- Conexão com internet
-- Privilégios de root
+**ArchInstaller** is an automated and interactive Arch Linux installer that transforms the complex manual installation process into a guided and simplified workflow. It installs a complete Arch Linux system with:
 
-### Instalação
+- ✅ Automatic disk partitioning
+- ✅ Multiple filesystem support (ext4, btrfs, LUKS)
+- ✅ Automatic hardware detection (CPU, GPU, battery)
+- ✅ Complete desktop environment installation
+- ✅ Driver, microcode, and optimization configuration
+- ✅ Snapshot system (btrfs + Snapper)
+- ✅ Pre-applied themes and configurations
+
+---
+
+## 🚀 Quick Start
+
+### Prerequisites
+- Boot into an Arch Linux ISO
+- Internet connection
+- Root privileges
+
+### Installation
 
 ```bash
-# 1. Clone o repositório
-git clone https://github.com/seu-usuario/ArchInstaller
+# 1. Clone the repository
+git clone https://github.com/your-username/ArchInstaller
 cd ArchInstaller
 
-# 2. Execute o instalador
+# 2. Run the installer
 chmod +x archinstall.sh
 ./archinstall.sh
 ```
 
-### Processo Interativo
+### Interactive Process
 
-O instalador irá perguntar:
+The installer will ask:
 
-1. **Nome completo, username e senha**
-2. **Tipo de instalação**: FULL / MINIMAL / SERVER
+1. **Full name, username, and password**
+2. **Installation type**: FULL / MINIMAL / SERVER
 3. **AUR Helper**: yay, paru, etc.
-4. **Ambiente Desktop**: KDE, GNOME, i3, etc.
-5. **Disco de instalação** (⚠️ será formatado!)
-6. **Filesystem**: btrfs, ext4 ou LUKS
-7. **Timezone** (detecta automaticamente)
-8. **Idioma do sistema** (locale)
-9. **Layout do teclado**
+4. **Desktop Environment**: KDE, GNOME, i3, etc.
+5. **Installation disk** (⚠️ will be formatted!)
+6. **Filesystem**: btrfs, ext4, or LUKS
+7. **Timezone** (auto-detected)
+8. **System language** (locale)
+9. **Keyboard layout**
 
-Após a revisão das configurações, a instalação automática começa!
+After reviewing the configuration, automatic installation begins!
 
 ---
 
-## 📂 Estrutura do Projeto
+## 📂 Project Structure
 
 ```
 ArchInstaller/
-├── archinstall.sh              # Script principal (ponto de entrada)
+├── archinstall.sh              # Main script (entry point)
 ├── configs/
-│   └── setup.conf              # Arquivo de configuração gerado
+│   └── setup.conf              # Generated configuration file
 ├── scripts/
-│   ├── configuration.sh        # Workflow interativo de configuração
-│   ├── 0-preinstall.sh         # Fase 0: Particionamento e pacstrap
-│   ├── 1-setup.sh              # Fase 1: Configuração do sistema
-│   ├── 2-user.sh               # Fase 2: Instalação de usuário (AUR/DE)
-│   ├── 3-post-setup.sh         # Fase 3: Finalização e serviços
-│   └── utils/                  # Scripts utilitários
-│       ├── installer-helper.sh # Funções auxiliares
-│       ├── system-checks.sh    # Verificações de segurança
-│       ├── user-options.sh     # Coleta de configurações
-│       ├── software-install.sh # Instalação de software
-│       └── system-config.sh    # Configuração do sistema
-├── packages/                   # Definições de pacotes (JSON)
-│   ├── base.json              # Pacotes base do sistema
-│   ├── btrfs.json             # Ferramentas btrfs
-│   ├── desktop-environments/  # Um JSON por DE
+│   ├── configuration.sh        # Interactive configuration workflow
+│   ├── 0-preinstall.sh         # Phase 0: Partitioning and pacstrap
+│   ├── 1-setup.sh              # Phase 1: System configuration
+│   ├── 2-user.sh               # Phase 2: User installation (AUR/DE)
+│   ├── 3-post-setup.sh         # Phase 3: Finalization and services
+│   └── utils/                  # Utility scripts
+│       ├── installer-helper.sh # Helper functions
+│       ├── system-checks.sh    # Security checks
+│       ├── user-options.sh     # Configuration collection
+│       ├── software-install.sh # Software installation
+│       └── system-config.sh    # System configuration
+├── packages/                   # Package definitions (JSON)
+│   ├── base.json              # Base system packages
+│   ├── btrfs.json             # Btrfs tools
+│   ├── desktop-environments/  # One JSON per DE
 │   │   ├── kde.json
 │   │   ├── gnome.json
 │   │   ├── i3-wm.json
 │   │   └── ...
 │   └── optional/
-│       └── fonts.json         # Fontes do sistema
-└── docs/                      # Esta documentação
+│       └── fonts.json         # System fonts
+└── docs/                      # This documentation
 ```
 
 ---
 
-## 🔄 Fluxo de Execução
+## 🔄 Execution Flow
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  1. archinstall.sh                                          │
-│     - Carrega utilitários                                   │
-│     - Executa configuration.sh (coleta dados)               │
-│     - Inicia sequence() com as 4 fases                      │
+│     - Loads utilities                                       │
+│     - Executes configuration.sh (collect data)              │
+│     - Starts sequence() with 4 phases                       │
 └─────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
-│  FASE 0: 0-preinstall.sh (Live ISO - antes do chroot)      │
-│     - Atualiza mirrors                                      │
-│     - Particiona disco (GPT)                                │
-│     - Cria filesystems (ext4/btrfs/LUKS)                   │
-│     - Pacstrap sistema base                                 │
-│     - Gera fstab                                            │
-│     - Instala bootloader                                    │
-│     - Configura ZRAM se <8GB RAM                            │
+│  PHASE 0: 0-preinstall.sh (Live ISO - before chroot)       │
+│     - Updates mirrors                                       │
+│     - Partitions disk (GPT)                                 │
+│     - Creates filesystems (ext4/btrfs/LUKS)                │
+│     - Pacstrap base system                                  │
+│     - Generates fstab                                       │
+│     - Installs bootloader                                   │
+│     - Configures ZRAM if <8GB RAM                           │
 └─────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
-│  FASE 1: 1-setup.sh (Chroot como root)                     │
-│     - Instala NetworkManager                                │
-│     - Configura locale, timezone, keymap                    │
-│     - Habilita multilib                                     │
-│     - Instala pacotes base                                  │
-│     - Detecta e instala microcode (Intel/AMD)               │
-│     - Detecta e instala drivers GPU                         │
-│     - Cria usuário e grupos                                 │
+│  PHASE 1: 1-setup.sh (Chroot as root)                      │
+│     - Installs NetworkManager                               │
+│     - Configures locale, timezone, keymap                   │
+│     - Enables multilib                                      │
+│     - Installs base packages                                │
+│     - Detects and installs microcode (Intel/AMD)            │
+│     - Detects and installs GPU drivers                      │
+│     - Creates user and groups                               │
 └─────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
-│  FASE 2: 2-user.sh (Como usuário normal)                   │
-│     - Instala AUR helper (yay/paru)                         │
-│     - Instala fontes                                        │
-│     - Instala ambiente desktop                              │
-│     - Instala ferramentas btrfs                             │
-│     - Aplica temas                                          │
+│  PHASE 2: 2-user.sh (As normal user)                       │
+│     - Installs AUR helper (yay/paru)                        │
+│     - Installs fonts                                        │
+│     - Installs desktop environment                          │
+│     - Installs btrfs tools                                  │
+│     - Applies themes                                        │
 └─────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
-│  FASE 3: 3-post-setup.sh (Chroot como root)                │
-│     - Configura GRUB                                        │
-│     - Configura display manager (SDDM/GDM/LightDM)         │
-│     - Habilita serviços (NetworkManager, TLP, UFW, etc.)   │
-│     - Configura Snapper (snapshots)                         │
-│     - Configura Plymouth (boot splash)                      │
-│     - Cleanup de arquivos temporários                       │
+│  PHASE 3: 3-post-setup.sh (Chroot as root)                 │
+│     - Configures GRUB                                       │
+│     - Configures display manager (SDDM/GDM/LightDM)        │
+│     - Enables services (NetworkManager, TLP, UFW, etc.)    │
+│     - Configures Snapper (snapshots)                        │
+│     - Configures Plymouth (boot splash)                     │
+│     - Cleanup temporary files                               │
 └─────────────────────────────────────────────────────────────┘
                             ↓
-                    🎉 INSTALAÇÃO COMPLETA!
-                      Eject ISO e Reboot
+                    🎉 INSTALLATION COMPLETE!
+                      Eject ISO and Reboot
 ```
 
 ---
 
-## 🎨 Features Principais
+## 🎨 Key Features
 
-### Detecção Automática de Hardware
-- **CPU**: Detecta Intel ou AMD e instala microcode apropriado
-- **GPU**: Detecta NVIDIA, AMD ou Intel e instala drivers
-- **SSD/HDD**: Ajusta mount options automaticamente
-- **Bateria**: Instala e configura TLP apenas em laptops
-- **Memória**: Configura ZRAM se sistema tem <8GB RAM
+### Automatic Hardware Detection
+- **CPU**: Detects Intel or AMD and installs appropriate microcode
+- **GPU**: Detects NVIDIA, AMD, or Intel and installs drivers
+- **SSD/HDD**: Automatically adjusts mount options
+- **Battery**: Installs and configures TLP only on laptops
+- **Memory**: Configures ZRAM if system has <8GB RAM
 
-### Suporte a Múltiplos Filesystems
-- **ext4**: Simples e confiável
-- **btrfs**: Com subvolumes (@, @home, @snapshots, @var_log, etc.)
-- **LUKS**: Criptografia full-disk + btrfs
+### Multiple Filesystem Support
+- **ext4**: Simple and reliable
+- **btrfs**: With subvolumes (@, @home, @snapshots, @var_log, etc.)
+- **LUKS**: Full-disk encryption + btrfs
 
-### Ambientes Desktop Suportados
+### Supported Desktop Environments
 KDE Plasma, GNOME, XFCE, Cinnamon, i3-wm, Awesome, Openbox, Budgie, Deepin, LXDE, MATE
 
-### Tipos de Instalação
-- **FULL**: Desktop completo + aplicativos + temas + serviços extras
-- **MINIMAL**: Desktop básico sem apps extras
-- **SERVER**: Apenas CLI (sem desktop environment)
+### Installation Types
+- **FULL**: Complete desktop + applications + themes + extra services
+- **MINIMAL**: Basic desktop without extra apps
+- **SERVER**: CLI only (no desktop environment)
 
-### Otimizações Automáticas
-- Compilação paralela baseada em número de cores
-- Mirror selection otimizado (reflector/rankmirrors)
-- Compressão zstd para btrfs
-- Trim periódico para SSDs
-- Firewall UFW pré-configurado (FULL)
+### Automatic Optimizations
+- Parallel compilation based on CPU cores
+- Optimized mirror selection (reflector/rankmirrors)
+- Zstd compression for btrfs
+- Periodic trim for SSDs
+- Pre-configured UFW firewall (FULL)
 
 ---
 
-## 📋 Configurações Salvas
+## 📋 Saved Configurations
 
-Todas as escolhas do usuário são salvas em `configs/setup.conf`:
+All user choices are saved in `configs/setup.conf`:
 
 ```bash
-REAL_NAME="João Silva"
-USERNAME=joao
+REAL_NAME="John Doe"
+USERNAME=john
 PASSWORD=***
 NAME_OF_MACHINE=archlinux
 INSTALL_TYPE=FULL
@@ -199,41 +199,41 @@ DESKTOP_ENV=kde
 DISK=/dev/sda
 FS=btrfs
 SUBVOLUMES=(@ @home @snapshots @var_log @var_cache)
-TIMEZONE=America/Sao_Paulo
-LOCALE=pt_BR.UTF-8
-KEYMAP=br-abnt2
+TIMEZONE=America/New_York
+LOCALE=en_US.UTF-8
+KEYMAP=us
 MOUNT_OPTION=defaults,noatime,compress=zstd,ssd,discard=async
 ```
 
-Este arquivo é lido por todos os scripts subsequentes, garantindo consistência.
+This file is read by all subsequent scripts, ensuring consistency.
 
 ---
 
-## 🛡️ Verificações de Segurança
+## 🛡️ Security Checks
 
-Antes de executar, o instalador verifica:
-- ✅ Está rodando como root
-- ✅ Está em um sistema Arch Linux
-- ✅ Pacman não está bloqueado
-- ✅ Não está em container Docker
-- ✅ Partições estão montadas (fases 1-3)
+Before execution, the installer verifies:
+- ✅ Running as root
+- ✅ Running on Arch Linux
+- ✅ Pacman is not locked
+- ✅ Not in a Docker container
+- ✅ Partitions are mounted (phases 1-3)
 
 ---
 
 ## 📦 Logs
 
-Toda a saída é registrada em `install.log` e copiada para `/var/log/install.log` no sistema instalado para referência futura.
+All output is logged to `install.log` and copied to `/var/log/install.log` in the installed system for future reference.
 
 ---
 
-## 🎯 Próximos Passos
+## 🎯 Next Steps
 
-- Consulte **[ARCHITECTURE.md](ARCHITECTURE.md)** para entender a arquitetura em detalhes
-- Veja **[FUNCTIONS-REFERENCE.md](FUNCTIONS-REFERENCE.md)** para lista completa de funções
-- Leia **[DEVELOPMENT-GUIDE.md](DEVELOPMENT-GUIDE.md)** para adicionar novas features
+- Consult **[ARCHITECTURE.md](ARCHITECTURE.md)** to understand the architecture in detail
+- See **[FUNCTIONS-REFERENCE.md](FUNCTIONS-REFERENCE.md)** for complete function list
+- Read **[DEVELOPMENT-GUIDE.md](DEVELOPMENT-GUIDE.md)** to add new features
 
 ---
 
-## 📄 Licença
+## 📄 License
 
-Este projeto é distribuído sob licença livre. Verifique o arquivo LICENSE para detalhes.
+This project is distributed under a free license. Check the LICENSE file for details.

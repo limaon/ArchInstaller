@@ -1,108 +1,108 @@
-# Guia de Uso do ArchInstaller
+# ArchInstaller User Guide
 
-Este guia detalha como usar o ArchInstaller para instalar Arch Linux em uma máquina virtual ou física.
-
----
-
-## 🎯 Pré-requisitos
-
-### Hardware Mínimo Recomendado
-- **CPU**: x86_64 com 2+ cores
-- **RAM**: 2GB mínimo (4GB+ recomendado)
-- **Disco**: 20GB mínimo (40GB+ recomendado)
-- **Rede**: Conexão ativa com internet
-
-### Antes de Começar
-1. Faça backup de todos os dados importantes
-2. Baixe a ISO mais recente do Arch Linux: https://archlinux.org/download/
-3. Crie USB bootável ou configure VM com a ISO
-4. Boot na ISO do Arch Linux
+This guide details how to use ArchInstaller to install Arch Linux on a virtual machine or physical hardware.
 
 ---
 
-## 📥 Instalação Passo a Passo
+## 🎯 Prerequisites
 
-### Passo 1: Boot na ISO do Arch Linux
+### Minimum Recommended Hardware
+- **CPU**: x86_64 with 2+ cores
+- **RAM**: 2GB minimum (4GB+ recommended)
+- **Disk**: 20GB minimum (40GB+ recommended)
+- **Network**: Active internet connection
 
-Você verá um prompt assim:
+### Before Starting
+1. Backup all important data
+2. Download latest Arch Linux ISO: https://archlinux.org/download/
+3. Create bootable USB or configure VM with the ISO
+4. Boot into Arch Linux ISO
+
+---
+
+## 📥 Step-by-Step Installation
+
+### Step 1: Boot into Arch Linux ISO
+
+You'll see a prompt like this:
 ```
 root@archiso ~ #
 ```
 
-### Passo 2: Conectar à Internet
+### Step 2: Connect to Internet
 
-**Ethernet (cabeada)**: Geralmente funciona automaticamente
+**Ethernet (wired)**: Usually works automatically
 
 **Wi-Fi**:
 ```bash
-# Listar interfaces
+# List interfaces
 ip link
 
-# Conectar usando iwctl
+# Connect using iwctl
 iwctl
 [iwd]# device list
 [iwd]# station wlan0 scan
 [iwd]# station wlan0 get-networks
-[iwd]# station wlan0 connect "Nome_da_Rede"
+[iwd]# station wlan0 connect "Network_Name"
 [iwd]# exit
 
-# Testar conexão
+# Test connection
 ping -c 3 archlinux.org
 ```
 
-### Passo 3: Clonar o Repositório
+### Step 3: Clone the Repository
 
 ```bash
-# Instalar git se necessário (já está na ISO)
+# Install git if needed (already in ISO)
 pacman -Sy git
 
-# Clonar o repositório
-git clone https://github.com/seu-usuario/ArchInstaller
+# Clone repository
+git clone https://github.com/your-username/ArchInstaller
 cd ArchInstaller
 ```
 
-### Passo 4: Executar o Instalador
+### Step 4: Run the Installer
 
 ```bash
-# Dar permissão de execução
+# Give execution permission
 chmod +x archinstall.sh
 
-# Executar
+# Execute
 ./archinstall.sh
 ```
 
 ---
 
-## ⚙️ Processo de Configuração Interativa
+## ⚙️ Interactive Configuration Process
 
-O instalador fará uma série de perguntas. Vamos detalhar cada uma:
+The installer will ask a series of questions. Let's detail each one:
 
-### 1️⃣ Informações do Usuário
+### 1️⃣ User Information
 
 ```
 Please enter your full name (e.g., David Brown):
 ```
-Digite seu nome completo. Ex: `João Silva`
+Enter your full name. Ex: `John Smith`
 
 ```
 Please enter username:
 ```
-Digite o nome de usuário (minúsculas, sem espaços). Ex: `joao`
+Enter username (lowercase, no spaces). Ex: `john`
 
 ```
 Please enter password:
 Please re-enter password:
 ```
-Digite uma senha forte e confirme.
+Enter a strong password and confirm.
 
 ```
 Please name your machine:
 ```
-Nome do computador (hostname). Ex: `archlinux` ou `meu-pc`
+Computer name (hostname). Ex: `archlinux` or `my-pc`
 
 ---
 
-### 2️⃣ Tipo de Instalação
+### 2️⃣ Installation Type
 
 ```
 Please select type of installation:
@@ -111,16 +111,16 @@ Please select type of installation:
   Server Install: Installs only base system without desktop
 ```
 
-**Escolha**:
-- **FULL**: Desktop completo + apps (Firefox, LibreOffice, etc.) + temas + extras
-- **MINIMAL**: Desktop básico + poucos apps essenciais
-- **SERVER**: Apenas linha de comando (sem interface gráfica)
+**Choose**:
+- **FULL**: Complete desktop + apps (Firefox, LibreOffice, etc.) + themes + extras
+- **MINIMAL**: Basic desktop + few essential apps
+- **SERVER**: Command line only (no graphical interface)
 
-Use setas ↑↓ para navegar, Enter para confirmar.
+Use arrows ↑↓ to navigate, Enter to confirm.
 
 ---
 
-### 3️⃣ AUR Helper (se não for SERVER)
+### 3️⃣ AUR Helper (if not SERVER)
 
 ```
 Please select your desired AUR helper:
@@ -133,13 +133,13 @@ Please select your desired AUR helper:
   NONE
 ```
 
-**Recomendação**: `yay` ou `paru` (mais populares e atualizados)
+**Recommendation**: `yay` or `paru` (most popular and updated)
 
-**O que é?**: AUR (Arch User Repository) contém pacotes mantidos pela comunidade.
+**What is it?**: AUR (Arch User Repository) contains community-maintained packages.
 
 ---
 
-### 4️⃣ Ambiente Desktop (se não for SERVER)
+### 4️⃣ Desktop Environment (if not SERVER)
 
 ```
 Please select your desired Desktop Environment:
@@ -156,14 +156,14 @@ Please select your desired Desktop Environment:
   mate
 ```
 
-**Recomendações**:
-- **Iniciantes**: KDE Plasma ou GNOME (completos e polidos)
-- **Leve**: XFCE, LXDE ou MATE
-- **Avançado**: i3-wm ou Awesome (window managers)
+**Recommendations**:
+- **Beginners**: KDE Plasma or GNOME (complete and polished)
+- **Lightweight**: XFCE, LXDE, or MATE
+- **Advanced**: i3-wm or Awesome (window managers)
 
 ---
 
-### 5️⃣ Seleção de Disco
+### 5️⃣ Disk Selection
 
 ```
 ------------------------------------------------------------------------
@@ -177,16 +177,16 @@ Select the disk to install on:
   /dev/sdb  |  100G
 ```
 
-**⚠️ ATENÇÃO**: O disco escolhido será COMPLETAMENTE APAGADO!
+**⚠️ WARNING**: The chosen disk will be COMPLETELY ERASED!
 
-**Em VMs**: Geralmente `/dev/sda` ou `/dev/vda`
-**Físico**: Verifique o tamanho para escolher o disco correto
+**In VMs**: Usually `/dev/sda` or `/dev/vda`
+**Physical**: Check size to choose correct disk
 
-Use setas para selecionar, Enter para confirmar.
+Use arrows to select, Enter to confirm.
 
 ---
 
-### 6️⃣ Sistema de Arquivos
+### 6️⃣ Filesystem
 
 ```
 Please Select your file system for both boot and root
@@ -196,28 +196,28 @@ Please Select your file system for both boot and root
   exit
 ```
 
-**Escolha**:
+**Choose**:
 
 - **ext4**: 
-  - ✅ Simples, rápido, confiável
-  - ❌ Sem snapshots nativos
-  - **Use se**: Quer simplicidade
+  - ✅ Simple, fast, reliable
+  - ❌ No native snapshots
+  - **Use if**: You want simplicity
 
 - **btrfs**:
-  - ✅ Snapshots (backups incrementais)
-  - ✅ Compressão transparente (economiza espaço)
-  - ✅ Recuperação de falhas
-  - ❌ Mais complexo
-  - **Use se**: Quer recursos avançados
+  - ✅ Snapshots (incremental backups)
+  - ✅ Transparent compression (saves space)
+  - ✅ Failure recovery
+  - ❌ More complex
+  - **Use if**: You want advanced features
 
 - **luks**:
-  - ✅ Criptografia total do disco
-  - ✅ Segurança máxima
-  - ❌ Precisa senha ao boot
-  - ❌ Performance levemente menor
-  - **Use se**: Segurança é prioridade (laptops, dados sensíveis)
+  - ✅ Full disk encryption
+  - ✅ Maximum security
+  - ❌ Needs password at boot
+  - ❌ Slightly lower performance
+  - **Use if**: Security is priority (laptops, sensitive data)
 
-**Se escolher btrfs**:
+**If choosing btrfs**:
 ```
 Please enter your btrfs subvolumes separated by space.
 Usually they start with @.
@@ -226,31 +226,31 @@ For example: @docker @flatpak @home @opt @snapshots @var_cache @var_log @var_tmp
 Press enter to use the default subvolumes:
 ```
 
-Recomendação: **Apenas pressione Enter** para usar os padrões.
+Recommendation: **Just press Enter** to use defaults.
 
-**Se escolher luks**:
+**If choosing luks**:
 ```
 Please enter password:
 Please re-enter password:
 ```
-Digite uma senha FORTE para criptografia (diferente da senha do usuário).
+Enter a STRONG password for encryption (different from user password).
 
 ---
 
 ### 7️⃣ Timezone
 
 ```
-System detected your timezone to be 'America/Sao_Paulo'
+System detected your timezone to be 'America/New_York'
 Is this correct?
   Yes
   No
 ```
 
-Se incorreto, escolha "No" e digite manualmente. Ex: `America/Fortaleza`, `Europe/London`
+If incorrect, choose "No" and enter manually. Ex: `America/Chicago`, `Europe/London`
 
 ---
 
-### 8️⃣ Idioma do Sistema (Locale)
+### 8️⃣ System Language (Locale)
 
 ```
 Please select your system language (locale) from the list below:
@@ -262,11 +262,11 @@ Please select your system language (locale) from the list below:
   ...
 ```
 
-**Importante**: Isso afeta idioma do sistema, formatos de data/hora, moeda, etc.
+**Important**: This affects system language, date/time formats, currency, etc.
 
 ---
 
-### 9️⃣ Layout do Teclado
+### 9️⃣ Keyboard Layout
 
 ```
 Please select keyboard layout from this list:
@@ -280,27 +280,29 @@ Please select keyboard layout from this list:
   ...
 ```
 
-**Brasileiros**: Escolha `br-abnt2` (ABNT2) ou `us` (Internacional)
+**US Users**: Choose `us`
+**UK Users**: Choose `uk`
+**Others**: Select your country code
 
 ---
 
-### 🔟 Revisão de Configurações
+### 🔟 Configuration Review
 
 ```
 ------------------------------------------------------------------------
                     Configuration Summary
 ------------------------------------------------------------------------
-REAL_NAME=João Silva
-USERNAME=joao
+REAL_NAME=John Smith
+USERNAME=john
 NAME_OF_MACHINE=archlinux
 INSTALL_TYPE=FULL
 AUR_HELPER=yay
 DESKTOP_ENV=kde
 DISK=/dev/sda
 FS=btrfs
-TIMEZONE=America/Sao_Paulo
-LOCALE=pt_BR.UTF-8
-KEYMAP=br-abnt2
+TIMEZONE=America/New_York
+LOCALE=en_US.UTF-8
+KEYMAP=us
 ------------------------------------------------------------------------
 Do you want to redo any step? Select an option below, or press Enter to proceed:
 1) Full Name, Username and Password
@@ -315,194 +317,194 @@ Do you want to redo any step? Select an option below, or press Enter to proceed:
 ------------------------------------------------------------------------
 ```
 
-**Revise TUDO cuidadosamente!**
+**Review EVERYTHING carefully!**
 
-- Se algo estiver errado, digite o número e refaça
-- Se tudo estiver correto, **pressione Enter** para começar a instalação
+- If something is wrong, type the number and redo
+- If everything is correct, **press Enter** to start installation
 
 ---
 
-## 🚀 Instalação Automática
+## 🚀 Automatic Installation
 
-Após confirmar, a instalação começa automaticamente. Isso pode levar de **15 a 60 minutos** dependendo da sua internet e hardware.
+After confirming, installation starts automatically. This can take **15 to 60 minutes** depending on internet and hardware.
 
-### O que acontece em cada fase:
+### What happens in each phase:
 
-#### FASE 0: Pré-Instalação (5-10 min)
+#### PHASE 0: Pre-Installation (5-10 min)
 ```
 -------------------------------------------------------------------------
                     Formatting /dev/sda
 -------------------------------------------------------------------------
 ```
-- Atualiza mirrors
-- Particiona disco
-- Cria filesystems
-- Instala sistema base (kernel, pacotes essenciais)
-- Instala bootloader GRUB
+- Updates mirrors
+- Partitions disk
+- Creates filesystems
+- Installs base system (kernel, essential packages)
+- Installs GRUB bootloader
 
-**Você verá**: Muitas linhas de pacotes sendo baixados e instalados
+**You'll see**: Many lines of packages being downloaded and installed
 
 ---
 
-#### FASE 1: Setup do Sistema (10-20 min)
+#### PHASE 1: System Setup (10-20 min)
 ```
 -------------------------------------------------------------------------
                     SYSTEM READY FOR 1-setup.sh
 -------------------------------------------------------------------------
 ```
-- Configura rede, locale, timezone
-- Instala pacotes base
-- Detecta e instala microcode (Intel/AMD)
-- Detecta e instala drivers de GPU
-- Cria seu usuário
+- Configures network, locale, timezone
+- Installs base packages
+- Detects and installs microcode (Intel/AMD)
+- Detects and installs GPU drivers
+- Creates your user
 
-**Você verá**: Configurações sendo aplicadas, mais pacotes instalados
+**You'll see**: Configurations being applied, more packages installed
 
 ---
 
-#### FASE 2: Instalação de Usuário (15-30 min)
+#### PHASE 2: User Installation (15-30 min)
 ```
 -------------------------------------------------------------------------
                     SYSTEM READY FOR 2-user.sh
 -------------------------------------------------------------------------
 ```
-- Compila e instala AUR helper (yay/paru)
-- Instala fontes
-- Instala ambiente desktop completo
-- Instala temas e configurações
+- Compiles and installs AUR helper (yay/paru)
+- Installs fonts
+- Installs complete desktop environment
+- Installs themes and configurations
 
-**Você verá**: Muitos pacotes do desktop sendo instalados, compilação do AUR helper
+**You'll see**: Many desktop packages being installed, AUR helper compilation
 
-⚠️ **Esta é a fase mais demorada!**
+⚠️ **This is the longest phase!**
 
 ---
 
-#### FASE 3: Finalização (5-10 min)
+#### PHASE 3: Finalization (5-10 min)
 ```
 -------------------------------------------------------------------------
                     SYSTEM READY FOR 3-post-setup.sh
 -------------------------------------------------------------------------
 ```
-- Configura GRUB (bootloader)
-- Configura display manager (tela de login)
-- Habilita serviços (rede, bluetooth, impressão, etc.)
-- Configura snapshots (se btrfs)
-- Cleanup de arquivos temporários
+- Configures GRUB (bootloader)
+- Configures display manager (login screen)
+- Enables services (network, bluetooth, printing, etc.)
+- Configures snapshots (if btrfs)
+- Cleanup of temporary files
 
-**Você verá**: Serviços sendo habilitados, configurações finais
+**You'll see**: Services being enabled, final configurations
 
 ---
 
-### Conclusão
+### Completion
 
 ```
             Done - Please Eject Install Media and Reboot
 ```
 
-Quando ver esta mensagem:
+When you see this message:
 
-1. **Em VM**: Remova a ISO da VM
-2. **USB físico**: Remova o pendrive
-3. **Reinicie**:
+1. **In VM**: Remove ISO from VM
+2. **Physical USB**: Remove the USB drive
+3. **Reboot**:
    ```bash
    reboot
    ```
 
 ---
 
-## 🎉 Primeiro Boot no Sistema Instalado
+## 🎉 First Boot into Installed System
 
-### 1. Tela de Login
+### 1. Login Screen
 
-Você verá a tela de login gráfica (SDDM, GDM ou LightDM).
+You'll see the graphical login screen (SDDM, GDM, or LightDM).
 
-- Digite seu **username** (não o nome completo)
-- Digite sua **senha**
-- Selecione a sessão desktop (já deve estar correta)
-- Clique em "Login"
+- Enter your **username** (not full name)
+- Enter your **password**
+- Select desktop session (should already be correct)
+- Click "Login"
 
-### 2. Primeiro Uso
+### 2. First Use
 
-**KDE Plasma**: Bem-vindo ao KDE! Explore o menu de aplicativos.
-**GNOME**: Pressione Super (tecla Windows) para ver atividades.
-**i3/Awesome**: Leia a documentação do WM (teclas customizadas).
+**KDE Plasma**: Welcome to KDE! Explore the application menu.
+**GNOME**: Press Super (Windows key) to see activities.
+**i3/Awesome**: Read WM documentation (custom keybindings).
 
-### 3. Conectar Wi-Fi (se aplicável)
+### 3. Connect Wi-Fi (if applicable)
 
-- **KDE/GNOME**: Clique no ícone de rede no painel
-- **Terminal**: Use `nmtui` ou `nmcli`
+- **KDE/GNOME**: Click network icon in panel
+- **Terminal**: Use `nmtui` or `nmcli`
 
 ---
 
-## 🔧 Pós-Instalação Recomendada
+## 🔧 Recommended Post-Installation
 
-### Atualizar o Sistema
+### Update System
 
 ```bash
-# Atualizar tudo
+# Update everything
 sudo pacman -Syu
 
-# Se tiver AUR helper
+# If you have AUR helper
 yay -Syu
 ```
 
-### Instalar Apps Adicionais
+### Install Additional Apps
 
 ```bash
-# Browser alternativo
+# Alternative browser
 sudo pacman -S chromium
 
-# Editor de código
+# Code editor
 yay -S visual-studio-code-bin
 
-# Cliente de email
+# Email client
 sudo pacman -S thunderbird
 
-# Reprodutor de vídeo
+# Video player
 sudo pacman -S vlc
 ```
 
-### Configurar Firewall (se FULL install)
+### Configure Firewall (if FULL install)
 
-O UFW já está habilitado! Para modificar:
+UFW is already enabled! To modify:
 
 ```bash
-# Ver status
+# View status
 sudo ufw status
 
-# Permitir porta específica
+# Allow specific port
 sudo ufw allow 8080/tcp
 
-# Negar porta
+# Deny port
 sudo ufw deny 3000/tcp
 ```
 
-### Verificar Serviços
+### Check Services
 
 ```bash
-# Ver serviços ativos
+# See active services
 systemctl list-units --type=service --state=running
 
-# Importante verificar:
-systemctl status NetworkManager    # Rede
+# Important to check:
+systemctl status NetworkManager    # Network
 systemctl status bluetooth         # Bluetooth (FULL)
 systemctl status sddm             # Display manager (KDE)
 ```
 
 ---
 
-## 🐛 Solução de Problemas
+## 🐛 Troubleshooting
 
-### Problema: Boot direto no GRUB rescue
+### Problem: Boot directly to GRUB rescue
 
-**Causa**: Bootloader não instalado corretamente
+**Cause**: Bootloader not installed correctly
 
-**Solução**:
-1. Boot na ISO novamente
-2. Monte as partições:
+**Solution**:
+1. Boot into ISO again
+2. Mount partitions:
    ```bash
-   mount /dev/sdaX /mnt  # Substitua X pela partição root
-   mount /dev/sdaY /mnt/boot  # Se UEFI
+   mount /dev/sdaX /mnt  # Replace X with root partition
+   mount /dev/sdaY /mnt/boot  # If UEFI
    arch-chroot /mnt
    grub-install --target=x86_64-efi --efi-directory=/boot /dev/sda
    grub-mkconfig -o /boot/grub/grub.cfg
@@ -512,67 +514,67 @@ systemctl status sddm             # Display manager (KDE)
 
 ---
 
-### Problema: Tela preta após login
+### Problem: Black screen after login
 
-**Causa**: Driver de GPU incorreto ou display manager
+**Cause**: Incorrect GPU driver or display manager
 
-**Solução**:
+**Solution**:
 ```bash
-# Ctrl+Alt+F2 para terminal
-# Login com seu usuário
+# Ctrl+Alt+F2 for terminal
+# Login with your user
 
-# Reinstalar drivers
-sudo pacman -S xf86-video-vesa  # Driver genérico
+# Reinstall drivers
+sudo pacman -S xf86-video-vesa  # Generic driver
 
-# Ou para Intel
+# Or for Intel
 sudo pacman -S xf86-video-intel
 
-# Reiniciar display manager
-sudo systemctl restart sddm  # ou gdm, lightdm
+# Restart display manager
+sudo systemctl restart sddm  # or gdm, lightdm
 ```
 
 ---
 
-### Problema: Sem conexão de rede após instalação
+### Problem: No network connection after installation
 
-**Solução**:
+**Solution**:
 ```bash
-# Verificar se NetworkManager está ativo
+# Check if NetworkManager is active
 sudo systemctl status NetworkManager
 
-# Se não, ativar
+# If not, enable
 sudo systemctl enable --now NetworkManager
 
-# Conectar Wi-Fi via terminal
+# Connect Wi-Fi via terminal
 nmtui
 ```
 
 ---
 
-### Problema: Snapshots não funcionam (btrfs)
+### Problem: Snapshots not working (btrfs)
 
-**Verificar**:
+**Check**:
 ```bash
-# Ver configuração do Snapper
+# View Snapper configuration
 sudo snapper -c root list-configs
 
-# Ver snapshots
+# View snapshots
 sudo snapper -c root list
 
-# Criar snapshot manual
-sudo snapper -c root create --description "teste"
+# Create manual snapshot
+sudo snapper -c root create --description "test"
 ```
 
 ---
 
-### Problema: Sistema lento em VM
+### Problem: Slow system in VM
 
-**Otimizações**:
+**Optimizations**:
 
-1. Aumentar RAM da VM para 4GB+
-2. Dar mais cores de CPU (2-4)
-3. Habilitar aceleração 3D na VM
-4. Se VirtualBox, instalar guest additions:
+1. Increase VM RAM to 4GB+
+2. Give more CPU cores (2-4)
+3. Enable 3D acceleration in VM
+4. If VirtualBox, install guest additions:
    ```bash
    sudo pacman -S virtualbox-guest-utils
    sudo systemctl enable vboxservice
@@ -580,29 +582,29 @@ sudo snapper -c root create --description "teste"
 
 ---
 
-## 📊 Logs de Instalação
+## 📊 Installation Logs
 
-Todos os logs estão em `/var/log/install.log`:
+All logs are in `/var/log/install.log`:
 
 ```bash
-# Ver log completo
+# View complete log
 less /var/log/install.log
 
-# Buscar erros
+# Search for errors
 grep -i error /var/log/install.log
 
-# Últimas 50 linhas
+# Last 50 lines
 tail -n 50 /var/log/install.log
 ```
 
 ---
 
-## 🎓 Próximos Passos
+## 🎓 Next Steps
 
-1. **Aprenda sobre Arch**: https://wiki.archlinux.org
-2. **Personalize seu desktop**: Temas, ícones, wallpapers
-3. **Instale seus apps favoritos**: Steam, Discord, Spotify, etc.
-4. **Configure snapshots automáticos** (se btrfs):
+1. **Learn about Arch**: https://wiki.archlinux.org
+2. **Customize your desktop**: Themes, icons, wallpapers
+3. **Install your favorite apps**: Steam, Discord, Spotify, etc.
+4. **Configure automatic snapshots** (if btrfs):
    ```bash
    sudo systemctl enable --now snapper-timeline.timer
    sudo systemctl enable --now snapper-cleanup.timer
@@ -610,4 +612,4 @@ tail -n 50 /var/log/install.log
 
 ---
 
-Aproveite seu novo sistema Arch Linux! 🎉
+Enjoy your new Arch Linux system! 🎉

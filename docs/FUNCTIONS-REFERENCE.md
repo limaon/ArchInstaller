@@ -1,6 +1,6 @@
-# Referência Completa de Funções
+# Complete Function Reference
 
-Este documento lista todas as funções disponíveis no ArchInstaller, organizadas por módulo.
+This document lists all available functions in ArchInstaller, organized by module.
 
 ---
 
@@ -10,19 +10,19 @@ Este documento lista todas as funções disponíveis no ArchInstaller, organizad
 ```bash
 exit_on_error $exit_code $last_command
 ```
-**Descrição**: Verifica código de saída e termina script se falhou.
+**Description**: Checks exit code and terminates script if failed.
 
-**Parâmetros**:
-- `$1` - Código de saída do comando anterior (`$?`)
-- `$2+` - Comando que foi executado (para mensagem de erro)
+**Parameters**:
+- `$1` - Exit code of previous command (`$?`)
+- `$2+` - Command that was executed (for error message)
 
-**Exemplo**:
+**Example**:
 ```bash
 pacstrap /mnt base
 exit_on_error $? "pacstrap /mnt base"
 ```
 
-**Uso**: Após comandos críticos que não podem falhar.
+**Usage**: After critical commands that cannot fail.
 
 ---
 
@@ -30,14 +30,14 @@ exit_on_error $? "pacstrap /mnt base"
 ```bash
 show_logo
 ```
-**Descrição**: Exibe logo ASCII do archinstall e path do script.
+**Description**: Displays archinstall ASCII logo and script path.
 
-**Retorno**: Nenhum (apenas output visual)
+**Return**: None (visual output only)
 
-**Exemplo**:
+**Example**:
 ```bash
 show_logo
-# Exibe:
+# Displays:
 #                    _      _              _          _  _
 #    archinstall
 #    SCRIPTHOME: /root/ArchInstaller
@@ -49,23 +49,23 @@ show_logo
 ```bash
 multiselect RESULT_VAR "opt1;opt2;opt3" "defaults"
 ```
-**Descrição**: Menu interativo para seleção múltipla (checkbox).
+**Description**: Interactive menu for multiple selection (checkbox).
 
-**Parâmetros**:
-- `$1` - Nome da variável para armazenar resultado (array)
-- `$2` - Opções separadas por `;`
-- `$3` - Valores padrão (opcional)
+**Parameters**:
+- `$1` - Variable name to store result (array)
+- `$2` - Options separated by `;`
+- `$3` - Default values (optional)
 
-**Controles**:
-- `↑/↓` - Navegar
-- `Espaço` - Toggle seleção
-- `Enter` - Confirmar
+**Controls**:
+- `↑/↓` - Navigate
+- `Space` - Toggle selection
+- `Enter` - Confirm
 
-**Exemplo**:
+**Example**:
 ```bash
 options="Firefox;Chrome;Brave"
 multiselect selected "$options"
-# selected=(true false true) se Firefox e Brave selecionados
+# selected=(true false true) if Firefox and Brave selected
 ```
 
 ---
@@ -73,27 +73,27 @@ multiselect selected "$options"
 ### select_option()
 ```bash
 select_option num_options num_columns "${options[@]}"
-return $?  # Índice selecionado
+return $?  # Selected index
 ```
-**Descrição**: Menu interativo para seleção única.
+**Description**: Interactive menu for single selection.
 
-**Parâmetros**:
-- `$1` - Número de opções
-- `$2` - Número de colunas para exibir
-- `$3+` - Array de opções
+**Parameters**:
+- `$1` - Number of options
+- `$2` - Number of columns to display
+- `$3+` - Array of options
 
-**Retorno**: Índice da opção selecionada (via `$?`)
+**Return**: Index of selected option (via `$?`)
 
-**Controles**:
-- `↑/↓/←/→` ou `k/j/h/l` - Navegar
-- `Enter` - Confirmar
+**Controls**:
+- `↑/↓/←/→` or `k/j/h/l` - Navigate
+- `Enter` - Confirm
 
-**Exemplo**:
+**Example**:
 ```bash
 options=(KDE GNOME XFCE)
 select_option ${#options[@]} 3 "${options[@]}"
 selected_index=$?
-echo "Você escolheu: ${options[$selected_index]}"
+echo "You chose: ${options[$selected_index]}"
 ```
 
 ---
@@ -102,17 +102,17 @@ echo "Você escolheu: ${options[$selected_index]}"
 ```bash
 sequence
 ```
-**Descrição**: Orquestra a execução das 4 fases de instalação.
+**Description**: Orchestrates execution of 4 installation phases.
 
-**Fluxo**:
-1. Executa `0-preinstall.sh` (live ISO)
-2. Chroot e executa `1-setup.sh` (como root)
-3. Se não SERVER, executa `2-user.sh` (como usuário)
-4. Executa `3-post-setup.sh` (como root novamente)
+**Flow**:
+1. Executes `0-preinstall.sh` (live ISO)
+2. Chroot and executes `1-setup.sh` (as root)
+3. If not SERVER, executes `2-user.sh` (as user)
+4. Executes `3-post-setup.sh` (as root again)
 
-**Exemplo**:
+**Example**:
 ```bash
-# Chamado automaticamente por archinstall.sh
+# Called automatically by archinstall.sh
 sequence
 ```
 
@@ -122,21 +122,21 @@ sequence
 ```bash
 set_option KEY VALUE
 ```
-**Descrição**: Salva configuração no arquivo `setup.conf`.
+**Description**: Saves configuration to `setup.conf` file.
 
-**Parâmetros**:
-- `$1` - Nome da variável (chave)
-- `$2` - Valor
+**Parameters**:
+- `$1` - Variable name (key)
+- `$2` - Value
 
-**Comportamento**:
-- Se chave existe, atualiza valor
-- Se não existe, adiciona nova linha
-- Aspas adicionadas automaticamente se valor contém espaços
+**Behavior**:
+- If key exists, updates value
+- If doesn't exist, adds new line
+- Quotes added automatically if value contains spaces
 
-**Exemplo**:
+**Example**:
 ```bash
-set_option USERNAME "joao"
-set_option REAL_NAME "João Silva"  # Com aspas por causa do espaço
+set_option USERNAME "john"
+set_option REAL_NAME "John Smith"  # Quoted due to space
 ```
 
 ---
@@ -145,17 +145,17 @@ set_option REAL_NAME "João Silva"  # Com aspas por causa do espaço
 ```bash
 source_file /path/to/file.sh
 ```
-**Descrição**: Carrega arquivo com verificação de existência.
+**Description**: Loads file with existence verification.
 
-**Parâmetros**:
-- `$1` - Path do arquivo
+**Parameters**:
+- `$1` - File path
 
-**Comportamento**:
-- Verifica se arquivo existe
-- Tenta fazer source
-- Sai com erro se falhar
+**Behavior**:
+- Checks if file exists
+- Attempts to source
+- Exits with error if fails
 
-**Exemplo**:
+**Example**:
 ```bash
 source_file "$CONFIG_FILE"  # /configs/setup.conf
 ```
@@ -166,16 +166,16 @@ source_file "$CONFIG_FILE"  # /configs/setup.conf
 ```bash
 end_script
 ```
-**Descrição**: Copia logs para sistema instalado e finaliza.
+**Description**: Copies logs to installed system and finalizes.
 
-**Comportamento**:
-- Copia `install.log` para `/mnt/var/log/install.log`
-- Verifica se diretório de logs existe
-- Exibe mensagem de erro se falhar
+**Behavior**:
+- Copies `install.log` to `/mnt/var/log/install.log`
+- Checks if log directory exists
+- Displays error message if fails
 
-**Exemplo**:
+**Example**:
 ```bash
-# No final de archinstall.sh
+# At end of archinstall.sh
 end_script
 ```
 
@@ -187,9 +187,9 @@ end_script
 ```bash
 root_check
 ```
-**Descrição**: Verifica se script está rodando como root.
+**Description**: Verifies script is running as root.
 
-**Comportamento**: Sai se não for root (UID ≠ 0)
+**Behavior**: Exits if not root (UID ≠ 0)
 
 ---
 
@@ -197,9 +197,9 @@ root_check
 ```bash
 arch_check
 ```
-**Descrição**: Verifica se está rodando em Arch Linux.
+**Description**: Verifies running on Arch Linux.
 
-**Comportamento**: Sai se `/etc/arch-release` não existir
+**Behavior**: Exits if `/etc/arch-release` doesn't exist
 
 ---
 
@@ -207,9 +207,9 @@ arch_check
 ```bash
 pacman_check
 ```
-**Descrição**: Verifica se pacman está bloqueado.
+**Description**: Verifies pacman is not locked.
 
-**Comportamento**: Sai se `/var/lib/pacman/db.lck` existir
+**Behavior**: Exits if `/var/lib/pacman/db.lck` exists
 
 ---
 
@@ -217,9 +217,9 @@ pacman_check
 ```bash
 docker_check
 ```
-**Descrição**: Impede execução em container Docker.
+**Description**: Prevents execution in Docker container.
 
-**Comportamento**: Verifica `/.dockerenv` e `/proc/self/cgroup`
+**Behavior**: Checks `/.dockerenv` and `/proc/self/cgroup`
 
 ---
 
@@ -227,11 +227,11 @@ docker_check
 ```bash
 mount_check
 ```
-**Descrição**: Verifica se `/mnt` está montado.
+**Description**: Verifies `/mnt` is mounted.
 
-**Comportamento**: Reinicia sistema se não estiver montado
+**Behavior**: Reboots system if not mounted
 
-**Uso**: Chamado antes das fases 1-3
+**Usage**: Called before phases 1-3
 
 ---
 
@@ -239,11 +239,11 @@ mount_check
 ```bash
 background_checks
 ```
-**Descrição**: Executa todas as verificações de segurança.
+**Description**: Executes all security checks.
 
-**Chamadas**: `root_check`, `arch_check`, `pacman_check`, `docker_check`
+**Calls**: `root_check`, `arch_check`, `pacman_check`, `docker_check`
 
-**Uso**: No início de `configuration.sh`
+**Usage**: At start of `configuration.sh`
 
 ---
 
@@ -253,14 +253,14 @@ background_checks
 ```bash
 set_password "PASSWORD"
 ```
-**Descrição**: Coleta senha com confirmação.
+**Description**: Collects password with confirmation.
 
-**Parâmetros**: `$1` - Nome da variável no setup.conf
+**Parameters**: `$1` - Variable name in setup.conf
 
-**Comportamento**:
-- Pede senha (oculta)
-- Pede confirmação
-- Recursivo se não coincidir
+**Behavior**:
+- Asks for password (hidden)
+- Asks for confirmation
+- Recursive if don't match
 
 ---
 
@@ -268,16 +268,16 @@ set_password "PASSWORD"
 ```bash
 user_info
 ```
-**Descrição**: Coleta informações completas do usuário.
+**Description**: Collects complete user information.
 
-**Coleta**:
-- Nome completo (validado: só letras e espaços)
-- Username (validado: regex Linux)
-- Senha (com confirmação)
-- Hostname (validado com opção de forçar)
+**Collects**:
+- Full name (validated: only letters and spaces)
+- Username (validated: Linux regex)
+- Password (with confirmation)
+- Hostname (validated with force option)
 
-**Validações**:
-- Nome: `[a-zA-Z ]`
+**Validations**:
+- Name: `[a-zA-Z ]`
 - Username: `^[a-z_]([a-z0-9_-]{0,31})$`
 - Hostname: `^[a-z][a-z0-9_.-]{0,62}[a-z0-9]$`
 
@@ -287,11 +287,11 @@ user_info
 ```bash
 install_type
 ```
-**Descrição**: Escolha do tipo de instalação.
+**Description**: Installation type selection.
 
-**Opções**: FULL, MINIMAL, SERVER
+**Options**: FULL, MINIMAL, SERVER
 
-**Salva**: `INSTALL_TYPE` no setup.conf
+**Saves**: `INSTALL_TYPE` to setup.conf
 
 ---
 
@@ -299,11 +299,11 @@ install_type
 ```bash
 aur_helper
 ```
-**Descrição**: Escolha do AUR helper.
+**Description**: AUR helper selection.
 
-**Opções**: paru, yay, picaur, aura, trizen, pacaur, NONE
+**Options**: paru, yay, picaur, aura, trizen, pacaur, NONE
 
-**Salva**: `AUR_HELPER` no setup.conf
+**Saves**: `AUR_HELPER` to setup.conf
 
 ---
 
@@ -311,14 +311,14 @@ aur_helper
 ```bash
 desktop_environment
 ```
-**Descrição**: Escolha do ambiente desktop.
+**Description**: Desktop environment selection.
 
-**Comportamento**:
-- Lê arquivos JSON em `packages/desktop-environments/`
-- Extrai nomes de arquivo (sem extensão e "pkgs")
-- Exibe menu
+**Behavior**:
+- Reads JSON files in `packages/desktop-environments/`
+- Extracts filenames (without extension and "pkgs")
+- Displays menu
 
-**Salva**: `DESKTOP_ENV` no setup.conf
+**Saves**: `DESKTOP_ENV` to setup.conf
 
 ---
 
@@ -326,14 +326,14 @@ desktop_environment
 ```bash
 disk_select
 ```
-**Descrição**: Seleção de disco para instalação.
+**Description**: Disk selection for installation.
 
-**Comportamento**:
-- Lista discos com `lsblk`
-- Exibe aviso de formatação
-- Detecta SSD e define mount options
+**Behavior**:
+- Lists disks with `lsblk`
+- Displays formatting warning
+- Detects SSD and sets mount options
 
-**Salva**: `DISK` e `MOUNT_OPTION` no setup.conf
+**Saves**: `DISK` and `MOUNT_OPTION` to setup.conf
 
 ---
 
@@ -341,15 +341,15 @@ disk_select
 ```bash
 filesystem
 ```
-**Descrição**: Escolha do sistema de arquivos.
+**Description**: Filesystem selection.
 
-**Opções**: btrfs, ext4, luks, exit
+**Options**: btrfs, ext4, luks, exit
 
-**Comportamento**:
-- Se btrfs: chama `set_btrfs()`
-- Se luks: chama `set_password("LUKS_PASSWORD")`
+**Behavior**:
+- If btrfs: calls `set_btrfs()`
+- If luks: calls `set_password("LUKS_PASSWORD")`
 
-**Salva**: `FS` no setup.conf
+**Saves**: `FS` to setup.conf
 
 ---
 
@@ -357,17 +357,17 @@ filesystem
 ```bash
 set_btrfs
 ```
-**Descrição**: Define subvolumes btrfs.
+**Description**: Defines btrfs subvolumes.
 
-**Comportamento**:
-- Pede subvolumes customizados
-- Se vazio, usa defaults
-- Garante que `@` existe
-- Remove duplicatas
+**Behavior**:
+- Asks for custom subvolumes
+- If empty, uses defaults
+- Ensures `@` exists
+- Removes duplicates
 
-**Padrões**: `@ @docker @flatpak @home @opt @snapshots @var_cache @var_log @var_tmp`
+**Defaults**: `@ @docker @flatpak @home @opt @snapshots @var_cache @var_log @var_tmp`
 
-**Salva**: `SUBVOLUMES` e `MOUNTPOINT` no setup.conf
+**Saves**: `SUBVOLUMES` and `MOUNTPOINT` to setup.conf
 
 ---
 
@@ -375,14 +375,14 @@ set_btrfs
 ```bash
 timezone
 ```
-**Descrição**: Detecção e confirmação de timezone.
+**Description**: Timezone detection and confirmation.
 
-**Comportamento**:
-- Detecta via `curl https://ipapi.co/timezone`
-- Pede confirmação
-- Permite inserção manual se incorreto
+**Behavior**:
+- Detects via `curl https://ipapi.co/timezone`
+- Asks for confirmation
+- Allows manual input if incorrect
 
-**Salva**: `TIMEZONE` no setup.conf
+**Saves**: `TIMEZONE` to setup.conf
 
 ---
 
@@ -390,11 +390,11 @@ timezone
 ```bash
 locale_selection
 ```
-**Descrição**: Seleção de locale (idioma do sistema).
+**Description**: Locale (system language) selection.
 
-**Opções**: en_US.UTF-8, pt_BR.UTF-8, es_ES.UTF-8, fr_FR.UTF-8, etc.
+**Options**: en_US.UTF-8, pt_BR.UTF-8, es_ES.UTF-8, fr_FR.UTF-8, etc.
 
-**Salva**: `LOCALE` no setup.conf
+**Saves**: `LOCALE` to setup.conf
 
 ---
 
@@ -402,11 +402,11 @@ locale_selection
 ```bash
 keymap
 ```
-**Descrição**: Seleção de layout de teclado.
+**Description**: Keyboard layout selection.
 
-**Opções**: us, br-abnt2, de, fr, es, etc. (28 opções)
+**Options**: us, br-abnt2, de, fr, es, etc. (28 options)
 
-**Salva**: `KEYMAP` no setup.conf
+**Saves**: `KEYMAP` to setup.conf
 
 ---
 
@@ -414,12 +414,12 @@ keymap
 ```bash
 show_configurations
 ```
-**Descrição**: Mostra resumo e permite refazer etapas.
+**Description**: Shows summary and allows redoing steps.
 
-**Comportamento**:
-- Exibe conteúdo de `setup.conf`
-- Menu numerado para refazer qualquer etapa
-- Loop até usuário confirmar (Enter vazio)
+**Behavior**:
+- Displays `setup.conf` content
+- Numbered menu to redo any step
+- Loops until user confirms (empty Enter)
 
 **Menu**:
 1. User info
@@ -440,9 +440,9 @@ show_configurations
 ```bash
 arch_install
 ```
-**Descrição**: Instala sistema base com pacstrap.
+**Description**: Installs base system with pacstrap.
 
-**Pacotes**: base, base-devel, linux, linux-firmware, linux-lts, jq, neovim, sudo, wget, libnewt
+**Packages**: base, base-devel, linux, linux-firmware, linux-lts, jq, neovim, sudo, wget, libnewt
 
 ---
 
@@ -450,11 +450,11 @@ arch_install
 ```bash
 bootloader_install
 ```
-**Descrição**: Instala bootloader GRUB.
+**Description**: Installs GRUB bootloader.
 
-**Comportamento**:
-- Detecta UEFI vs BIOS
-- Se UEFI: instala efibootmgr
+**Behavior**:
+- Detects UEFI vs BIOS
+- If UEFI: installs efibootmgr
 
 ---
 
@@ -462,11 +462,11 @@ bootloader_install
 ```bash
 network_install
 ```
-**Descrição**: Instala NetworkManager e ferramentas de rede.
+**Description**: Installs NetworkManager and network tools.
 
-**Pacotes**: NetworkManager, VPN clients, wireless tools, SSH
+**Packages**: NetworkManager, VPN clients, wireless tools, SSH
 
-**Serviços**: Habilita NetworkManager.service
+**Services**: Enables NetworkManager.service
 
 ---
 
@@ -474,11 +474,11 @@ network_install
 ```bash
 install_fonts
 ```
-**Descrição**: Instala fontes do sistema.
+**Description**: Installs system fonts.
 
-**Fonte**: `packages/optional/fonts.json`
+**Source**: `packages/optional/fonts.json`
 
-**Comportamento**: Pula se INSTALL_TYPE=SERVER
+**Behavior**: Skips if INSTALL_TYPE=SERVER
 
 ---
 
@@ -486,11 +486,11 @@ install_fonts
 ```bash
 base_install
 ```
-**Descrição**: Instala pacotes base do sistema.
+**Description**: Installs base system packages.
 
-**Fonte**: `packages/base.json`
+**Source**: `packages/base.json`
 
-**Filtros JQ**:
+**JQ Filters**:
 - MINIMAL: `.minimal.pacman[]`
 - FULL: `.minimal.pacman[], .full.pacman[]`
 
@@ -500,11 +500,11 @@ base_install
 ```bash
 microcode_install
 ```
-**Descrição**: Detecta CPU e instala microcode.
+**Description**: Detects CPU and installs microcode.
 
-**Detecção**: `lscpu | grep "GenuineIntel"` ou `"AuthenticAMD"`
+**Detection**: `lscpu | grep "GenuineIntel"` or `"AuthenticAMD"`
 
-**Pacotes**: `intel-ucode` ou `amd-ucode`
+**Packages**: `intel-ucode` or `amd-ucode`
 
 ---
 
@@ -512,9 +512,9 @@ microcode_install
 ```bash
 graphics_install
 ```
-**Descrição**: Detecta GPU e instala drivers.
+**Description**: Detects GPU and installs drivers.
 
-**Detecção**: `lspci`
+**Detection**: `lspci`
 
 **Drivers**:
 - NVIDIA: `nvidia-dkms nvidia-settings`
@@ -527,12 +527,12 @@ graphics_install
 ```bash
 aur_helper_install
 ```
-**Descrição**: Clona e compila AUR helper.
+**Description**: Clones and compiles AUR helper.
 
-**Comportamento**:
-- Clona de `https://aur.archlinux.org/$AUR_HELPER.git`
-- Compila com `makepkg -sirc`
-- Instala pacotes AUR de `base.json`
+**Behavior**:
+- Clones from `https://aur.archlinux.org/$AUR_HELPER.git`
+- Compiles with `makepkg -sirc`
+- Installs AUR packages from `base.json`
 
 ---
 
@@ -540,11 +540,11 @@ aur_helper_install
 ```bash
 desktop_environment_install
 ```
-**Descrição**: Instala pacotes do desktop environment.
+**Description**: Installs desktop environment packages.
 
-**Fonte**: `packages/desktop-environments/$DESKTOP_ENV.json`
+**Source**: `packages/desktop-environments/$DESKTOP_ENV.json`
 
-**Filtros**: Combina minimal + full, pacman + aur
+**Filters**: Combines minimal + full, pacman + aur
 
 ---
 
@@ -552,13 +552,13 @@ desktop_environment_install
 ```bash
 btrfs_install
 ```
-**Descrição**: Instala ferramentas btrfs.
+**Description**: Installs btrfs tools.
 
-**Fonte**: `packages/btrfs.json`
+**Source**: `packages/btrfs.json`
 
-**Condição**: Só se `FS=btrfs`
+**Condition**: Only if `FS=btrfs`
 
-**Pacotes**: snapper, snap-pac, grub-btrfs, etc.
+**Packages**: snapper, snap-pac, grub-btrfs, etc.
 
 ---
 
@@ -566,13 +566,13 @@ btrfs_install
 ```bash
 user_theming
 ```
-**Descrição**: Aplica temas e configurações do DE.
+**Description**: Applies themes and DE configurations.
 
-**Suportados**:
+**Supported**:
 - KDE: Konsave profile
 - Awesome: Dotfiles
 - i3: Configs
-- Openbox: Dotfiles do GitHub
+- Openbox: GitHub dotfiles
 
 ---
 
@@ -580,16 +580,16 @@ user_theming
 ```bash
 essential_services
 ```
-**Descrição**: Habilita serviços essenciais.
+**Description**: Enables essential services.
 
-**Sempre**:
+**Always**:
 - NetworkManager
 - fstrim.timer (SSD)
-- TLP (se bateria detectada)
+- TLP (if battery detected)
 
-**FULL apenas**:
+**FULL only**:
 - UFW firewall
-- Cups (impressão)
+- Cups (printing)
 - NTP
 - Bluetooth
 - Avahi
@@ -604,10 +604,10 @@ essential_services
 ```bash
 mirrorlist_update
 ```
-**Descrição**: Atualiza lista de mirrors.
+**Description**: Updates mirror list.
 
-**Método 1** (preferido): reflector
-**Método 2** (fallback): rankmirrors manual
+**Method 1** (preferred): reflector
+**Method 2** (fallback): manual rankmirrors
 
 ---
 
@@ -615,15 +615,15 @@ mirrorlist_update
 ```bash
 format_disk
 ```
-**Descrição**: Particiona disco com GPT.
+**Description**: Partitions disk with GPT.
 
-**Layout UEFI**:
-- Partição 1: 1GB EFI (ef00)
-- Partição 2: Resto ROOT (8300)
+**UEFI Layout**:
+- Partition 1: 1GB EFI (ef00)
+- Partition 2: Rest ROOT (8300)
 
-**Layout BIOS**:
-- Partição 1: 256MB BIOS boot (ef02)
-- Partição 2: Resto ROOT (8300)
+**BIOS Layout**:
+- Partition 1: 256MB BIOS boot (ef02)
+- Partition 2: Rest ROOT (8300)
 
 ---
 
@@ -631,10 +631,10 @@ format_disk
 ```bash
 create_filesystems
 ```
-**Descrição**: Cria filesystems nas partições.
+**Description**: Creates filesystems on partitions.
 
 **EFI**: FAT32
-**ROOT**: Depende de `$FS` (ext4/btrfs/luks)
+**ROOT**: Depends on `$FS` (ext4/btrfs/luks)
 
 ---
 
@@ -642,19 +642,19 @@ create_filesystems
 ```bash
 do_btrfs LABEL DEVICE
 ```
-**Descrição**: Cria filesystem btrfs com subvolumes.
+**Description**: Creates btrfs filesystem with subvolumes.
 
-**Parâmetros**:
+**Parameters**:
 - `$1` - Label (ex: ROOT)
 - `$2` - Device (ex: /dev/sda2)
 
-**Comportamento**:
-- Cria btrfs
-- Monta temporariamente
-- Cria todos os subvolumes de `$SUBVOLUMES`
-- Desmonta
-- Remonta @ como root
-- Monta outros subvolumes nos lugares corretos
+**Behavior**:
+- Creates btrfs
+- Mounts temporarily
+- Creates all subvolumes from `$SUBVOLUMES`
+- Unmounts
+- Remounts @ as root
+- Mounts other subvolumes in correct places
 
 ---
 
@@ -662,12 +662,12 @@ do_btrfs LABEL DEVICE
 ```bash
 low_memory_config
 ```
-**Descrição**: Configura ZRAM se <8GB RAM.
+**Description**: Configures ZRAM if <8GB RAM.
 
-**Comportamento**:
-- Verifica memória total
-- Se <8GB, instala zram-generator
-- Configura zram0 com 200% RAM e zstd
+**Behavior**:
+- Checks total memory
+- If <8GB, installs zram-generator
+- Configures zram0 with 200% RAM and zstd
 
 ---
 
@@ -675,12 +675,12 @@ low_memory_config
 ```bash
 cpu_config
 ```
-**Descrição**: Ajusta makepkg para compilação paralela.
+**Description**: Adjusts makepkg for parallel compilation.
 
-**Comportamento**:
-- Conta cores da CPU
-- Define `MAKEFLAGS="-j$cores"`
-- Define compressão paralela XZ
+**Behavior**:
+- Counts CPU cores
+- Sets `MAKEFLAGS="-j$cores"`
+- Sets parallel XZ compression
 
 ---
 
@@ -688,17 +688,17 @@ cpu_config
 ```bash
 locale_config
 ```
-**Descrição**: Configura locale, timezone e keymap.
+**Description**: Configures locale, timezone and keymap.
 
-**Passos**:
-1. Descomenta locale em `/etc/locale.gen`
-2. Cria `/etc/locale.conf` com todas as variáveis LC_*
-3. Gera locales com `locale-gen`
-4. Configura timezone com `timedatectl`
-5. Cria symlink `/etc/localtime`
-6. Sincroniza relógio hardware
-7. Configura keymap
-8. Cria `/etc/vconsole.conf`
+**Steps**:
+1. Uncomments locale in `/etc/locale.gen`
+2. Creates `/etc/locale.conf` with all LC_* variables
+3. Generates locales with `locale-gen`
+4. Configures timezone with `timedatectl`
+5. Creates `/etc/localtime` symlink
+6. Syncs hardware clock
+7. Configures keymap
+8. Creates `/etc/vconsole.conf`
 
 ---
 
@@ -706,11 +706,11 @@ locale_config
 ```bash
 extra_repos
 ```
-**Descrição**: Habilita repositórios extras.
+**Description**: Enables extra repositories.
 
-**Habilita**:
-- multilib (pacotes 32-bit)
-- (chaotic-aur comentado por padrão)
+**Enables**:
+- multilib (32-bit packages)
+- (chaotic-aur commented by default)
 
 ---
 
@@ -718,15 +718,15 @@ extra_repos
 ```bash
 add_user
 ```
-**Descrição**: Cria usuário do sistema.
+**Description**: Creates system user.
 
-**Passos**:
-1. Cria grupos (libvirt, vboxusers, gamemode, docker)
-2. Cria usuário com `useradd`
-3. Define senha
-4. Copia `/root/archinstaller` para `/home/$USERNAME/`
-5. Define hostname
-6. Cria `/etc/hosts`
+**Steps**:
+1. Creates groups (libvirt, vboxusers, gamemode, docker)
+2. Creates user with `useradd`
+3. Sets password
+4. Copies `/root/archinstaller` to `/home/$USERNAME/`
+5. Sets hostname
+6. Creates `/etc/hosts`
 
 ---
 
@@ -734,13 +734,13 @@ add_user
 ```bash
 grub_config
 ```
-**Descrição**: Configura GRUB.
+**Description**: Configures GRUB.
 
-**Comportamento**:
-- Se LUKS: adiciona cryptdevice ao kernel cmdline
-- Adiciona `splash` para Plymouth
-- Desabilita OS prober
-- Gera config final
+**Behavior**:
+- If LUKS: adds cryptdevice to kernel cmdline
+- Adds `splash` for Plymouth
+- Disables OS prober
+- Generates final config
 
 ---
 
@@ -748,14 +748,14 @@ grub_config
 ```bash
 display_manager
 ```
-**Descrição**: Habilita e tema display manager.
+**Description**: Enables and themes display manager.
 
-**Mapeamento**:
-- KDE → SDDM (tema Nordic se FULL)
+**Mapping**:
+- KDE → SDDM (Nordic theme if FULL)
 - GNOME → GDM
 - LXDE → LXDM
 - Openbox/Awesome/i3 → LightDM
-- Outros → LightDM (fallback)
+- Others → LightDM (fallback)
 
 ---
 
@@ -763,14 +763,14 @@ display_manager
 ```bash
 snapper_config
 ```
-**Descrição**: Configura Snapper para snapshots.
+**Description**: Configures Snapper for snapshots.
 
-**Passos**:
-1. Copia config de `configs/base/etc/snapper/`
-2. Ajusta permissões de usuário
-3. Habilita timers (timeline, cleanup)
-4. Habilita grub-btrfsd
-5. Cria snapshot inicial
+**Steps**:
+1. Copies config from `configs/base/etc/snapper/`
+2. Adjusts user permissions
+3. Enables timers (timeline, cleanup)
+4. Enables grub-btrfsd
+5. Creates initial snapshot
 
 ---
 
@@ -778,14 +778,14 @@ snapper_config
 ```bash
 configure_tlp
 ```
-**Descrição**: Configura TLP para power management.
+**Description**: Configures TLP for power management.
 
-**Comportamento**:
-- Detecta bateria (`/sys/class/power_supply/BAT0`)
-- Se não tem bateria, pula
-- Instala TLP
-- Configura `/etc/tlp.conf` com defaults otimizados
-- Configura logind para suspender ao fechar tampa
+**Behavior**:
+- Detects battery (`/sys/class/power_supply/BAT0`)
+- If no battery, skips
+- Installs TLP
+- Configures `/etc/tlp.conf` with optimized defaults
+- Configures logind to suspend on lid close
 
 ---
 
@@ -793,55 +793,55 @@ configure_tlp
 ```bash
 plymouth_config
 ```
-**Descrição**: Instala e configura Plymouth boot splash.
+**Description**: Installs and configures Plymouth boot splash.
 
-**Tema**: arch-glow
+**Theme**: arch-glow
 
-**Comportamento**:
-- Copia tema de `configs/base/usr/share/plymouth/themes/`
-- Adiciona plymouth aos hooks do mkinitcpio
-- Se LUKS: adiciona plymouth-encrypt
-- Regenera initramfs
+**Behavior**:
+- Copies theme from `configs/base/usr/share/plymouth/themes/`
+- Adds plymouth to mkinitcpio hooks
+- If LUKS: adds plymouth-encrypt
+- Regenerates initramfs
 
 ---
 
-## 🎯 Funções por Caso de Uso
+## 🎯 Functions by Use Case
 
-### Adicionar Novo Desktop Environment
+### Adding New Desktop Environment
 
-1. Criar `packages/desktop-environments/meu-de.json`
-2. `desktop_environment()` detectará automaticamente
-3. Opcionalmente, adicionar theming em `user_theming()`
-4. Opcionalmente, configurar display manager em `display_manager()`
+1. Create `packages/desktop-environments/my-de.json`
+2. `desktop_environment()` will detect automatically
+3. Optionally, add theming in `user_theming()`
+4. Optionally, configure display manager in `display_manager()`
 
-### Adicionar Validação Customizada
+### Adding Custom Validation
 
-Em `user-options.sh`, use padrão:
+In `user-options.sh`, use pattern:
 
 ```bash
-minha_opcao() {
+my_option() {
     while true; do
-        read -rp "Pergunta: " resposta
-        [[ validacao ]] && break
-        echo "Erro: inválido"
+        read -rp "Question: " answer
+        [[ validation ]] && break
+        echo "Error: invalid"
     done
-    set_option MINHA_OPCAO "$resposta"
+    set_option MY_OPTION "$answer"
 }
 ```
 
-### Adicionar Detecção de Hardware
+### Adding Hardware Detection
 
-Em `software-install.sh`:
+In `software-install.sh`:
 
 ```bash
-meu_hardware_install() {
-    deteccao=$(comando_deteccao)
-    if grep -E "pattern" <<<"$deteccao"; then
-        pacman -S meu-driver
+my_hardware_install() {
+    detection=$(detection_command)
+    if grep -E "pattern" <<<"$detection"; then
+        pacman -S my-driver
     fi
 }
 ```
 
 ---
 
-Consulte o código fonte para detalhes de implementação!
+Consult source code for implementation details!
