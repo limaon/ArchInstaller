@@ -2,5 +2,16 @@ install.conf
 installlog.txt
 archnikus.code-workspace
 configs/setup.conf
+
 # keep logs out
 configs/*.log
+
+# Replit-specific files
+.replit
+replit.nix
+.config/
+.upm/
+.cache/
+.pythonlibs/
+replit.md
+.breakpoints
