@@ -1,8 +1,7 @@
-name: Generate Documentation
+name: Generate Documentation (DISABLED - Manual docs used instead)
 
 on:
-    push:
-        branches: [develop, main]
+    workflow_dispatch:
 
 jobs:
     build:
