@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Documentation - ArchInstaller Assistant{% endblock %}
+
+{% block content %}
+<h1>Documentation</h1>
+<p class="subtitle">Browse reference documentation for the ArchInstaller scripts</p>
+
+<div class="doc-list">
+    {% if doc_files %}
+        {% for doc in doc_files %}
+        <div class="doc-item">
+            <a href="/docs/{{ doc }}">
+                <h3>{{ doc.replace('.md', '').replace('-', ' ').title() }}</h3>
+            </a>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p>No documentation files found.</p>
+    {% endif %}
+</div>
+{% endblock %}

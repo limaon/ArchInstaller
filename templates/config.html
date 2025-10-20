@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Config Generator - ArchInstaller Assistant{% endblock %}
+
+{% block content %}
+<h1>Configuration Generator</h1>
+<p class="subtitle">Create a custom setup.conf file for your Arch Linux installation</p>
+
+<div class="config-container">
+    <form id="configForm">
+        <div class="form-section">
+            <h2>Basic Settings</h2>
+            
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input type="text" id="username" name="username" placeholder="myuser" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="hostname">Hostname:</label>
+                <input type="text" id="hostname" name="hostname" placeholder="archlinux" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="timezone">Timezone:</label>
+                <input type="text" id="timezone" name="timezone" placeholder="America/New_York" value="America/New_York">
+            </div>
+            
+            <div class="form-group">
+                <label for="keymap">Keymap:</label>
+                <input type="text" id="keymap" name="keymap" placeholder="us" value="us">
+            </div>
+        </div>
+        
+        <div class="form-section">
+            <h2>Desktop Environment</h2>
+            
+            <div class="form-group">
+                <label for="desktop_environment">Select Desktop Environment:</label>
+                <select id="desktop_environment" name="desktop_environment">
+                    <option value="">-- Select --</option>
+                    {% if packages.desktop_environments %}
+                        {% for de in packages.desktop_environments %}
+                        <option value="{{ de.id }}">{{ de.name }}</option>
+                        {% endfor %}
+                    {% endif %}
+                </select>
+            </div>
+        </div>
+        
+        <div class="form-section">
+            <h2>Installation Options</h2>
+            
+            <div class="form-group">
+                <label for="aur_helper">AUR Helper:</label>
+                <select id="aur_helper" name="aur_helper">
+                    <option value="yay">yay</option>
+                    <option value="paru">paru</option>
+                    <option value="none">None</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="install_type">Installation Type:</label>
+                <select id="install_type" name="install_type">
+                    <option value="full">Full Installation</option>
+                    <option value="minimal">Minimal Installation</option>
+                </select>
+            </div>
+        </div>
+        
+        <button type="submit" class="btn btn-primary">Generate Configuration</button>
+    </form>
+    
+    <div id="outputSection" style="display: none;">
+        <h2>Generated Configuration</h2>
+        <textarea id="configOutput" readonly></textarea>
+        <button id="copyBtn" class="btn">Copy to Clipboard</button>
+        <button id="downloadBtn" class="btn">Download setup.conf</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/config.js') }}"></script>
+{% endblock %}
