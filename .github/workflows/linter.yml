@@ -40,8 +40,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEFAULT_BRANCH: main
           VALIDATE_ALL_CODEBASE: false
-          VALIDATE_CHECKOV: false
-          VALIDATE_JSCPD: false
           VALIDATE_BASH: true
           VALIDATE_SHELL_SHFMT: true
           FILTER_REGEX_EXCLUDE: "^(docs/|packages/.*\\.md)$"
