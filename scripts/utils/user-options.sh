@@ -285,7 +285,6 @@ locale_selection() {
     echo -ne "
 Please select your system language (locale) from the list below:
 "
-    # Lista de locais comumente usados
     options=("en_US.UTF-8" "pt_BR.UTF-8" "es_ES.UTF-8" "fr_FR.UTF-8" "de_DE.UTF-8" "it_IT.UTF-8" "ja_JP.UTF-8" "zh_CN.UTF-8")
 
     select_option $? 4 "${options[@]}"
@@ -316,6 +315,11 @@ Please select keyboard layout from this list:
 # @description Show all configurations set during the setup and allow user to redo any step.
 # @noargs
 show_configurations() {
+    # Load INSTALL_TYPE from config if not already set
+    if [[ -f "$CONFIG_FILE" ]] && grep -q "^INSTALL_TYPE=" "$CONFIG_FILE"; then
+        source "$CONFIG_FILE"
+    fi
+
     while true; do
         echo -e "
 ------------------------------------------------------------------------
@@ -330,17 +334,29 @@ show_configurations() {
 
         echo -e "
 ------------------------------------------------------------------------
-Do you want to redo any step? Select an option below, or press Enter to proceed:
-1) Full Name, Username and Password
-2) Installation Type
-3) AUR Helper
-4) Desktop Environment
-5) Disk Selection and Usage Percentage
-6) File System
-7) Timezone
-8) System Language (Locale)
-9) Keyboard Layout
-------------------------------------------------------------------------
+Do you want to redo any step? Select an option below, or press Enter to proceed:"
+
+        echo "1) Full Name, Username and Password"
+        echo "2) Installation Type"
+
+        # Only show AUR Helper and Desktop Environment if not SERVER
+        if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+            echo "3) AUR Helper"
+            echo "4) Desktop Environment"
+            echo "5) Disk Selection and Usage Percentage"
+            echo "6) File System"
+            echo "7) Timezone"
+            echo "8) System Language (Locale)"
+            echo "9) Keyboard Layout"
+        else
+            echo "3) Disk Selection and Usage Percentage"
+            echo "4) File System"
+            echo "5) Timezone"
+            echo "6) System Language (Locale)"
+            echo "7) Keyboard Layout"
+        fi
+
+        echo "------------------------------------------------------------------------
 "
         read -rp "Enter the number of the step to redo, or press Enter to proceed: " choice
 
@@ -349,17 +365,69 @@ Do you want to redo any step? Select an option below, or press Enter to proceed:
             break
         fi
 
-        # Processa a escolha do usuário
+        # Reload INSTALL_TYPE in case it was changed
+        if [[ -f "$CONFIG_FILE" ]] && grep -q "^INSTALL_TYPE=" "$CONFIG_FILE"; then
+            source "$CONFIG_FILE"
+        fi
+
         case $choice in
             1) user_info ;;
-            2) install_type ;;
-            3) aur_helper ;;
-            4) desktop_environment ;;
-            5) disk_select ;;
-            6) filesystem ;;
-            7) timezone ;;
-            8) locale_selection ;;
-            9) keymap ;;
+            2)
+                install_type
+                # Reload INSTALL_TYPE after change
+                if [[ -f "$CONFIG_FILE" ]] && grep -q "^INSTALL_TYPE=" "$CONFIG_FILE"; then
+                    source "$CONFIG_FILE"
+                fi
+                ;;
+            3)
+                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                    aur_helper
+                else
+                    disk_select
+                fi
+                ;;
+            4)
+                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                    desktop_environment
+                else
+                    filesystem
+                fi
+                ;;
+            5)
+                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                    disk_select
+                else
+                    timezone
+                fi
+                ;;
+            6)
+                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                    filesystem
+                else
+                    locale_selection
+                fi
+                ;;
+            7)
+                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                    timezone
+                else
+                    keymap
+                fi
+                ;;
+            8)
+                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                    locale_selection
+                else
+                    echo "Invalid option. Please try again."
+                fi
+                ;;
+            9)
+                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                    keymap
+                else
+                    echo "Invalid option. Please try again."
+                fi
+                ;;
             *)
                 echo "Invalid option. Please try again."
                 ;;
