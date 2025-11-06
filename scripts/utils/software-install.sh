@@ -332,16 +332,33 @@ user_theming() {
             sudo cp ~/archinstaller/configs/base/usr/share/backgrounds/butterfly.png /usr/share/backgrounds/butterfly.png
 
         elif [[ "$DESKTOP_ENV" == "i3-wm" ]]; then
-            sudo chmod -R a+rX ~/archinstaller/configs/i3-wm/etc
-            sudo cp -r ~/archinstaller/configs/i3-wm/. /
-            sudo chmod ug+r ~/archinstaller/configs/i3-wm/etc/snapper/configs/*
-            sudo mkdir -p /usr/share/backgrounds/
+            # Check if configs directory exists before modifying
+            if [[ -d ~/archinstaller/configs/i3-wm/etc ]]; then
+                chmod -R a+rX ~/archinstaller/configs/i3-wm/etc
+            fi
+
+            # Copy configs if they exist
+            if [[ -d ~/archinstaller/configs/i3-wm ]]; then
+                cp -r ~/archinstaller/configs/i3-wm/. /
+            fi
+
+            # Set permissions for snapper configs if they exist (both source and destination)
+            if [[ -d ~/archinstaller/configs/i3-wm/etc/snapper/configs ]] && [[ -n "$(ls -A ~/archinstaller/configs/i3-wm/etc/snapper/configs 2>/dev/null)" ]]; then
+                chmod ug+r ~/archinstaller/configs/i3-wm/etc/snapper/configs/*
+            fi
+
+            # Also set permissions on the copied files if they exist
+            if [[ -d /etc/snapper/configs ]] && [[ -n "$(ls -A /etc/snapper/configs 2>/dev/null)" ]]; then
+                chmod ug+r /etc/snapper/configs/*
+            fi
+
+            mkdir -p /usr/share/backgrounds/
 
         else
             echo -e "No theming setup for $DESKTOP_ENV"
         fi
     else
-        echo -e "Skipping theming setup for $DESKTOP_ENV (Minimal or Server install)"
+        echo -e "Skipping theming setup for SERVER installation."
     fi
 }
 

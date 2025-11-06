@@ -472,42 +472,137 @@ display_manager() {
         systemctl enable lxdm.service
 
     elif [[ "${DESKTOP_ENV}" == "openbox" ]]; then
-        systemctl enable lightdm.service
+        # Check if lightdm is installed, install if not
+        if ! pacman -Qi lightdm &>/dev/null; then
+            echo "LightDM not found, installing..."
+            pacman -S --noconfirm --needed --color=always lightdm lightdm-webkit2-greeter
+        fi
+
+        # Check if lightdm service exists before enabling
+        if systemctl list-unit-files | grep -q "lightdm.service"; then
+            systemctl enable lightdm.service
+        else
+            echo "Warning: lightdm.service not found, skipping enable"
+            return 1
+        fi
+
+        # Create lightdm config directory if it doesn't exist
+        mkdir -p /etc/lightdm
+
+        # Create lightdm.conf if it doesn't exist
+        if [[ ! -f /etc/lightdm/lightdm.conf ]]; then
+            echo "[Seat:*]
+greeter-session=lightdm-webkit2-greeter" > /etc/lightdm/lightdm.conf
+        fi
+
         if [[ "${INSTALL_TYPE}" == "FULL" ]]; then
             echo -e "Setting LightDM Theme..."
+            # Create config file if it doesn't exist
+            if [[ ! -f /etc/lightdm/lightdm-webkit2-greeter.conf ]]; then
+                touch /etc/lightdm/lightdm-webkit2-greeter.conf
+                echo "[greeter]" >> /etc/lightdm/lightdm-webkit2-greeter.conf
+            fi
             # Set default lightdm-webkit2-greeter theme to Litarvan
             sed -i 's/^webkit_theme\s*=\s*\(.*\)/webkit_theme = litarvan #\1/g' /etc/lightdm/lightdm-webkit2-greeter.conf
             # Set default lightdm greeter to lightdm-webkit2-greeter
             sed -i 's/#greeter-session=example.*/greeter-session=lightdm-webkit2-greeter/g' /etc/lightdm/lightdm.conf
+            if ! grep -q "^greeter-session=lightdm-webkit2-greeter" /etc/lightdm/lightdm.conf; then
+                sed -i '/\[Seat:\*\]/a greeter-session=lightdm-webkit2-greeter' /etc/lightdm/lightdm.conf
+            fi
         fi
 
     elif [[ "${DESKTOP_ENV}" == "awesome" ]]; then
-        systemctl enable lightdm.service
+        # Check if lightdm is installed, install if not
+        if ! pacman -Qi lightdm &>/dev/null; then
+            echo "LightDM not found, installing..."
+            pacman -S --noconfirm --needed --color=always lightdm lightdm-slick-greeter
+        fi
+
+        # Check if lightdm service exists before enabling
+        if systemctl list-unit-files | grep -q "lightdm.service"; then
+            systemctl enable lightdm.service
+        else
+            echo "Warning: lightdm.service not found, skipping enable"
+            return 1
+        fi
+
+        # Create lightdm config directory if it doesn't exist
+        mkdir -p /etc/lightdm
+
+        # Create lightdm.conf if it doesn't exist
+        if [[ ! -f /etc/lightdm/lightdm.conf ]]; then
+            echo "[Seat:*]
+greeter-session=lightdm-slick-greeter" > /etc/lightdm/lightdm.conf
+        fi
+
         if [[ "${INSTALL_TYPE}" == "FULL" ]]; then
             echo -e "Setting LightDM Theme..."
-            cp ~/archinstaller/configs/awesome/etc/lightdm/slick-greeter.conf /etc/lightdm/slick-greeter.conf
+            # Copy config file or create if it doesn't exist
+            if [[ -f ~/archinstaller/configs/awesome/etc/lightdm/slick-greeter.conf ]]; then
+                cp ~/archinstaller/configs/awesome/etc/lightdm/slick-greeter.conf /etc/lightdm/slick-greeter.conf
+            else
+                if [[ ! -f /etc/lightdm/slick-greeter.conf ]]; then
+                    touch /etc/lightdm/slick-greeter.conf
+                    echo "[greeter]" >> /etc/lightdm/slick-greeter.conf
+                fi
+            fi
             sed -i 's/#greeter-session=example.*/greeter-session=lightdm-slick-greeter/g' /etc/lightdm/lightdm.conf
+            if ! grep -q "^greeter-session=lightdm-slick-greeter" /etc/lightdm/lightdm.conf; then
+                sed -i '/\[Seat:\*\]/a greeter-session=lightdm-slick-greeter' /etc/lightdm/lightdm.conf
+            fi
         fi
 
     elif [[ "${DESKTOP_ENV}" == "i3-wm" ]]; then
-        systemctl enable lightdm.service
+        # Check if lightdm is installed, install if not
+        if ! pacman -Qi lightdm &>/dev/null; then
+            echo "LightDM not found, installing..."
+            pacman -S --noconfirm --needed --color=always lightdm lightdm-gtk-greeter
+        fi
+
+        # Check if lightdm service exists before enabling
+        if systemctl list-unit-files | grep -q "lightdm.service"; then
+            systemctl enable lightdm.service
+        else
+            echo "Warning: lightdm.service not found, skipping enable"
+            return 1
+        fi
+
         echo -e "Configuring LightDM for i3-wm..."
-        # Set lightdm greeter to lightdm-gtk-greeter
-        sed -i 's/#greeter-session=example.*/greeter-session=lightdm-gtk-greeter/g' /etc/lightdm/lightdm.conf
+
+        # Create lightdm config directory if it doesn't exist
+        mkdir -p /etc/lightdm
+
+        # Create lightdm.conf if it doesn't exist
+        if [[ ! -f /etc/lightdm/lightdm.conf ]]; then
+            echo "[Seat:*]
+greeter-session=lightdm-gtk-greeter" > /etc/lightdm/lightdm.conf
+        else
+            # Set lightdm greeter to lightdm-gtk-greeter
+            sed -i 's/#greeter-session=example.*/greeter-session=lightdm-gtk-greeter/g' /etc/lightdm/lightdm.conf
+            # Ensure it's set even if not commented
+            if ! grep -q "^greeter-session=lightdm-gtk-greeter" /etc/lightdm/lightdm.conf; then
+                sed -i '/\[Seat:\*\]/a greeter-session=lightdm-gtk-greeter' /etc/lightdm/lightdm.conf
+            fi
+        fi
 
         CONFIG_FILE="/etc/lightdm/lightdm-gtk-greeter.conf"
-        declare -A greeter_config=(
+
+        # Create config file if it doesn't exist
+        if [[ ! -f "$CONFIG_FILE" ]]; then
+            touch "$CONFIG_FILE"
+            echo "[greeter]" >> "$CONFIG_FILE"
+        fi
+
+        # Base configuration (always applied)
+        declare -A base_greeter_config=(
             ["background"]="/usr/share/backgrounds/archlinux/geolanes.png"
             ["user-background"]="true"
             ["font-name"]="Ubuntu 12"
             ["xft-antialias"]="true"
-            ["icon-theme-name"]="Pop"
-            ["cursor-theme-name"]="Pop"
             ["transition-duration"]="1000"
             ["transition-type"]="linear"
             ["screensaver-timeout"]="60"
             ["show-clock"]="false"
-            ["theme-name"]="Yaru-blue-dark"
             ["default-user-image"]="#archlinux"
             ["xft-hintstyle"]="hintfull"
             ["clock-format"]=""
@@ -519,11 +614,18 @@ display_manager() {
             ["indicators"]="~host;~spacer;~clock;~spacer;~language;~session;~a11y;~power"
         )
 
-        for key in "${!greeter_config[@]}"; do
+        # Theme configuration (only for FULL installation)
+        if [[ "${INSTALL_TYPE}" == "FULL" ]]; then
+            base_greeter_config["icon-theme-name"]="Pop"
+            base_greeter_config["cursor-theme-name"]="Pop"
+            base_greeter_config["theme-name"]="Yaru-blue-dark"
+        fi
+
+        for key in "${!base_greeter_config[@]}"; do
             if grep -q "^#${key}=" "$CONFIG_FILE"; then
-                sed -i "s|^#${key}=.*|${key}=${greeter_config[$key]}|" "$CONFIG_FILE"
+                sed -i "s|^#${key}=.*|${key}=${base_greeter_config[$key]}|" "$CONFIG_FILE"
             else
-                echo "${key}=${greeter_config[$key]}" >> "$CONFIG_FILE"
+                echo "${key}=${base_greeter_config[$key]}" >> "$CONFIG_FILE"
             fi
         done
 
