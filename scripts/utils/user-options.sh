@@ -117,20 +117,71 @@ disk_select() {
 
 "
 
-    PS3='
-Select the disk to install on: '
+    # Format options as "device  |  size" with proper spacing
+    mapfile -t options < <(lsblk -n --output TYPE,KNAME,SIZE | awk '$1=="disk"{printf "/dev/%s  |  %s\n", $2, $3}')
 
-    mapfile -t options < <(lsblk -n --output TYPE,KNAME,SIZE | awk '$1=="disk"{print "/dev/"$2"|"$3}')
+    echo -e "Select the disk to install on: \n"
 
-    select_option ${#options[@]} 1
+    select_option ${#options[@]} 1 "${options[@]}"
 
     selected_index=$?
     disk="${options[$selected_index]%%|*}"
+    disk="${disk// }"  # Remove trailing spaces
 
     echo -e "\n${disk} selected \n"
     set_option DISK "${disk}"
 
-    if [[ "$(lsblk -n --output TYPE,ROTA | awk '$1=="disk"{print $2}')" -eq "0" ]]; then
+    # Ask for disk usage percentage
+    echo -ne "${BOLD}Disk space usage:${RESET}\n\n"
+
+    options_percent=("Use 100% of the disk" "Set custom percentage")
+    select_option ${#options_percent[@]} 1 "${options_percent[@]}"
+    percent_choice=$?
+
+    if [[ $percent_choice -eq 0 ]]; then
+        # Use 100%
+        disk_percent=100
+        echo -e "\nUsing 100% of ${disk}\n"
+    else
+        # Define custom percentage
+        while true; do
+            read -rp "Enter percentage to use (5-100): " user_percent
+
+            # Validate input
+            if [[ -z "$user_percent" ]]; then
+                echo "Percentage cannot be empty. Using 100%."
+                disk_percent=100
+                break
+            elif ! [[ "$user_percent" =~ ^[0-9]+$ ]]; then
+                echo "Invalid input. Please enter a number."
+            elif [[ "$user_percent" -lt 5 ]] || [[ "$user_percent" -gt 100 ]]; then
+                echo "Percentage must be between 5 and 100."
+            else
+                disk_percent="$user_percent"
+
+                # Calculate and show preview
+                disk_size=$(lsblk -n -b -o SIZE "${disk}" | head -n1)
+                disk_size_gb=$(( (disk_size / 1024 / 1024 / 1024) ))
+                used_size_gb=$(( (disk_size * disk_percent) / 100 / 1024 / 1024 / 1024 ))
+
+                echo -e "\n${BOLD}Preview:${RESET}"
+                echo -e "Total disk size: ${disk_size_gb}GB"
+                echo -e "Will use: ${used_size_gb}GB (${disk_percent}%)"
+                echo -e "Remaining: $((disk_size_gb - used_size_gb))GB (unused)"
+
+                read -rp "Confirm this percentage? (y/n): " confirm
+                if [[ "${confirm,,}" == "y" ]]; then
+                    break
+                fi
+            fi
+        done
+    fi
+
+    # Save percentage
+    set_option DISK_USAGE_PERCENT "${disk_percent}"
+
+    # Detect disk type (SSD/HDD)
+    if [[ "$(lsblk -n --output TYPE,ROTA "${disk}" | awk '$1=="disk"{print $2}')" -eq "0" ]]; then
         set_option "MOUNT_OPTION" "defaults,noatime,compress=zstd,ssd,discard=async,commit=120"
     else
         set_option "MOUNT_OPTION" "defaults,noatime,compress=zstd,discard=async,commit=120"
@@ -284,7 +335,7 @@ Do you want to redo any step? Select an option below, or press Enter to proceed:
 2) Installation Type
 3) AUR Helper
 4) Desktop Environment
-5) Disk Selection
+5) Disk Selection and Usage Percentage
 6) File System
 7) Timezone
 8) System Language (Locale)

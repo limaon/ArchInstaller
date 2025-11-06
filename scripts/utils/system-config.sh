@@ -52,25 +52,57 @@ format_disk() {
 -------------------------------------------------------------------------
 "
 
+    disk_percent="${DISK_USAGE_PERCENT:-100}"
+
     mkdir -p /mnt &>/dev/null
     umount -A --recursive /mnt &>/dev/null
 
     set -e
 
-    # Preparar o disco
     sgdisk -Z "${DISK}"
     sgdisk -a 2048 -o "${DISK}"
 
     if [[ -d "/sys/firmware/efi" ]]; then
-        echo -e "\nCriando partição EFI (UEFI Boot Partition)"
+        echo -e "\nCreating EFI partition (UEFI Boot Partition)"
         sgdisk -n 1::+1G --typecode=1:ef00 --change-name=1:"EFIBOOT" "${DISK}"
-        echo -e "\nCriando partição ROOT"
-        sgdisk -n 2::-0 --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
+        echo -e "\nCreating ROOT partition (${disk_percent}% of disk)"
+
+        # Use percentage instead of -0
+        if [[ "$disk_percent" -eq 100 ]]; then
+            # Use all remaining disk space (original behavior)
+            sgdisk -n 2::-0 --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
+        else
+            # Calculate size based on percentage
+            # Get total disk size in bytes
+            disk_size_bytes=$(blockdev --getsize64 "${DISK}")
+            # EFI partition is 1GB = 1024MB = 1024 * 1024 * 1024 bytes
+            efi_size_bytes=$((1024 * 1024 * 1024))
+            # Calculate available space after EFI partition
+            available_bytes=$((disk_size_bytes - efi_size_bytes))
+            # Calculate root partition size based on percentage of available space
+            root_size_mb=$(( (available_bytes * disk_percent) / 100 / 1024 / 1024 ))
+            sgdisk -n 2::+${root_size_mb}M --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
+        fi
     else
-        echo -e "\nCriando partição BIOS Boot (sem filesystem)"
+        echo -e "\nCreating BIOS Boot partition (no filesystem)"
         sgdisk -n 1::+256M --typecode=1:ef02 --change-name=1:"BIOSBOOT" "${DISK}"
-        echo -e "\nCriando partição ROOT"
-        sgdisk -n 2::-0 --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
+        echo -e "\nCreating ROOT partition (${disk_percent}% of disk)"
+
+        if [[ "$disk_percent" -eq 100 ]]; then
+            sgdisk -n 2::-0 --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
+        else
+            # Calculate size based on percentage
+            # Get total disk size in bytes
+            disk_size_bytes=$(blockdev --getsize64 "${DISK}")
+            # BIOS Boot partition is 256MB = 256 * 1024 * 1024 bytes
+            bios_boot_size_bytes=$((256 * 1024 * 1024))
+            # Calculate available space after BIOS Boot partition
+            available_bytes=$((disk_size_bytes - bios_boot_size_bytes))
+            # Calculate root partition size based on percentage of available space
+            root_size_mb=$(( (available_bytes * disk_percent) / 100 / 1024 / 1024 ))
+            sgdisk -n 2::+${root_size_mb}M --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
+        fi
+
         sgdisk -A 1:set:2 "${DISK}"
     fi
 
