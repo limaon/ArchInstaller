@@ -262,12 +262,34 @@ desktop_environment_install() {
     # Parse file with JQ to determine packages to install
     jq --raw-output "${MINIMAL_PACMAN_FILTER}""${MINIMAL_AUR_FILTER}""${FULL_PACMAN_FILTER}""${FULL_AUR_FILTER}" ~/archinstaller/packages/desktop-environments/"${DESKTOP_ENV}".json | (
         while read -r line; do
+            if [[ -z "$line" ]]; then
+                continue
+            fi
+
             echo "Installing $line"
 
-            if [[ "$AUR_HELPER" != NONE ]]; then
-                "$AUR_HELPER" -S "$line" --noconfirm --needed --color=always
+            # Check if package is already installed
+            if pacman -Qi "$line" &>/dev/null; then
+                echo "Package $line is already installed, skipping."
+                continue
+            fi
+
+            # Determine if package is from official repo or AUR
+            # Check if package exists in official repositories
+            if pacman -Si "$line" &>/dev/null; then
+                echo "Installing $line from official repository..."
+                if ! sudo pacman -S "$line" --noconfirm --needed --color=always; then
+                    echo "Error: Failed to install $line via pacman"
+                fi
             else
-                sudo pacman -S "$line" --noconfirm --needed --color=always
+                if [[ "$AUR_HELPER" != NONE ]]; then
+                    echo "Installing $line from AUR via $AUR_HELPER..."
+                    if ! "$AUR_HELPER" -S "$line" --noconfirm --needed --color=always; then
+                        echo "Error: Failed to install $line via $AUR_HELPER"
+                    fi
+                else
+                    echo "Warning: Package $line not found in official repositories and no AUR helper configured. Skipping."
+                fi
             fi
         done
     )
@@ -290,12 +312,33 @@ btrfs_install() {
         # Parse file with JQ to determine packages to install
         jq --raw-output "${PACMAN_FILTER}""${AUR_FILTER}" ~/archinstaller/packages/btrfs.json | (
             while read -r line; do
+                if [[ -z "$line" ]]; then
+                    continue
+                fi
+
                 echo "Installing $line"
 
-                if [[ "$AUR_HELPER" != NONE ]]; then
-                    "$AUR_HELPER" -S "$line" --noconfirm --needed --color=always
+                # Check if package is already installed
+                if pacman -Qi "$line" &>/dev/null; then
+                    echo "Package $line is already installed, skipping."
+                    continue
+                fi
+
+                # Determine if package is from official repo or AUR
+                if pacman -Si "$line" &>/dev/null; then
+                    echo "Installing $line from official repository..."
+                    if ! sudo pacman -S "$line" --noconfirm --needed --color=always; then
+                        echo "Error: Failed to install $line via pacman"
+                    fi
                 else
-                    sudo pacman -S "$line" --noconfirm --needed --color=always
+                    if [[ "$AUR_HELPER" != NONE ]]; then
+                        echo "Installing $line from AUR via $AUR_HELPER..."
+                        if ! "$AUR_HELPER" -S "$line" --noconfirm --needed --color=always; then
+                            echo "Error: Failed to install $line via $AUR_HELPER"
+                        fi
+                    else
+                        echo "Warning: Package $line not found in official repositories and no AUR helper configured. Skipping."
+                    fi
                 fi
             done
         )
