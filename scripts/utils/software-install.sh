@@ -262,12 +262,34 @@ desktop_environment_install() {
     # Parse file with JQ to determine packages to install
     jq --raw-output "${MINIMAL_PACMAN_FILTER}""${MINIMAL_AUR_FILTER}""${FULL_PACMAN_FILTER}""${FULL_AUR_FILTER}" ~/archinstaller/packages/desktop-environments/"${DESKTOP_ENV}".json | (
         while read -r line; do
+            if [[ -z "$line" ]]; then
+                continue
+            fi
+
             echo "Installing $line"
 
-            if [[ "$AUR_HELPER" != NONE ]]; then
-                "$AUR_HELPER" -S "$line" --noconfirm --needed --color=always
+            # Check if package is already installed
+            if pacman -Qi "$line" &>/dev/null; then
+                echo "Package $line is already installed, skipping."
+                continue
+            fi
+
+            # Determine if package is from official repo or AUR
+            # Check if package exists in official repositories
+            if pacman -Si "$line" &>/dev/null; then
+                echo "Installing $line from official repository..."
+                if ! sudo pacman -S "$line" --noconfirm --needed --color=always; then
+                    echo "Error: Failed to install $line via pacman"
+                fi
             else
-                sudo pacman -S "$line" --noconfirm --needed --color=always
+                if [[ "$AUR_HELPER" != NONE ]]; then
+                    echo "Installing $line from AUR via $AUR_HELPER..."
+                    if ! "$AUR_HELPER" -S "$line" --noconfirm --needed --color=always; then
+                        echo "Error: Failed to install $line via $AUR_HELPER"
+                    fi
+                else
+                    echo "Warning: Package $line not found in official repositories and no AUR helper configured. Skipping."
+                fi
             fi
         done
     )
@@ -290,12 +312,33 @@ btrfs_install() {
         # Parse file with JQ to determine packages to install
         jq --raw-output "${PACMAN_FILTER}""${AUR_FILTER}" ~/archinstaller/packages/btrfs.json | (
             while read -r line; do
+                if [[ -z "$line" ]]; then
+                    continue
+                fi
+
                 echo "Installing $line"
 
-                if [[ "$AUR_HELPER" != NONE ]]; then
-                    "$AUR_HELPER" -S "$line" --noconfirm --needed --color=always
+                # Check if package is already installed
+                if pacman -Qi "$line" &>/dev/null; then
+                    echo "Package $line is already installed, skipping."
+                    continue
+                fi
+
+                # Determine if package is from official repo or AUR
+                if pacman -Si "$line" &>/dev/null; then
+                    echo "Installing $line from official repository..."
+                    if ! sudo pacman -S "$line" --noconfirm --needed --color=always; then
+                        echo "Error: Failed to install $line via pacman"
+                    fi
                 else
-                    sudo pacman -S "$line" --noconfirm --needed --color=always
+                    if [[ "$AUR_HELPER" != NONE ]]; then
+                        echo "Installing $line from AUR via $AUR_HELPER..."
+                        if ! "$AUR_HELPER" -S "$line" --noconfirm --needed --color=always; then
+                            echo "Error: Failed to install $line via $AUR_HELPER"
+                        fi
+                    else
+                        echo "Warning: Package $line not found in official repositories and no AUR helper configured. Skipping."
+                    fi
                 fi
             done
         )
@@ -332,16 +375,33 @@ user_theming() {
             sudo cp ~/archinstaller/configs/base/usr/share/backgrounds/butterfly.png /usr/share/backgrounds/butterfly.png
 
         elif [[ "$DESKTOP_ENV" == "i3-wm" ]]; then
-            sudo chmod -R a+rX ~/archinstaller/configs/i3-wm/etc
-            sudo cp -r ~/archinstaller/configs/i3-wm/. /
-            sudo chmod ug+r ~/archinstaller/configs/i3-wm/etc/snapper/configs/*
-            sudo mkdir -p /usr/share/backgrounds/
+            # Check if configs directory exists before modifying
+            if [[ -d ~/archinstaller/configs/i3-wm/etc ]]; then
+                chmod -R a+rX ~/archinstaller/configs/i3-wm/etc
+            fi
+
+            # Copy configs if they exist
+            if [[ -d ~/archinstaller/configs/i3-wm ]]; then
+                cp -r ~/archinstaller/configs/i3-wm/. /
+            fi
+
+            # Set permissions for snapper configs if they exist (both source and destination)
+            if [[ -d ~/archinstaller/configs/i3-wm/etc/snapper/configs ]] && [[ -n "$(ls -A ~/archinstaller/configs/i3-wm/etc/snapper/configs 2>/dev/null)" ]]; then
+                chmod ug+r ~/archinstaller/configs/i3-wm/etc/snapper/configs/*
+            fi
+
+            # Also set permissions on the copied files if they exist
+            if [[ -d /etc/snapper/configs ]] && [[ -n "$(ls -A /etc/snapper/configs 2>/dev/null)" ]]; then
+                chmod ug+r /etc/snapper/configs/*
+            fi
+
+            mkdir -p /usr/share/backgrounds/
 
         else
             echo -e "No theming setup for $DESKTOP_ENV"
         fi
     else
-        echo -e "Skipping theming setup for $DESKTOP_ENV (Minimal or Server install)"
+        echo -e "Skipping theming setup for SERVER installation."
     fi
 }
 

@@ -4,15 +4,15 @@ This document explains how the JSON-based package management system works in Arc
 
 ---
 
-## 🎯 Why JSON?
+## Why JSON?
 
 ### Advantages
 
-✅ **Data and logic separation**: Package lists separate from code  
-✅ **Easy maintenance**: Add/remove packages without touching bash  
-✅ **Flexible queries**: JQ allows complex filters  
-✅ **Clear hierarchy**: minimal vs full, pacman vs aur  
-✅ **Comments via description**: Each package can have metadata  
+**Data and logic separation**: Package lists separate from code
+**Easy maintenance**: Add/remove packages without touching bash
+**Flexible queries**: JQ allows complex filters
+**Clear hierarchy**: minimal vs full, pacman vs aur
+**Comments via description**: Each package can have metadata
 
 ### Considered Alternatives
 
@@ -25,7 +25,7 @@ This document explains how the JSON-based package management system works in Arc
 
 ---
 
-## 📂 Directory Structure
+## Directory Structure
 
 ```
 packages/
@@ -49,7 +49,7 @@ packages/
 
 ---
 
-## 📋 JSON Format
+## JSON Format
 
 ### Basic Template
 
@@ -79,14 +79,14 @@ packages/
 - **minimal**: Minimal installation (always installed if not SERVER)
   - **pacman**: Official packages
   - **aur**: AUR packages (only if AUR_HELPER ≠ NONE)
-  
+
 - **full**: Complete installation (only if INSTALL_TYPE=FULL)
   - **pacman**: Extra official packages
   - **aur**: Extra AUR packages
 
 ---
 
-## 📦 base.json
+## base.json
 
 Fundamental system packages (not desktop).
 
@@ -126,21 +126,21 @@ Fundamental system packages (not desktop).
 
 ### Common Categories
 
-**CLI Tools**: git, curl, wget, rsync, htop, neofetch  
-**Compression**: zip, unzip, p7zip, unrar  
-**Development**: base-devel, gcc, make, cmake  
-**Network**: net-tools, bind-tools, nmap  
-**System**: man-db, man-pages, bash-completion  
+**CLI Tools**: git, curl, wget, rsync, htop, neofetch
+**Compression**: zip, unzip, p7zip, unrar
+**Development**: base-devel, gcc, make, cmake
+**Network**: net-tools, bind-tools, nmap
+**System**: man-db, man-pages, bash-completion
 
-**FULL adds**:  
-**Browsers**: firefox, chromium  
-**Media**: vlc, ffmpeg, imagemagick  
-**Office**: libreoffice-fresh  
-**Graphics**: gimp, inkscape  
+**FULL adds**:
+**Browsers**: firefox, chromium
+**Media**: vlc, ffmpeg, imagemagick
+**Office**: libreoffice-fresh
+**Graphics**: gimp, inkscape
 
 ---
 
-## 🖥️ Desktop Environments
+## Desktop Environments
 
 Each DE has its own JSON in `desktop-environments/`.
 
@@ -239,7 +239,7 @@ Each DE has its own JSON in `desktop-environments/`.
 
 ---
 
-## 🔤 fonts.json
+## fonts.json
 
 System fonts (FULL install only).
 
@@ -266,7 +266,7 @@ System fonts (FULL install only).
 
 ---
 
-## 📁 btrfs.json
+## btrfs.json
 
 Btrfs-specific tools (only installs if FS=btrfs).
 
@@ -294,7 +294,7 @@ Btrfs-specific tools (only installs if FS=btrfs).
 
 ---
 
-## 🔍 JQ Queries
+## JQ Queries
 
 ### Installation Logic
 
@@ -331,7 +331,7 @@ jq -r '.minimal.pacman[].package, .full.pacman[].package' base.json
 
 **Everything (pacman + aur)**:
 ```bash
-jq -r '.minimal.pacman[].package, .minimal.aur[].package, 
+jq -r '.minimal.pacman[].package, .minimal.aur[].package,
        .full.pacman[].package, .full.aur[].package' base.json
 ```
 
@@ -342,7 +342,7 @@ jq -r '.minimal.aur[].package, .full.aur[].package' base.json
 
 ---
 
-## ➕ Adding New Desktop Environment
+## Adding New Desktop Environment
 
 ### Step 1: Create JSON
 
@@ -378,7 +378,7 @@ In `system-config.sh -> display_manager()`:
 ```bash
 elif [[ "${DESKTOP_ENV}" == "my-de" ]]; then
     systemctl enable my-display-manager.service
-    
+
     if [[ "${INSTALL_TYPE}" == "FULL" ]]; then
         echo "Configuring theme..."
         # Apply theme settings
@@ -406,7 +406,7 @@ The installer will detect the new JSON automatically!
 
 ---
 
-## 🔄 Package Installation Flow
+## Package Installation Flow
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -447,7 +447,7 @@ The installer will detect the new JSON automatically!
 
 ---
 
-## 📝 Best Practices
+## Best Practices
 
 ### 1. Organization
 
@@ -473,7 +473,7 @@ JQ doesn't validate dependencies. Ensure:
 
 ### 3. Size
 
-**minimal**: ~50-100 packages (quick installation)  
+**minimal**: ~50-100 packages (quick installation)
 **full**: ~200-400 packages (complete)
 
 ### 4. Testing
@@ -484,7 +484,7 @@ Always test both:
 
 ---
 
-## 🛠️ Maintenance
+## Maintenance
 
 ### Add Package
 
@@ -519,7 +519,7 @@ jq . packages/base.json > /dev/null && echo "Valid JSON" || echo "Invalid JSON"
 
 ---
 
-## 🎯 Usage Examples
+## Usage Examples
 
 ### List All Packages from DE
 

@@ -52,25 +52,57 @@ format_disk() {
 -------------------------------------------------------------------------
 "
 
+    disk_percent="${DISK_USAGE_PERCENT:-100}"
+
     mkdir -p /mnt &>/dev/null
     umount -A --recursive /mnt &>/dev/null
 
     set -e
 
-    # Preparar o disco
     sgdisk -Z "${DISK}"
     sgdisk -a 2048 -o "${DISK}"
 
     if [[ -d "/sys/firmware/efi" ]]; then
-        echo -e "\nCriando partição EFI (UEFI Boot Partition)"
+        echo -e "\nCreating EFI partition (UEFI Boot Partition)"
         sgdisk -n 1::+1G --typecode=1:ef00 --change-name=1:"EFIBOOT" "${DISK}"
-        echo -e "\nCriando partição ROOT"
-        sgdisk -n 2::-0 --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
+        echo -e "\nCreating ROOT partition (${disk_percent}% of disk)"
+
+        # Use percentage instead of -0
+        if [[ "$disk_percent" -eq 100 ]]; then
+            # Use all remaining disk space (original behavior)
+            sgdisk -n 2::-0 --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
+        else
+            # Calculate size based on percentage
+            # Get total disk size in bytes
+            disk_size_bytes=$(blockdev --getsize64 "${DISK}")
+            # EFI partition is 1GB = 1024MB = 1024 * 1024 * 1024 bytes
+            efi_size_bytes=$((1024 * 1024 * 1024))
+            # Calculate available space after EFI partition
+            available_bytes=$((disk_size_bytes - efi_size_bytes))
+            # Calculate root partition size based on percentage of available space
+            root_size_mb=$(( (available_bytes * disk_percent) / 100 / 1024 / 1024 ))
+            sgdisk -n 2::+${root_size_mb}M --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
+        fi
     else
-        echo -e "\nCriando partição BIOS Boot (sem filesystem)"
+        echo -e "\nCreating BIOS Boot partition (no filesystem)"
         sgdisk -n 1::+256M --typecode=1:ef02 --change-name=1:"BIOSBOOT" "${DISK}"
-        echo -e "\nCriando partição ROOT"
-        sgdisk -n 2::-0 --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
+        echo -e "\nCreating ROOT partition (${disk_percent}% of disk)"
+
+        if [[ "$disk_percent" -eq 100 ]]; then
+            sgdisk -n 2::-0 --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
+        else
+            # Calculate size based on percentage
+            # Get total disk size in bytes
+            disk_size_bytes=$(blockdev --getsize64 "${DISK}")
+            # BIOS Boot partition is 256MB = 256 * 1024 * 1024 bytes
+            bios_boot_size_bytes=$((256 * 1024 * 1024))
+            # Calculate available space after BIOS Boot partition
+            available_bytes=$((disk_size_bytes - bios_boot_size_bytes))
+            # Calculate root partition size based on percentage of available space
+            root_size_mb=$(( (available_bytes * disk_percent) / 100 / 1024 / 1024 ))
+            sgdisk -n 2::+${root_size_mb}M --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
+        fi
+
         sgdisk -A 1:set:2 "${DISK}"
     fi
 
@@ -440,42 +472,137 @@ display_manager() {
         systemctl enable lxdm.service
 
     elif [[ "${DESKTOP_ENV}" == "openbox" ]]; then
-        systemctl enable lightdm.service
+        # Check if lightdm is installed, install if not
+        if ! pacman -Qi lightdm &>/dev/null; then
+            echo "LightDM not found, installing..."
+            pacman -S --noconfirm --needed --color=always lightdm lightdm-webkit2-greeter
+        fi
+
+        # Check if lightdm service exists before enabling
+        if systemctl list-unit-files | grep -q "lightdm.service"; then
+            systemctl enable lightdm.service
+        else
+            echo "Warning: lightdm.service not found, skipping enable"
+            return 1
+        fi
+
+        # Create lightdm config directory if it doesn't exist
+        mkdir -p /etc/lightdm
+
+        # Create lightdm.conf if it doesn't exist
+        if [[ ! -f /etc/lightdm/lightdm.conf ]]; then
+            echo "[Seat:*]
+greeter-session=lightdm-webkit2-greeter" > /etc/lightdm/lightdm.conf
+        fi
+
         if [[ "${INSTALL_TYPE}" == "FULL" ]]; then
             echo -e "Setting LightDM Theme..."
+            # Create config file if it doesn't exist
+            if [[ ! -f /etc/lightdm/lightdm-webkit2-greeter.conf ]]; then
+                touch /etc/lightdm/lightdm-webkit2-greeter.conf
+                echo "[greeter]" >> /etc/lightdm/lightdm-webkit2-greeter.conf
+            fi
             # Set default lightdm-webkit2-greeter theme to Litarvan
             sed -i 's/^webkit_theme\s*=\s*\(.*\)/webkit_theme = litarvan #\1/g' /etc/lightdm/lightdm-webkit2-greeter.conf
             # Set default lightdm greeter to lightdm-webkit2-greeter
             sed -i 's/#greeter-session=example.*/greeter-session=lightdm-webkit2-greeter/g' /etc/lightdm/lightdm.conf
+            if ! grep -q "^greeter-session=lightdm-webkit2-greeter" /etc/lightdm/lightdm.conf; then
+                sed -i '/\[Seat:\*\]/a greeter-session=lightdm-webkit2-greeter' /etc/lightdm/lightdm.conf
+            fi
         fi
 
     elif [[ "${DESKTOP_ENV}" == "awesome" ]]; then
-        systemctl enable lightdm.service
+        # Check if lightdm is installed, install if not
+        if ! pacman -Qi lightdm &>/dev/null; then
+            echo "LightDM not found, installing..."
+            pacman -S --noconfirm --needed --color=always lightdm lightdm-slick-greeter
+        fi
+
+        # Check if lightdm service exists before enabling
+        if systemctl list-unit-files | grep -q "lightdm.service"; then
+            systemctl enable lightdm.service
+        else
+            echo "Warning: lightdm.service not found, skipping enable"
+            return 1
+        fi
+
+        # Create lightdm config directory if it doesn't exist
+        mkdir -p /etc/lightdm
+
+        # Create lightdm.conf if it doesn't exist
+        if [[ ! -f /etc/lightdm/lightdm.conf ]]; then
+            echo "[Seat:*]
+greeter-session=lightdm-slick-greeter" > /etc/lightdm/lightdm.conf
+        fi
+
         if [[ "${INSTALL_TYPE}" == "FULL" ]]; then
             echo -e "Setting LightDM Theme..."
-            cp ~/archinstaller/configs/awesome/etc/lightdm/slick-greeter.conf /etc/lightdm/slick-greeter.conf
+            # Copy config file or create if it doesn't exist
+            if [[ -f ~/archinstaller/configs/awesome/etc/lightdm/slick-greeter.conf ]]; then
+                cp ~/archinstaller/configs/awesome/etc/lightdm/slick-greeter.conf /etc/lightdm/slick-greeter.conf
+            else
+                if [[ ! -f /etc/lightdm/slick-greeter.conf ]]; then
+                    touch /etc/lightdm/slick-greeter.conf
+                    echo "[greeter]" >> /etc/lightdm/slick-greeter.conf
+                fi
+            fi
             sed -i 's/#greeter-session=example.*/greeter-session=lightdm-slick-greeter/g' /etc/lightdm/lightdm.conf
+            if ! grep -q "^greeter-session=lightdm-slick-greeter" /etc/lightdm/lightdm.conf; then
+                sed -i '/\[Seat:\*\]/a greeter-session=lightdm-slick-greeter' /etc/lightdm/lightdm.conf
+            fi
         fi
 
     elif [[ "${DESKTOP_ENV}" == "i3-wm" ]]; then
-        systemctl enable lightdm.service
+        # Check if lightdm is installed, install if not
+        if ! pacman -Qi lightdm &>/dev/null; then
+            echo "LightDM not found, installing..."
+            pacman -S --noconfirm --needed --color=always lightdm lightdm-gtk-greeter
+        fi
+
+        # Check if lightdm service exists before enabling
+        if systemctl list-unit-files | grep -q "lightdm.service"; then
+            systemctl enable lightdm.service
+        else
+            echo "Warning: lightdm.service not found, skipping enable"
+            return 1
+        fi
+
         echo -e "Configuring LightDM for i3-wm..."
-        # Set lightdm greeter to lightdm-gtk-greeter
-        sed -i 's/#greeter-session=example.*/greeter-session=lightdm-gtk-greeter/g' /etc/lightdm/lightdm.conf
+
+        # Create lightdm config directory if it doesn't exist
+        mkdir -p /etc/lightdm
+
+        # Create lightdm.conf if it doesn't exist
+        if [[ ! -f /etc/lightdm/lightdm.conf ]]; then
+            echo "[Seat:*]
+greeter-session=lightdm-gtk-greeter" > /etc/lightdm/lightdm.conf
+        else
+            # Set lightdm greeter to lightdm-gtk-greeter
+            sed -i 's/#greeter-session=example.*/greeter-session=lightdm-gtk-greeter/g' /etc/lightdm/lightdm.conf
+            # Ensure it's set even if not commented
+            if ! grep -q "^greeter-session=lightdm-gtk-greeter" /etc/lightdm/lightdm.conf; then
+                sed -i '/\[Seat:\*\]/a greeter-session=lightdm-gtk-greeter' /etc/lightdm/lightdm.conf
+            fi
+        fi
 
         CONFIG_FILE="/etc/lightdm/lightdm-gtk-greeter.conf"
-        declare -A greeter_config=(
+
+        # Create config file if it doesn't exist
+        if [[ ! -f "$CONFIG_FILE" ]]; then
+            touch "$CONFIG_FILE"
+            echo "[greeter]" >> "$CONFIG_FILE"
+        fi
+
+        # Base configuration (always applied)
+        declare -A base_greeter_config=(
             ["background"]="/usr/share/backgrounds/archlinux/geolanes.png"
             ["user-background"]="true"
             ["font-name"]="Ubuntu 12"
             ["xft-antialias"]="true"
-            ["icon-theme-name"]="Pop"
-            ["cursor-theme-name"]="Pop"
             ["transition-duration"]="1000"
             ["transition-type"]="linear"
             ["screensaver-timeout"]="60"
             ["show-clock"]="false"
-            ["theme-name"]="Yaru-blue-dark"
             ["default-user-image"]="#archlinux"
             ["xft-hintstyle"]="hintfull"
             ["clock-format"]=""
@@ -487,11 +614,18 @@ display_manager() {
             ["indicators"]="~host;~spacer;~clock;~spacer;~language;~session;~a11y;~power"
         )
 
-        for key in "${!greeter_config[@]}"; do
+        # Theme configuration (only for FULL installation)
+        if [[ "${INSTALL_TYPE}" == "FULL" ]]; then
+            base_greeter_config["icon-theme-name"]="Pop"
+            base_greeter_config["cursor-theme-name"]="Pop"
+            base_greeter_config["theme-name"]="Yaru-blue-dark"
+        fi
+
+        for key in "${!base_greeter_config[@]}"; do
             if grep -q "^#${key}=" "$CONFIG_FILE"; then
-                sed -i "s|^#${key}=.*|${key}=${greeter_config[$key]}|" "$CONFIG_FILE"
+                sed -i "s|^#${key}=.*|${key}=${base_greeter_config[$key]}|" "$CONFIG_FILE"
             else
-                echo "${key}=${greeter_config[$key]}" >> "$CONFIG_FILE"
+                echo "${key}=${base_greeter_config[$key]}" >> "$CONFIG_FILE"
             fi
         done
 

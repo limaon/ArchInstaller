@@ -179,8 +179,8 @@ set_option() {
 # Renders a text-based list of options that can be selected by the
 # user using up, down, and enter keys and returns the chosen option.
 #
-#   Arguments   : list of options, maximum of 256
-#                 "opt1" "opt2" ...
+#   Arguments   : number_of_options colmax "opt1" "opt2" ...
+#                 or: $? colmax "opt1" "opt2" ... (old style)
 #   Return value: selected index (0 for opt1, 1 for opt2 ...)
 select_option() {
 
@@ -226,7 +226,7 @@ select_option() {
         local col=0
         local curr_idx=$((curr_col + curr_row * colmax))
 
-        for option in "${options[@]}"; do
+        for option in "${local_options[@]}"; do
             row=$((idx / colmax))
             col=$((idx % colmax))
             cursor_to $((startrow + row + 1)) $((offset * col + 1))
@@ -239,8 +239,15 @@ select_option() {
         done
     }
 
-    # Initialize
-    for _ in "$@"; do printf '\n'; done
+    # Extract options from arguments (skip first 2 arguments: count/return_code and colmax)
+    # $1 = number of options or return code (can be ignored)
+    # $2 = number of columns (colmax)
+    # $3+ = options
+    local local_options=("${@:3}")
+    local colmax=$2
+
+    # Initialize with blank lines for each option
+    for _ in "${local_options[@]}"; do printf '\n'; done
 
     # Determine current screen position for overwriting options
     local lastrow
@@ -248,16 +255,14 @@ select_option() {
     local startrow
     local lines
     local cols
-    local colmax
     local offset
 
     # Assign values separately
     lastrow=$(get_cursor_row)
     lastcol=$(get_cursor_col)
-    startrow=$((lastrow - $#))
+    startrow=$((lastrow - ${#local_options[@]}))
     lines=$(tput lines)
     cols=$(tput cols)
-    colmax=$2
     offset=$((cols / colmax))
 
     # Ensure proper cleanup on Ctrl+C
@@ -277,7 +282,8 @@ select_option() {
                 ;;
             down)
                 ((active_row++))
-                [[ $active_row -ge $((${#options[@]} / colmax)) ]] && active_row=$((${#options[@]} / colmax))
+                local max_row=$(( (${#local_options[@]} - 1) / colmax ))
+                [[ $active_row -gt $max_row ]] && active_row=$max_row
                 ;;
             left)
                 ((active_col--))

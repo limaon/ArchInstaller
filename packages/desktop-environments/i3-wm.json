@@ -5,7 +5,7 @@
       { "package": "alsa-utils" },
       { "package": "pamixer" },
       { "package": "brightnessctl" },
-      { "package": "pcmanfm-gtk3" },
+      { "package": "pcmanfm" },
       { "package": "xarchiver" },
       { "package": "dmenu" },
       { "package": "dunst" },

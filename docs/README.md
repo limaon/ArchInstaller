@@ -1,6 +1,6 @@
 # ArchInstaller - Complete Documentation
 
-## 📖 Documentation Index
+## Documentation Index
 
 1. **[README.md](README.md)** - This file (overview)
 2. **[ARCHITECTURE.md](ARCHITECTURE.md)** - Complete system architecture
@@ -11,21 +11,21 @@
 
 ---
 
-## 🎯 What is ArchInstaller?
+## What is ArchInstaller?
 
 **ArchInstaller** is an automated and interactive Arch Linux installer that transforms the complex manual installation process into a guided and simplified workflow. It installs a complete Arch Linux system with:
 
-- ✅ Automatic disk partitioning
-- ✅ Multiple filesystem support (ext4, btrfs, LUKS)
-- ✅ Automatic hardware detection (CPU, GPU, battery)
-- ✅ Complete desktop environment installation
-- ✅ Driver, microcode, and optimization configuration
-- ✅ Snapshot system (btrfs + Snapper)
-- ✅ Pre-applied themes and configurations
+- Automatic disk partitioning
+- Multiple filesystem support (ext4, btrfs, LUKS)
+- Automatic hardware detection (CPU, GPU, battery)
+- Complete desktop environment installation
+- Driver, microcode, and optimization configuration
+- Snapshot system (btrfs + Snapper)
+- Pre-applied themes and configurations
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Boot into an Arch Linux ISO
@@ -36,7 +36,7 @@
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/your-username/ArchInstaller
+git clone https://github.com/limaon/ArchInstaller
 cd ArchInstaller
 
 # 2. Run the installer
@@ -52,7 +52,7 @@ The installer will ask:
 2. **Installation type**: FULL / MINIMAL / SERVER
 3. **AUR Helper**: yay, paru, etc.
 4. **Desktop Environment**: KDE, GNOME, i3, etc.
-5. **Installation disk** (⚠️ will be formatted!)
+5. **Installation disk** (will be formatted!)
 6. **Filesystem**: btrfs, ext4, or LUKS
 7. **Timezone** (auto-detected)
 8. **System language** (locale)
@@ -62,7 +62,7 @@ After reviewing the configuration, automatic installation begins!
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 ArchInstaller/
@@ -96,7 +96,7 @@ ArchInstaller/
 
 ---
 
-## 🔄 Execution Flow
+## Execution Flow
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -147,13 +147,13 @@ ArchInstaller/
 │     - Cleanup temporary files                               │
 └─────────────────────────────────────────────────────────────┘
                             ↓
-                    🎉 INSTALLATION COMPLETE!
+                    INSTALLATION COMPLETE!
                       Eject ISO and Reboot
 ```
 
 ---
 
-## 🎨 Key Features
+## Key Features
 
 ### Automatic Hardware Detection
 - **CPU**: Detects Intel or AMD and installs appropriate microcode
@@ -184,7 +184,7 @@ KDE Plasma, GNOME, XFCE, Cinnamon, i3-wm, Awesome, Openbox, Budgie, Deepin, LXDE
 
 ---
 
-## 📋 Saved Configurations
+## Saved Configurations
 
 All user choices are saved in `configs/setup.conf`:
 
@@ -209,24 +209,24 @@ This file is read by all subsequent scripts, ensuring consistency.
 
 ---
 
-## 🛡️ Security Checks
+## Security Checks
 
 Before execution, the installer verifies:
-- ✅ Running as root
-- ✅ Running on Arch Linux
-- ✅ Pacman is not locked
-- ✅ Not in a Docker container
-- ✅ Partitions are mounted (phases 1-3)
+- Running as root
+- Running on Arch Linux
+- Pacman is not locked
+- Not in a Docker container
+- Partitions are mounted (phases 1-3)
 
 ---
 
-## 📦 Logs
+## Logs
 
 All output is logged to `install.log` and copied to `/var/log/install.log` in the installed system for future reference.
 
 ---
 
-## 🎯 Next Steps
+## Next Steps
 
 - Consult **[ARCHITECTURE.md](ARCHITECTURE.md)** to understand the architecture in detail
 - See **[FUNCTIONS-REFERENCE.md](FUNCTIONS-REFERENCE.md)** for complete function list
@@ -234,6 +234,6 @@ All output is logged to `install.log` and copied to `/var/log/install.log` in th
 
 ---
 
-## 📄 License
+## License
 
 This project is distributed under a free license. Check the LICENSE file for details.

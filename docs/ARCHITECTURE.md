@@ -4,7 +4,7 @@ This document describes the complete architecture of ArchInstaller, including de
 
 ---
 
-## 📐 Architectural Overview
+## Architectural Overview
 
 ### Design Principles
 
@@ -17,7 +17,7 @@ This document describes the complete architecture of ArchInstaller, including de
 
 ---
 
-## 🔄 4-Phase Execution Model
+## 4-Phase Execution Model
 
 ### Why 4 Phases?
 
@@ -60,16 +60,16 @@ The installation is divided into phases due to different execution contexts:
 sequence() {
     # PHASE 0: Live ISO
     . "$SCRIPTS_DIR"/0-preinstall.sh
-    
+
     # PHASE 1: Root in chroot
     arch-chroot /mnt "$HOME"/archinstaller/scripts/1-setup.sh
-    
+
     # PHASE 2: User in chroot (only if not SERVER)
     if [[ ! "$INSTALL_TYPE" == SERVER ]]; then
         arch-chroot /mnt /usr/bin/runuser -u "$USERNAME" -- \
             /home/"$USERNAME"/archinstaller/scripts/2-user.sh
     fi
-    
+
     # PHASE 3: Root in chroot again
     arch-chroot /mnt "$HOME"/archinstaller/scripts/3-post-setup.sh
 }
@@ -79,7 +79,7 @@ sequence() {
 
 ---
 
-## 📦 Module System (Utility Scripts)
+## Module System (Utility Scripts)
 
 ### 1. installer-helper.sh
 
@@ -289,7 +289,7 @@ BIOS:
 
 ---
 
-## 📄 Configuration System
+## Configuration System
 
 ### setup.conf - Central File
 
@@ -335,7 +335,7 @@ useradd -m -s /bin/bash "$USERNAME"
 
 ---
 
-## 📦 JSON Package System
+## JSON Package System
 
 ### JSON File Structure
 
@@ -388,7 +388,7 @@ done
 
 ---
 
-## 🔐 Security and Validations
+## Security and Validations
 
 ### 1. User Input Validation
 
@@ -442,7 +442,7 @@ exit_on_error $? pacstrap /mnt base
 
 ---
 
-## 🎨 Themes and Custom Configurations
+## Themes and Custom Configurations
 
 ### Theming System
 
@@ -481,7 +481,7 @@ user_theming() {
 
 ---
 
-## 🚀 Implemented Optimizations
+## Implemented Optimizations
 
 ### 1. Parallel Compilation
 
@@ -534,7 +534,7 @@ fi
 
 ---
 
-## 📊 Data Flow
+## Data Flow
 
 ```
 ┌──────────────────┐
@@ -575,7 +575,7 @@ fi
 
 ---
 
-## 🎯 Important Architectural Decisions
+## Important Architectural Decisions
 
 ### 1. Why JSON for Packages?
 

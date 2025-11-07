@@ -4,7 +4,7 @@ This document lists all available functions in ArchInstaller, organized by modul
 
 ---
 
-## 📁 installer-helper.sh
+## installer-helper.sh
 
 ### exit_on_error()
 ```bash
@@ -181,7 +181,7 @@ end_script
 
 ---
 
-## 🔒 system-checks.sh
+## system-checks.sh
 
 ### root_check()
 ```bash
@@ -247,7 +247,7 @@ background_checks
 
 ---
 
-## 👤 user-options.sh
+## user-options.sh
 
 ### set_password()
 ```bash
@@ -434,7 +434,7 @@ show_configurations
 
 ---
 
-## 📦 software-install.sh
+## software-install.sh
 
 ### arch_install()
 ```bash
@@ -598,7 +598,7 @@ essential_services
 
 ---
 
-## ⚙️ system-config.sh
+## system-config.sh
 
 ### mirrorlist_update()
 ```bash
@@ -805,7 +805,7 @@ plymouth_config
 
 ---
 
-## 🎯 Functions by Use Case
+## Functions by Use Case
 
 ### Adding New Desktop Environment
 

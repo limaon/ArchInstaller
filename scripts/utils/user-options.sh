@@ -117,20 +117,71 @@ disk_select() {
 
 "
 
-    PS3='
-Select the disk to install on: '
+    # Format options as "device  |  size" with proper spacing
+    mapfile -t options < <(lsblk -n --output TYPE,KNAME,SIZE | awk '$1=="disk"{printf "/dev/%s  |  %s\n", $2, $3}')
 
-    mapfile -t options < <(lsblk -n --output TYPE,KNAME,SIZE | awk '$1=="disk"{print "/dev/"$2"|"$3}')
+    echo -e "Select the disk to install on: \n"
 
-    select_option ${#options[@]} 1
+    select_option ${#options[@]} 1 "${options[@]}"
 
     selected_index=$?
     disk="${options[$selected_index]%%|*}"
+    disk="${disk// }"  # Remove trailing spaces
 
     echo -e "\n${disk} selected \n"
     set_option DISK "${disk}"
 
-    if [[ "$(lsblk -n --output TYPE,ROTA | awk '$1=="disk"{print $2}')" -eq "0" ]]; then
+    # Ask for disk usage percentage
+    echo -ne "${BOLD}Disk space usage:${RESET}\n\n"
+
+    options_percent=("Use 100% of the disk" "Set custom percentage")
+    select_option ${#options_percent[@]} 1 "${options_percent[@]}"
+    percent_choice=$?
+
+    if [[ $percent_choice -eq 0 ]]; then
+        # Use 100%
+        disk_percent=100
+        echo -e "\nUsing 100% of ${disk}\n"
+    else
+        # Define custom percentage
+        while true; do
+            read -rp "Enter percentage to use (5-100): " user_percent
+
+            # Validate input
+            if [[ -z "$user_percent" ]]; then
+                echo "Percentage cannot be empty. Using 100%."
+                disk_percent=100
+                break
+            elif ! [[ "$user_percent" =~ ^[0-9]+$ ]]; then
+                echo "Invalid input. Please enter a number."
+            elif [[ "$user_percent" -lt 5 ]] || [[ "$user_percent" -gt 100 ]]; then
+                echo "Percentage must be between 5 and 100."
+            else
+                disk_percent="$user_percent"
+
+                # Calculate and show preview
+                disk_size=$(lsblk -n -b -o SIZE "${disk}" | head -n1)
+                disk_size_gb=$(( (disk_size / 1024 / 1024 / 1024) ))
+                used_size_gb=$(( (disk_size * disk_percent) / 100 / 1024 / 1024 / 1024 ))
+
+                echo -e "\n${BOLD}Preview:${RESET}"
+                echo -e "Total disk size: ${disk_size_gb}GB"
+                echo -e "Will use: ${used_size_gb}GB (${disk_percent}%)"
+                echo -e "Remaining: $((disk_size_gb - used_size_gb))GB (unused)"
+
+                read -rp "Confirm this percentage? (y/n): " confirm
+                if [[ "${confirm,,}" == "y" ]]; then
+                    break
+                fi
+            fi
+        done
+    fi
+
+    # Save percentage
+    set_option DISK_USAGE_PERCENT "${disk_percent}"
+
+    # Detect disk type (SSD/HDD)
+    if [[ "$(lsblk -n --output TYPE,ROTA "${disk}" | awk '$1=="disk"{print $2}')" -eq "0" ]]; then
         set_option "MOUNT_OPTION" "defaults,noatime,compress=zstd,ssd,discard=async,commit=120"
     else
         set_option "MOUNT_OPTION" "defaults,noatime,compress=zstd,discard=async,commit=120"
@@ -234,7 +285,6 @@ locale_selection() {
     echo -ne "
 Please select your system language (locale) from the list below:
 "
-    # Lista de locais comumente usados
     options=("en_US.UTF-8" "pt_BR.UTF-8" "es_ES.UTF-8" "fr_FR.UTF-8" "de_DE.UTF-8" "it_IT.UTF-8" "ja_JP.UTF-8" "zh_CN.UTF-8")
 
     select_option $? 4 "${options[@]}"
@@ -265,6 +315,11 @@ Please select keyboard layout from this list:
 # @description Show all configurations set during the setup and allow user to redo any step.
 # @noargs
 show_configurations() {
+    # Load INSTALL_TYPE from config if not already set
+    if [[ -f "$CONFIG_FILE" ]] && grep -q "^INSTALL_TYPE=" "$CONFIG_FILE"; then
+        source "$CONFIG_FILE"
+    fi
+
     while true; do
         echo -e "
 ------------------------------------------------------------------------
@@ -279,17 +334,29 @@ show_configurations() {
 
         echo -e "
 ------------------------------------------------------------------------
-Do you want to redo any step? Select an option below, or press Enter to proceed:
-1) Full Name, Username and Password
-2) Installation Type
-3) AUR Helper
-4) Desktop Environment
-5) Disk Selection
-6) File System
-7) Timezone
-8) System Language (Locale)
-9) Keyboard Layout
-------------------------------------------------------------------------
+Do you want to redo any step? Select an option below, or press Enter to proceed:"
+
+        echo "1) Full Name, Username and Password"
+        echo "2) Installation Type"
+
+        # Only show AUR Helper and Desktop Environment if not SERVER
+        if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+            echo "3) AUR Helper"
+            echo "4) Desktop Environment"
+            echo "5) Disk Selection and Usage Percentage"
+            echo "6) File System"
+            echo "7) Timezone"
+            echo "8) System Language (Locale)"
+            echo "9) Keyboard Layout"
+        else
+            echo "3) Disk Selection and Usage Percentage"
+            echo "4) File System"
+            echo "5) Timezone"
+            echo "6) System Language (Locale)"
+            echo "7) Keyboard Layout"
+        fi
+
+        echo "------------------------------------------------------------------------
 "
         read -rp "Enter the number of the step to redo, or press Enter to proceed: " choice
 
@@ -298,17 +365,69 @@ Do you want to redo any step? Select an option below, or press Enter to proceed:
             break
         fi
 
-        # Processa a escolha do usuário
+        # Reload INSTALL_TYPE in case it was changed
+        if [[ -f "$CONFIG_FILE" ]] && grep -q "^INSTALL_TYPE=" "$CONFIG_FILE"; then
+            source "$CONFIG_FILE"
+        fi
+
         case $choice in
             1) user_info ;;
-            2) install_type ;;
-            3) aur_helper ;;
-            4) desktop_environment ;;
-            5) disk_select ;;
-            6) filesystem ;;
-            7) timezone ;;
-            8) locale_selection ;;
-            9) keymap ;;
+            2)
+                install_type
+                # Reload INSTALL_TYPE after change
+                if [[ -f "$CONFIG_FILE" ]] && grep -q "^INSTALL_TYPE=" "$CONFIG_FILE"; then
+                    source "$CONFIG_FILE"
+                fi
+                ;;
+            3)
+                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                    aur_helper
+                else
+                    disk_select
+                fi
+                ;;
+            4)
+                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                    desktop_environment
+                else
+                    filesystem
+                fi
+                ;;
+            5)
+                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                    disk_select
+                else
+                    timezone
+                fi
+                ;;
+            6)
+                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                    filesystem
+                else
+                    locale_selection
+                fi
+                ;;
+            7)
+                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                    timezone
+                else
+                    keymap
+                fi
+                ;;
+            8)
+                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                    locale_selection
+                else
+                    echo "Invalid option. Please try again."
+                fi
+                ;;
+            9)
+                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                    keymap
+                else
+                    echo "Invalid option. Please try again."
+                fi
+                ;;
             *)
                 echo "Invalid option. Please try again."
                 ;;
