@@ -4,7 +4,7 @@ This document is for developers who want to add features, fix bugs, or contribut
 
 ---
 
-## 🎯 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -33,7 +33,7 @@ This document is for developers who want to add features, fix bugs, or contribut
 
 ---
 
-## 📁 Code Structure
+## Code Structure
 
 ### Hierarchy of Responsibilities
 
@@ -71,7 +71,7 @@ sequence() (phase manager)
 
 ---
 
-## ✨ Adding Features
+## Adding Features
 
 ### Feature: New Desktop Environment
 
@@ -109,7 +109,7 @@ In `scripts/utils/system-config.sh`, add to `display_manager()`:
 ```bash
 elif [[ "${DESKTOP_ENV}" == "my-de" ]]; then
     systemctl enable my-dm.service
-    
+
     if [[ "${INSTALL_TYPE}" == "FULL" ]]; then
         # Theme configuration
         echo "theme=my-theme" >> /etc/my-dm/my-dm.conf
@@ -213,7 +213,7 @@ touchpad_install() {
     if xinput list | grep -i "touchpad"; then
         echo "Touchpad detected, installing libinput"
         pacman -S --noconfirm --needed xf86-input-libinput
-        
+
         # Additional configuration
         cat > /etc/X11/xorg.conf.d/30-touchpad.conf <<EOF
 Section "InputClass"
@@ -283,7 +283,7 @@ fi
 
 ---
 
-## 🐛 Debugging
+## Debugging
 
 ### Logs
 
@@ -330,7 +330,7 @@ pacman -S firefox --needed -n
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ### Testing Checklist
 
@@ -396,7 +396,7 @@ EOF
 
 ---
 
-## 📝 Code Conventions
+## Code Conventions
 
 ### Bash Style Guide
 
@@ -485,7 +485,7 @@ microcode_install() {
 
 ---
 
-## 🔄 Git Workflow
+## Git Workflow
 
 ### Branches
 
@@ -534,7 +534,7 @@ Brief description of change.
 
 ---
 
-## 🔍 Code Review Checklist
+## Code Review Checklist
 
 When reviewing PRs:
 
@@ -549,7 +549,7 @@ When reviewing PRs:
 
 ---
 
-## 📚 Useful Resources
+## Useful Resources
 
 ### Official Documentation
 
@@ -564,7 +564,7 @@ When reviewing PRs:
   ```bash
   shellcheck archinstall.sh
   ```
-  
+
 - **shfmt**: Bash formatter
   ```bash
   shfmt -i 4 -w archinstall.sh
@@ -585,7 +585,7 @@ trap 'echo "Error on line $LINENO"' ERR
 
 ---
 
-## 🎯 Feature Roadmap
+## Feature Roadmap
 
 ### Planned
 
@@ -606,7 +606,7 @@ trap 'echo "Error on line $LINENO"' ERR
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please:
 
@@ -618,7 +618,7 @@ Contributions are welcome! Please:
 
 ---
 
-## 📧 Contact
+## Contact
 
 For development questions:
 - Open an issue on GitHub
@@ -626,4 +626,4 @@ For development questions:
 
 ---
 
-Happy coding! 🚀
+Happy coding!

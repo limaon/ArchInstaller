@@ -4,7 +4,7 @@ This guide details how to use ArchInstaller to install Arch Linux on a virtual m
 
 ---
 
-## 🎯 Prerequisites
+## Prerequisites
 
 ### Minimum Recommended Hardware
 - **CPU**: x86_64 with 2+ cores
@@ -20,7 +20,7 @@ This guide details how to use ArchInstaller to install Arch Linux on a virtual m
 
 ---
 
-## 📥 Step-by-Step Installation
+## Step-by-Step Installation
 
 ### Step 1: Boot into Arch Linux ISO
 
@@ -73,11 +73,11 @@ chmod +x archinstall.sh
 
 ---
 
-## ⚙️ Interactive Configuration Process
+## Interactive Configuration Process
 
 The installer will ask a series of questions. Let's detail each one:
 
-### 1️⃣ User Information
+### 1. User Information
 
 ```
 Please enter your full name (e.g., David Brown):
@@ -102,7 +102,7 @@ Computer name (hostname). Ex: `archlinux` or `my-pc`
 
 ---
 
-### 2️⃣ Installation Type
+### 2. Installation Type
 
 ```
 Please select type of installation:
@@ -120,7 +120,7 @@ Use arrows ↑↓ to navigate, Enter to confirm.
 
 ---
 
-### 3️⃣ AUR Helper (if not SERVER)
+### 3. AUR Helper (if not SERVER)
 
 ```
 Please select your desired AUR helper:
@@ -139,7 +139,7 @@ Please select your desired AUR helper:
 
 ---
 
-### 4️⃣ Desktop Environment (if not SERVER)
+### 4. Desktop Environment (if not SERVER)
 
 ```
 Please select your desired Desktop Environment:
@@ -163,11 +163,11 @@ Please select your desired Desktop Environment:
 
 ---
 
-### 5️⃣ Disk Selection
+### 5. Disk Selection
 
 ```
 ------------------------------------------------------------------------
-    ⚠️  THIS WILL FORMAT AND DELETE ALL DATA ON THE DISK!
+    THIS WILL FORMAT AND DELETE ALL DATA ON THE DISK!
     Please make sure you know what you are doing because
     after formatting your disk there is no way to get data back
 ------------------------------------------------------------------------
@@ -177,7 +177,7 @@ Select the disk to install on:
   /dev/sdb  |  100G
 ```
 
-**⚠️ WARNING**: The chosen disk will be COMPLETELY ERASED!
+WARNING: The chosen disk will be COMPLETELY ERASED!
 
 **In VMs**: Usually `/dev/sda` or `/dev/vda`
 **Physical**: Check size to choose correct disk
@@ -186,7 +186,7 @@ Use arrows to select, Enter to confirm.
 
 ---
 
-### 6️⃣ Filesystem
+### 6. Filesystem
 
 ```
 Please Select your file system for both boot and root
@@ -198,23 +198,23 @@ Please Select your file system for both boot and root
 
 **Choose**:
 
-- **ext4**: 
-  - ✅ Simple, fast, reliable
-  - ❌ No native snapshots
+- **ext4**:
+  - Simple, fast, reliable
+  - No native snapshots
   - **Use if**: You want simplicity
 
 - **btrfs**:
-  - ✅ Snapshots (incremental backups)
-  - ✅ Transparent compression (saves space)
-  - ✅ Failure recovery
-  - ❌ More complex
+  - Snapshots (incremental backups)
+  - Transparent compression (saves space)
+  - Failure recovery
+  - More complex
   - **Use if**: You want advanced features
 
 - **luks**:
-  - ✅ Full disk encryption
-  - ✅ Maximum security
-  - ❌ Needs password at boot
-  - ❌ Slightly lower performance
+  - Full disk encryption
+  - Maximum security
+  - Needs password at boot
+  - Slightly lower performance
   - **Use if**: Security is priority (laptops, sensitive data)
 
 **If choosing btrfs**:
@@ -237,7 +237,7 @@ Enter a STRONG password for encryption (different from user password).
 
 ---
 
-### 7️⃣ Timezone
+### 7. Timezone
 
 ```
 System detected your timezone to be 'America/New_York'
@@ -250,7 +250,7 @@ If incorrect, choose "No" and enter manually. Ex: `America/Chicago`, `Europe/Lon
 
 ---
 
-### 8️⃣ System Language (Locale)
+### 8. System Language (Locale)
 
 ```
 Please select your system language (locale) from the list below:
@@ -266,7 +266,7 @@ Please select your system language (locale) from the list below:
 
 ---
 
-### 9️⃣ Keyboard Layout
+### 9. Keyboard Layout
 
 ```
 Please select keyboard layout from this list:
@@ -286,7 +286,7 @@ Please select keyboard layout from this list:
 
 ---
 
-### 🔟 Configuration Review
+### 10. Configuration Review
 
 ```
 ------------------------------------------------------------------------
@@ -324,13 +324,13 @@ Do you want to redo any step? Select an option below, or press Enter to proceed:
 
 ---
 
-## 🚀 Automatic Installation
+## Automatic Installation
 
-After confirming, installation starts automatically. This can take **15 to 60 minutes** depending on internet and hardware.
+After confirming, installation starts automatically. The process duration will depend on your internet connection and hardware.
 
 ### What happens in each phase:
 
-#### PHASE 0: Pre-Installation (5-10 min)
+#### PHASE 0: Pre-Installation
 ```
 -------------------------------------------------------------------------
                     Formatting /dev/sda
@@ -346,7 +346,7 @@ After confirming, installation starts automatically. This can take **15 to 60 mi
 
 ---
 
-#### PHASE 1: System Setup (10-20 min)
+#### PHASE 1: System Setup
 ```
 -------------------------------------------------------------------------
                     SYSTEM READY FOR 1-setup.sh
@@ -362,7 +362,7 @@ After confirming, installation starts automatically. This can take **15 to 60 mi
 
 ---
 
-#### PHASE 2: User Installation (15-30 min)
+#### PHASE 2: User Installation
 ```
 -------------------------------------------------------------------------
                     SYSTEM READY FOR 2-user.sh
@@ -375,11 +375,11 @@ After confirming, installation starts automatically. This can take **15 to 60 mi
 
 **You'll see**: Many desktop packages being installed, AUR helper compilation
 
-⚠️ **This is the longest phase!**
+This is the longest phase!
 
 ---
 
-#### PHASE 3: Finalization (5-10 min)
+#### PHASE 3: Finalization
 ```
 -------------------------------------------------------------------------
                     SYSTEM READY FOR 3-post-setup.sh
@@ -412,7 +412,7 @@ When you see this message:
 
 ---
 
-## 🎉 First Boot into Installed System
+## First Boot into Installed System
 
 ### 1. Login Screen
 
@@ -436,7 +436,7 @@ You'll see the graphical login screen (SDDM, GDM, or LightDM).
 
 ---
 
-## 🔧 Recommended Post-Installation
+## Recommended Post-Installation
 
 ### Update System
 
@@ -493,7 +493,7 @@ systemctl status sddm             # Display manager (KDE)
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Problem: Boot directly to GRUB rescue
 
@@ -582,7 +582,7 @@ sudo snapper -c root create --description "test"
 
 ---
 
-## 📊 Installation Logs
+## Installation Logs
 
 All logs are in `/var/log/install.log`:
 
@@ -599,7 +599,7 @@ tail -n 50 /var/log/install.log
 
 ---
 
-## 🎓 Next Steps
+## Next Steps
 
 1. **Learn about Arch**: https://wiki.archlinux.org
 2. **Customize your desktop**: Themes, icons, wallpapers
@@ -612,4 +612,4 @@ tail -n 50 /var/log/install.log
 
 ---
 
-Enjoy your new Arch Linux system! 🎉
+Enjoy your new Arch Linux system!
