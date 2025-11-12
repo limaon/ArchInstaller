@@ -173,16 +173,46 @@ Please select your desired Desktop Environment:
 ------------------------------------------------------------------------
 
 Select the disk to install on:
-  /dev/sda  |  50G
+  /dev/sda  |  500G
   /dev/sdb  |  100G
+
+/dev/sda selected
+
+Disk space usage:
+  > Use 100% of the disk
+    Set custom percentage
 ```
 
-WARNING: The chosen disk will be COMPLETELY ERASED!
+**WARNING**: The chosen disk will be COMPLETELY ERASED!
 
 **In VMs**: Usually `/dev/sda` or `/dev/vda`
 **Physical**: Check size to choose correct disk
 
 Use arrows to select, Enter to confirm.
+
+**Disk Usage Percentage**:
+
+After selecting the disk, you can choose how much of the disk to use:
+
+- **Use 100% of the disk** (default): Uses all available space after boot partition
+- **Set custom percentage** (5-100%): Specify how much space to use
+
+**Example**:
+```
+Enter percentage to use (5-100): 50
+
+Preview:
+Total disk size: 500GB
+Will use: 250GB (50%)
+Remaining: 250GB (unused)
+
+Confirm this percentage? (y/n): y
+```
+
+**Note**: The percentage applies to **available space** after the boot partition (EFI: 1GB, BIOS Boot: 256MB). For example, on a 500GB disk with 50% selected and UEFI boot:
+- EFI partition: 1GB
+- ROOT partition: ~249GB (50% of 499GB available)
+- Remaining: ~250GB unused
 
 ---
 
@@ -299,6 +329,7 @@ INSTALL_TYPE=FULL
 AUR_HELPER=yay
 DESKTOP_ENV=kde
 DISK=/dev/sda
+DISK_USAGE_PERCENT=100
 FS=btrfs
 TIMEZONE=America/New_York
 LOCALE=en_US.UTF-8
@@ -309,13 +340,15 @@ Do you want to redo any step? Select an option below, or press Enter to proceed:
 2) Installation Type
 3) AUR Helper
 4) Desktop Environment
-5) Disk Selection
+5) Disk Selection and Usage Percentage
 6) File System
 7) Timezone
 8) System Language (Locale)
 9) Keyboard Layout
 ------------------------------------------------------------------------
 ```
+
+**Note**: If you selected SERVER installation type, the menu will only show relevant options (without AUR Helper and Desktop Environment).
 
 **Review EVERYTHING carefully!**
 

@@ -15,13 +15,14 @@
 
 **ArchInstaller** is an automated and interactive Arch Linux installer that transforms the complex manual installation process into a guided and simplified workflow. It installs a complete Arch Linux system with:
 
-- Automatic disk partitioning
-- Multiple filesystem support (ext4, btrfs, LUKS)
-- Automatic hardware detection (CPU, GPU, battery)
-- Complete desktop environment installation
-- Driver, microcode, and optimization configuration
-- Snapshot system (btrfs + Snapper)
-- Pre-applied themes and configurations
+- **Automatic disk partitioning** with custom usage percentage
+- **Multiple filesystem support** (ext4, btrfs, LUKS)
+- **Automatic hardware detection** (CPU, GPU, battery)
+- **Complete desktop environment installation**
+- **Intelligent package installation** (auto-detects pacman vs AUR)
+- **Driver, microcode, and optimization configuration**
+- **Snapshot system** (btrfs + Snapper)
+- **Pre-applied themes and configurations**
 
 ---
 
@@ -50,13 +51,14 @@ The installer will ask:
 
 1. **Full name, username, and password**
 2. **Installation type**: FULL / MINIMAL / SERVER
-3. **AUR Helper**: yay, paru, etc.
-4. **Desktop Environment**: KDE, GNOME, i3, etc.
+3. **AUR Helper**: yay, paru, etc. (if not SERVER)
+4. **Desktop Environment**: KDE, GNOME, i3, etc. (if not SERVER)
 5. **Installation disk** (will be formatted!)
-6. **Filesystem**: btrfs, ext4, or LUKS
-7. **Timezone** (auto-detected)
-8. **System language** (locale)
-9. **Keyboard layout**
+6. **Disk usage percentage** (5-100% of disk space)
+7. **Filesystem**: btrfs, ext4, or LUKS
+8. **Timezone** (auto-detected)
+9. **System language** (locale)
+10. **Keyboard layout**
 
 After reviewing the configuration, automatic installation begins!
 
@@ -197,12 +199,13 @@ INSTALL_TYPE=FULL
 AUR_HELPER=yay
 DESKTOP_ENV=kde
 DISK=/dev/sda
+DISK_USAGE_PERCENT=100
 FS=btrfs
 SUBVOLUMES=(@ @home @snapshots @var_log @var_cache)
 TIMEZONE=America/New_York
 LOCALE=en_US.UTF-8
 KEYMAP=us
-MOUNT_OPTION=defaults,noatime,compress=zstd,ssd,discard=async
+MOUNT_OPTION=defaults,noatime,compress=zstd,ssd,discard=async,commit=120
 ```
 
 This file is read by all subsequent scripts, ensuring consistency.
