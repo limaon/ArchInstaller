@@ -326,14 +326,40 @@ desktop_environment
 ```bash
 disk_select
 ```
-**Description**: Disk selection for installation.
+**Description**: Disk selection for installation with usage percentage.
 
 **Behavior**:
-- Lists disks with `lsblk`
+- Lists disks with `lsblk` (format: `/dev/sda  |  500G`)
 - Displays formatting warning
-- Detects SSD and sets mount options
+- Asks for disk usage percentage (5-100%)
+  - Option 1: Use 100% of the disk (default)
+  - Option 2: Set custom percentage
+- Shows preview of disk usage (total size, will use, remaining)
+- Validates percentage input (must be numeric, 5-100)
+- Detects SSD/HDD and sets mount options accordingly
 
-**Saves**: `DISK` and `MOUNT_OPTION` to setup.conf
+**Saves**: `DISK`, `DISK_USAGE_PERCENT`, and `MOUNT_OPTION` to setup.conf
+
+**Example**:
+```
+Select the disk to install on:
+  /dev/sda  |  500G
+
+/dev/sda selected
+
+Disk space usage:
+  > Use 100% of the disk
+    Set custom percentage
+
+Enter percentage to use (5-100): 50
+
+Preview:
+Total disk size: 500GB
+Will use: 250GB (50%)
+Remaining: 250GB (unused)
+
+Confirm this percentage? (y/n): y
+```
 
 ---
 
@@ -414,23 +440,36 @@ keymap
 ```bash
 show_configurations
 ```
-**Description**: Shows summary and allows redoing steps.
+**Description**: Shows summary and allows redoing steps with dynamic menu based on installation type.
 
 **Behavior**:
 - Displays `setup.conf` content
+- Dynamic menu based on `INSTALL_TYPE`:
+  - **If SERVER**: Hides AUR Helper and Desktop Environment options
+  - **If not SERVER**: Shows all options
 - Numbered menu to redo any step
 - Loops until user confirms (empty Enter)
+- Reloads `INSTALL_TYPE` after changes to update menu dynamically
 
-**Menu**:
-1. User info
-2. Install type
-3. AUR helper
-4. Desktop environment
-5. Disk
-6. Filesystem
+**Menu (FULL/MINIMAL)**:
+1. Full Name, Username and Password
+2. Installation Type
+3. AUR Helper
+4. Desktop Environment
+5. Disk Selection and Usage Percentage
+6. File System
 7. Timezone
-8. Locale
-9. Keymap
+8. System Language (Locale)
+9. Keyboard Layout
+
+**Menu (SERVER)**:
+1. Full Name, Username and Password
+2. Installation Type
+3. Disk Selection and Usage Percentage
+4. File System
+5. Timezone
+6. System Language (Locale)
+7. Keyboard Layout
 
 ---
 
@@ -540,11 +579,26 @@ aur_helper_install
 ```bash
 desktop_environment_install
 ```
-**Description**: Installs desktop environment packages.
+**Description**: Installs desktop environment packages with intelligent package source detection.
 
 **Source**: `packages/desktop-environments/$DESKTOP_ENV.json`
 
-**Filters**: Combines minimal + full, pacman + aur
+**Filters**: Combines minimal + full, pacman + aur based on `INSTALL_TYPE` and `AUR_HELPER`
+
+**Installation Logic**:
+1. **Check if already installed**: Skips if package is already installed
+2. **Detect package source**:
+   - Uses `pacman -Si <package>` to check if in official repository
+   - If YES → installs with `sudo pacman -S` (official repo)
+   - If NO → installs with `$AUR_HELPER -S` (AUR, if AUR helper configured)
+3. **Error handling**: Provides clear error messages if installation fails
+4. **Warnings**: Warns if package not found and no AUR helper configured
+
+**Benefits**:
+- Official packages installed with proper permissions (sudo)
+- AUR packages installed via AUR helper
+- No silent failures
+- Handles both official and AUR packages correctly
 
 ---
 
@@ -552,11 +606,17 @@ desktop_environment_install
 ```bash
 btrfs_install
 ```
-**Description**: Installs btrfs tools.
+**Description**: Installs btrfs tools with intelligent package source detection.
 
 **Source**: `packages/btrfs.json`
 
 **Condition**: Only if `FS=btrfs`
+
+**Installation Logic**: Same as `desktop_environment_install()`
+1. Check if already installed
+2. Detect package source (pacman vs AUR)
+3. Install with appropriate method
+4. Handle errors and warnings
 
 **Packages**: snapper, snap-pac, grub-btrfs, etc.
 
@@ -615,15 +675,32 @@ mirrorlist_update
 ```bash
 format_disk
 ```
-**Description**: Partitions disk with GPT.
+**Description**: Partitions disk with GPT using disk usage percentage.
+
+**Parameters**: Reads `DISK_USAGE_PERCENT` from setup.conf (defaults to 100)
 
 **UEFI Layout**:
 - Partition 1: 1GB EFI (ef00)
-- Partition 2: Rest ROOT (8300)
+- Partition 2: Percentage of available space ROOT (8300)
+  - If 100%: Uses all remaining space
+  - If <100%: Calculates size based on percentage of available space (after EFI)
 
 **BIOS Layout**:
 - Partition 1: 256MB BIOS boot (ef02)
-- Partition 2: Rest ROOT (8300)
+- Partition 2: Percentage of available space ROOT (8300)
+  - If 100%: Uses all remaining space
+  - If <100%: Calculates size based on percentage of available space (after BIOS Boot)
+
+**Calculation**:
+```bash
+# For UEFI:
+available_bytes = disk_size_bytes - efi_size_bytes (1GB)
+root_size_mb = (available_bytes * DISK_USAGE_PERCENT) / 100 / 1024 / 1024
+
+# For BIOS:
+available_bytes = disk_size_bytes - bios_boot_size_bytes (256MB)
+root_size_mb = (available_bytes * DISK_USAGE_PERCENT) / 100 / 1024 / 1024
+```
 
 ---
 
@@ -748,14 +825,28 @@ grub_config
 ```bash
 display_manager
 ```
-**Description**: Enables and themes display manager.
+**Description**: Enables and themes display manager with automatic installation and configuration.
 
 **Mapping**:
 - KDE → SDDM (Nordic theme if FULL)
 - GNOME → GDM
 - LXDE → LXDM
-- Openbox/Awesome/i3 → LightDM
+- Openbox/Awesome/i3 → LightDM (with auto-installation)
 - Others → LightDM (fallback)
+
+**LightDM Handling** (for i3-wm, openbox, awesome):
+1. **Check if installed**: If not installed, installs LightDM and greeter
+2. **Create config directory**: Creates `/etc/lightdm` if it doesn't exist
+3. **Create config files**: Creates `lightdm.conf` if it doesn't exist
+4. **Check service exists**: Only enables service if it exists
+5. **Conditional theming**: Applies advanced themes only if `INSTALL_TYPE == FULL`
+6. **Basic configuration**: Always applies basic configuration
+
+**Benefits**:
+- Prevents errors when LightDM not yet installed
+- Creates necessary config files automatically
+- Handles missing services gracefully
+- Conditional theming based on installation type
 
 ---
 

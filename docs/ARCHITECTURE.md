@@ -142,7 +142,7 @@ sequence() {
 │ • install_type()           → FULL/MINIMAL/SERVER        │
 │ • aur_helper()             → AUR helper selection       │
 │ • desktop_environment()    → Reads available JSONs      │
-│ • disk_select()            → Selects disk               │
+│ • disk_select()            → Selects disk + percentage  │
 │ • filesystem()             → btrfs/ext4/luks            │
 │ • set_btrfs()              → Defines subvolumes         │
 │ • timezone()               → Detects and confirms       │
@@ -218,6 +218,22 @@ elif grep -E "Intel.*Graphics" <<<"${gpu_type}"; then
 fi
 ```
 
+**Intelligent Package Installation**:
+```bash
+# For each package:
+1. Check if already installed (skip if yes)
+2. Check if in official repo: pacman -Si <package>
+   - If YES → use sudo pacman -S (official repo)
+   - If NO → use AUR helper (if configured)
+3. Provide warnings if package not found and no AUR helper
+```
+
+This ensures:
+- Official packages installed with proper permissions (sudo)
+- AUR packages installed via AUR helper
+- No silent failures
+- Clear error messages
+
 ---
 
 ### 5. system-config.sh
@@ -246,6 +262,9 @@ fi
 │ BOOTLOADER:                                             │
 │ • grub_config()            → Configures GRUB           │
 │ • display_manager()        → SDDM/GDM/LightDM + themes │
+│                           → Auto-installs LightDM if missing │
+│                           → Creates config files if needed │
+│                           → Conditional theming (FULL only) │
 │                                                         │
 │ ADVANCED:                                               │
 │ • snapper_config()         → Btrfs snapshots           │
@@ -261,17 +280,24 @@ fi
 UEFI:
 ┌─────────────┬──────────────────────────────────────┐
 │ EFIBOOT     │ ROOT                                 │
-│ 1GB (EF00)  │ Rest of disk (8300)                  │
+│ 1GB (EF00)  │ Percentage of available (8300)       │
 │ FAT32       │ ext4/btrfs/LUKS                      │
 └─────────────┴──────────────────────────────────────┘
 
 BIOS:
 ┌─────────────┬──────────────────────────────────────┐
 │ BIOSBOOT    │ ROOT                                 │
-│ 256MB(EF02) │ Rest of disk (8300)                  │
+│ 256MB(EF02) │ Percentage of available (8300)       │
 │ (no FS)     │ ext4/btrfs/LUKS                      │
 └─────────────┴──────────────────────────────────────┘
 ```
+
+**Disk Usage Percentage**:
+- User can specify percentage (5-100%) of disk to use
+- Percentage applies to **available space** after boot partition
+- If 100%: Uses all remaining space (default)
+- If <100%: Calculates size based on percentage of available space
+- Example: 500GB disk, 50% selected, 1GB EFI → ~249GB ROOT partition
 
 **Btrfs Subvolumes**:
 ```
@@ -310,9 +336,10 @@ DESKTOP_ENV=kde            # kde, gnome, i3-wm, etc.
 
 # Disk
 DISK=/dev/sda
+DISK_USAGE_PERCENT=100     # 5-100% of available space
 FS=btrfs                   # btrfs, ext4 or luks
 SUBVOLUMES=(@ @home @snapshots ...)
-MOUNT_OPTION=defaults,noatime,compress=zstd,ssd,discard=async
+MOUNT_OPTION=defaults,noatime,compress=zstd,ssd,discard=async,commit=120
 
 # Localization
 TIMEZONE=America/New_York

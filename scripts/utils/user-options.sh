@@ -248,34 +248,80 @@ set_btrfs() {
 }
 
 
-# @description Detects and sets timezone.
+# @description Detects and sets timezone interactively from system timezones.
 # @noargs
 timezone() {
-    # Added this from arch wiki https://wiki.archlinux.org/title/System_time
-    time_zone="$(curl --fail https://ipapi.co/timezone)"
-    echo -ne "
-System detected your timezone to be '$time_zone' \n"
-    echo -ne "Is this correct?
-"
-    options=("Yes" "No")
-    select_option $? 1 "${options[@]}"
+    echo -ne "${BOLD}Timezone Selection${RESET}\n\n"
 
-    case "${options[$?]}" in
-    y | Y | yes | Yes | YES)
-        echo "${time_zone} set as timezone"
-        set_option TIMEZONE "$time_zone"
-        ;;
-    n | N | no | NO | No)
-        echo "Please enter your desired timezone e.g. Europe/London :"
-        read -r new_timezone
-        echo "${new_timezone} set as timezone"
-        set_option TIMEZONE "$new_timezone"
-        ;;
-    *)
-        echo "Wrong option. Try again"
-        timezone
-        ;;
-    esac
+    local detected_tz=""
+    if command -v curl &>/dev/null; then
+        detected_tz="$(curl --fail --max-time 3 https://ipapi.co/timezone 2>/dev/null || echo "")"
+    fi
+
+    if [[ -n "$detected_tz" ]] && [[ -f "/usr/share/zoneinfo/$detected_tz" ]]; then
+        echo -ne "System detected your timezone: ${BOLD}${detected_tz}${RESET}\n"
+        echo -ne "Select timezone selection method:\n\n"
+        local options=("Use detected timezone" "Select from list")
+        select_option ${#options[@]} 1 "${options[@]}"
+        local choice=$?
+
+        if [[ $choice -eq 0 ]]; then
+            echo -e "\nUsing detected timezone: ${detected_tz}"
+            set_option TIMEZONE "$detected_tz"
+            return 0
+        fi
+        echo ""
+    fi
+
+    # Build a flat list of ALL timezones
+    if [[ ! -d "/usr/share/zoneinfo" ]]; then
+        echo "Error: /usr/share/zoneinfo not found. Cannot list timezones."
+        echo "Please enter timezone manually (e.g., America/New_York):"
+        read -r manual_tz
+        if [[ -n "$manual_tz" ]]; then
+            set_option TIMEZONE "$manual_tz"
+            return 0
+        else
+            echo "Error: No timezone provided"
+            return 1
+        fi
+    fi
+
+    echo -ne "${BOLD}Select timezone:${RESET}\n\n"
+
+    local timezones=()
+    while IFS= read -r tz_path; do
+        local rel_tz="${tz_path#/usr/share/zoneinfo/}"
+        timezones+=("$rel_tz")
+    done < <(find /usr/share/zoneinfo -type f \
+                ! -name "*.tab" ! -name "*.list" ! -name "*.zi" ! -name "*.leap" \
+                | grep -v "/posix/" | grep -v "/right/" | sort)
+
+    if [[ ${#timezones[@]} -eq 0 ]]; then
+        echo "Error: No timezones found in /usr/share/zoneinfo"
+        echo "Please enter timezone manually (e.g., America/New_York):"
+        read -r manual_tz
+        if [[ -n "$manual_tz" ]]; then
+            set_option TIMEZONE "$manual_tz"
+            return 0
+        else
+            echo "Error: No timezone provided"
+            return 1
+        fi
+    fi
+
+    # Columns set to 3 for readability; adjust if needed
+    select_option_with_search ${#timezones[@]} 3 "${timezones[@]}"
+    local selected_tz_index=$?
+    local full_timezone="${timezones[$selected_tz_index]}"
+
+    if [[ ! -f "/usr/share/zoneinfo/$full_timezone" ]]; then
+        echo "Warning: Timezone file not found: /usr/share/zoneinfo/$full_timezone"
+        echo "Using timezone anyway: $full_timezone"
+    fi
+
+    echo -e "\nSelected timezone: ${full_timezone}"
+    set_option TIMEZONE "$full_timezone"
 }
 
 

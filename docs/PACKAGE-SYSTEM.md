@@ -299,23 +299,46 @@ Btrfs-specific tools (only installs if FS=btrfs).
 ### Installation Logic
 
 ```bash
-# Example from software-install.sh -> base_install()
+# Example from software-install.sh -> desktop_environment_install()
 
-# Define filters based on INSTALL_TYPE
+# Define filters based on INSTALL_TYPE and AUR_HELPER
 MINIMAL_PACMAN_FILTER=".minimal.pacman[].package"
-FULL_PACMAN_FILTER=""
-
-if [[ "$INSTALL_TYPE" == "FULL" ]]; then
-    FULL_PACMAN_FILTER=", .full.pacman[].package"
-fi
+MINIMAL_AUR_FILTER=$([ "$AUR_HELPER" != NONE ] && echo ", .minimal.aur[].package" || echo "")
+FULL_PACMAN_FILTER=$([ "$INSTALL_TYPE" == "FULL" ] && echo ", .full.pacman[].package" || echo "")
+FULL_AUR_FILTER=$([ "$AUR_HELPER" != NONE ] && [ "$INSTALL_TYPE" == "FULL" ] && echo ", .full.aur[].package" || echo "")
 
 # Combine filters and extract packages
-jq --raw-output "${MINIMAL_PACMAN_FILTER}${FULL_PACMAN_FILTER}" \
+jq --raw-output "${MINIMAL_PACMAN_FILTER}${MINIMAL_AUR_FILTER}${FULL_PACMAN_FILTER}${FULL_AUR_FILTER}" \
     "$PACKAGE_LIST_FILE" | while read -r package; do
-    echo "Installing $package..."
-    pacman -S "$package" --noconfirm --needed --color=always
+    # Skip if already installed
+    if pacman -Qi "$package" &>/dev/null; then
+        echo "Package $package is already installed, skipping."
+        continue
+    fi
+
+    # Determine if package is from official repo or AUR
+    if pacman -Si "$package" &>/dev/null; then
+        # Official repository
+        echo "Installing $package from official repository..."
+        sudo pacman -S "$package" --noconfirm --needed --color=always
+    else
+        # AUR package
+        if [[ "$AUR_HELPER" != NONE ]]; then
+            echo "Installing $package from AUR via $AUR_HELPER..."
+            "$AUR_HELPER" -S "$package" --noconfirm --needed --color=always
+        else
+            echo "Warning: Package $package not found in official repositories and no AUR helper configured. Skipping."
+        fi
+    fi
 done
 ```
+
+**Key Features**:
+- **Intelligent source detection**: Automatically detects if package is from official repo or AUR
+- **Proper permissions**: Official packages use `sudo pacman -S`, AUR packages use AUR helper
+- **Error handling**: Provides clear error messages if installation fails
+- **Skip installed**: Checks if package is already installed before attempting installation
+- **Warnings**: Warns if package not found and no AUR helper configured
 
 ### Common Queries
 
@@ -438,10 +461,12 @@ The installer will detect the new JSON automatically!
 └───────────────────┬─────────────────────────────────────┘
                     ↓
 ┌─────────────────────────────────────────────────────────┐
-│ 6. Installation loop                                    │
-│    for package in $(jq ...); do                         │
-│        pacman -S $package  or  $AUR_HELPER -S $package  │
-│    done                                                 │
+│ 6. For each package:                                    │
+│    a. Check if already installed (skip if yes)          │
+│    b. Detect source: pacman -Si $package                │
+│       - If YES → sudo pacman -S $package                │
+│       - If NO  → $AUR_HELPER -S $package                │
+│    c. Handle errors and warnings                        │
 └─────────────────────────────────────────────────────────┘
 ```
 

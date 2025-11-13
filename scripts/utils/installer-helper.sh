@@ -204,12 +204,19 @@ select_option() {
         IFS= read -rsn1 key 2>/dev/null >&2
         [[ $key == "" ]] && echo "enter"
         [[ $key == $'\x20' ]] && echo "space"
+        [[ $key == "/" ]] && echo "search"
+        [[ $key == $'\x7f' ]] && echo "backspace"  # Backspace
+        [[ $key == $'\x08' ]] && echo "backspace"  # Ctrl+H (backspace)
         [[ $key == "k" ]] && echo "up"
         [[ $key == "j" ]] && echo "down"
         [[ $key == "h" ]] && echo "left"
         [[ $key == "l" ]] && echo "right"
         [[ $key == "a" ]] && echo "all"
         [[ $key == "n" ]] && echo "none"
+        # If it's a printable (non-control) character, return the character
+        if [[ "$key" =~ [[:print:]] ]] && [[ "$key" != "/" ]] && [[ "$key" != " " ]]; then
+            echo "char:$key"
+        fi
         if [[ $key == $'\x1b' ]]; then
             read -rsn2 key
             [[ $key == "[A" || $key == "k" ]] && echo "up"
@@ -301,6 +308,199 @@ select_option() {
     cursor_blink_on
 
     return $((active_col + active_row * colmax))
+}
+
+
+# @description Interactive menu with search functionality (press "/" to search)
+# @arg $1 number Number of options or return code (can be ignored)
+# @arg $2 number Number of columns (colmax)
+# @arg $3+ array Options to select from
+# @return Selected index (via $?)
+# @example
+#   options=("New_York" "Los_Angeles" "Chicago")
+#   select_option_with_search ${#options[@]} 2 "${options[@]}"
+#   selected_index=$?
+#   echo "Selected: ${options[$selected_index]}"
+select_option_with_search() {
+    # Helpers for terminal print control and key input
+    ESC=$(printf "\033")
+    cursor_blink_on() { printf '%s[?25h' "$ESC"; }
+    cursor_blink_off() { printf '%s[?25l' "$ESC"; }
+    cursor_to() { printf '%s[%s;%sH' "$ESC" "$1" "${2:-1}"; }
+    clear_line() { printf '%s[K' "$ESC"; }
+    print_line() { printf '  %s' "$1"; }
+    print_line_selected() { printf ' %s[7m %s %s[27m' "$ESC" "$1" "$ESC"; }
+    get_cursor_row() { IFS=';' read -rsdR -p $'\E[6n' ROW COL; echo "${ROW#*[}"; }
+    get_cursor_col() { IFS=';' read -rsdR -p $'\E[6n' ROW COL; echo "${COL#*[}"; }
+
+    key_input_search() {
+        local key
+        IFS= read -rsn1 key 2>/dev/null >&2
+
+        if [[ $key == "" ]]; then
+            echo "enter"
+            return
+        fi
+
+        if [[ $key == "/" ]]; then
+            echo "search"
+            return
+        fi
+
+        if [[ $key == $'\x7f' || $key == $'\x08' ]]; then
+            echo "backspace"
+            return
+        fi
+
+        if [[ $key == "k" ]]; then
+            echo "up"
+            return
+        fi
+
+        if [[ $key == "j" ]]; then
+            echo "down"
+            return
+        fi
+
+        if [[ $key == $'\x1b' ]]; then
+            read -rsn2 key 2>/dev/null
+            if [[ $key == "[A" ]]; then
+                echo "up"
+                return
+            fi
+            if [[ $key == "[B" ]]; then
+                echo "down"
+                return
+            fi
+            # If ESC sequence not recognized, ignore
+            return
+        fi
+
+        # Printable character (not already handled)
+        if [[ "$key" =~ [[:print:]] ]] && [[ "$key" != "/" ]]; then
+            echo "char:$key"
+            return
+        fi
+    }
+
+    # Extract options
+    local local_options=("${@:3}")
+    local filtered_list=("${local_options[@]}")
+    local search_query=""
+    local search_mode=false
+
+    # Page setup
+    local lines cols
+    lines=$(tput lines)
+    cols=$(tput cols)
+    # Show at most 10 items; adapt down if terminal is small
+    local viewport_rows=10
+    local avail=$((lines - 6))
+    [[ $avail -lt $viewport_rows ]] && viewport_rows=$avail
+    [[ $viewport_rows -lt 3 ]] && viewport_rows=3
+
+    # Reserve viewport
+    for ((i=0;i<viewport_rows;i++)); do printf '\n'; done
+    local lastrow base_row
+    lastrow=$(get_cursor_row)
+    base_row=$((lastrow - viewport_rows))
+    local prompt_row=$((lastrow + 1))
+
+    trap "cursor_blink_on; stty echo; printf '\n'; exit" 2
+    cursor_blink_off
+
+    local active_index=0
+    local top_index=0
+
+    filter_apply() {
+        if [[ -z "$search_query" ]]; then
+            filtered_list=("${local_options[@]}")
+        else
+            local q="${search_query,,}"
+            filtered_list=()
+            for o in "${local_options[@]}"; do
+                local lo="${o,,}"
+                [[ "$lo" == *"$q"* ]] && filtered_list+=("$o")
+            done
+        fi
+        (( active_index=0, top_index=0 ))
+    }
+
+    draw() {
+        local total=${#filtered_list[@]}
+        local last=$((top_index + viewport_rows - 1))
+        [[ $last -ge $total ]] && last=$((total-1))
+        local row=0
+        for ((i=top_index; i<=last; i++)); do
+            cursor_to $((base_row + row)) 1; clear_line
+            if [[ $i -eq $active_index ]]; then
+                print_line_selected "${filtered_list[$i]}"
+            else
+                print_line "${filtered_list[$i]}"
+            fi
+            ((row++))
+        done
+        # Clear remaining rows if list shorter than viewport
+        for ((; row<viewport_rows; row++)); do
+            cursor_to $((base_row + row)) 1; clear_line
+        done
+        cursor_to $prompt_row 1; clear_line
+        if $search_mode; then
+            printf "Search: %s" "$search_query"
+        else
+            printf "Press '/' to search"
+        fi
+    }
+
+    draw
+    while true; do
+        local input=$(key_input_search)
+        case "$input" in
+            enter) break ;;
+            search)
+                search_mode=true
+                search_query=""
+                draw
+                cursor_to $prompt_row $((9 + ${#search_query}))
+                ;;
+            backspace)
+                if $search_mode; then
+                    [[ ${#search_query} -gt 0 ]] && search_query="${search_query:0:${#search_query}-1}" || search_mode=false
+                    filter_apply; draw
+                fi
+                ;;
+            char:*)
+                if $search_mode; then
+                    local ch="${input#char:}"
+                    search_query+="$ch"
+                    filter_apply
+                    draw
+                fi
+                ;;
+            up)
+                ((active_index--))
+                [[ $active_index -lt 0 ]] && active_index=0
+                [[ $active_index -lt $top_index ]] && top_index=$active_index
+                draw
+                ;;
+            down)
+                ((active_index++))
+                local total=${#filtered_list[@]}
+                [[ $active_index -ge $total ]] && active_index=$((total-1))
+                while [[ $active_index -ge $((top_index + viewport_rows)) ]]; do ((top_index++)); done
+                draw
+                ;;
+        esac
+    done
+
+    # Return selected original index
+    local selected_item="${filtered_list[$active_index]}"
+    local original_index=0
+    for i in "${!local_options[@]}"; do
+        if [[ "${local_options[$i]}" == "$selected_item" ]]; then original_index=$i; break; fi
+    done
+    cursor_blink_on
+    return $original_index
 }
 
 
