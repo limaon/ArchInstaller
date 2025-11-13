@@ -336,17 +336,51 @@ select_option_with_search() {
     key_input_search() {
         local key
         IFS= read -rsn1 key 2>/dev/null >&2
-        [[ $key == "" ]] && echo "enter"
-        [[ $key == "/" ]] && echo "search"
-        [[ $key == $'\x7f' || $key == $'\x08' ]] && echo "backspace"
-        [[ $key == "k" ]] && echo "up"
-        [[ $key == "j" ]] && echo "down"
+
+        if [[ $key == "" ]]; then
+            echo "enter"
+            return
+        fi
+
+        if [[ $key == "/" ]]; then
+            echo "search"
+            return
+        fi
+
+        if [[ $key == $'\x7f' || $key == $'\x08' ]]; then
+            echo "backspace"
+            return
+        fi
+
+        if [[ $key == "k" ]]; then
+            echo "up"
+            return
+        fi
+
+        if [[ $key == "j" ]]; then
+            echo "down"
+            return
+        fi
+
         if [[ $key == $'\x1b' ]]; then
             read -rsn2 key 2>/dev/null
-            [[ $key == "[A" ]] && echo "up"
-            [[ $key == "[B" ]] && echo "down"
+            if [[ $key == "[A" ]]; then
+                echo "up"
+                return
+            fi
+            if [[ $key == "[B" ]]; then
+                echo "down"
+                return
+            fi
+            # If ESC sequence not recognized, ignore
+            return
         fi
-        [[ "$key" =~ [[:print:]] ]] && [[ "$key" != "/" ]] && echo "char:$key"
+
+        # Printable character (not already handled)
+        if [[ "$key" =~ [[:print:]] ]] && [[ "$key" != "/" ]]; then
+            echo "char:$key"
+            return
+        fi
     }
 
     # Extract options
@@ -423,7 +457,12 @@ select_option_with_search() {
         local input=$(key_input_search)
         case "$input" in
             enter) break ;;
-            search) search_mode=true; search_query=""; cursor_to $prompt_row $((9 + ${#search_query}));;
+            search)
+                search_mode=true
+                search_query=""
+                draw
+                cursor_to $prompt_row $((9 + ${#search_query}))
+                ;;
             backspace)
                 if $search_mode; then
                     [[ ${#search_query} -gt 0 ]] && search_query="${search_query:0:${#search_query}-1}" || search_mode=false
