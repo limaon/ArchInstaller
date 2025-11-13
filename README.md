@@ -1,43 +1,110 @@
 # ArchLinux Installer Script
 [![GitHub Super-Linter](https://github.com/limaon/ArchInstaller/workflows/Lint%20Code%20Base/badge.svg)](https://github.com/marketplace/actions/super-linter)
 
-This README outlines the process for installing and configuring a fully-functional Arch Linux desktop system. It includes installing a desktop environment, all necessary support packages for networking, Bluetooth, audio, printing and more. Additionally, it covers setting up preferred applications and utilities. The shell scripts in this repository allow the entire installation and configuration process to be automated. Users can run a single script to deploy an Arch system with their chosen desktop, packages and programs pre-installed and ready to use.
+An automated and interactive Arch Linux installer that transforms the complex manual installation process into a guided workflow. Install a complete Arch Linux system with desktop environment, drivers, optimizations, and configurations pre-applied.
+
+## Features
+
+- **Intelligent Hardware Detection**: Automatically detects CPU, GPU, RAM, storage type (SSD/HDD), and battery
+- **Adaptive Swap Configuration**: Automatically chooses optimal swap strategy (ZRAM/swap file) based on RAM, storage type, and installation profile
+- **Interactive Timezone Selection**: Automatic detection with searchable menu (press `/` to search)
+- **Custom Disk Usage**: Choose percentage of disk to use (5-100%) instead of using entire disk
+- **Multiple Filesystems**: Support for ext4, btrfs (with snapshots), and LUKS encryption
+- **Desktop Environments**: KDE, GNOME, XFCE, Cinnamon, i3-wm, Awesome, Openbox, Budgie, Deepin, LXDE, MATE
+- **Installation Profiles**: FULL (complete desktop), MINIMAL (basic desktop), SERVER (CLI only)
+- **Automatic SSH Setup**: SSH server configured and enabled for remote access
+- **Post-Installation Verification**: Automatic verification script to check installation success
+- **Complete Logging**: All output logged to `/var/log/install.log` for troubleshooting
 
 ---
-## Create Arch ISO or Use Image
+## Prerequisites
 
-Download ArchISO from <https://archlinux.org/download/> and put on a USB drive with [Etcher](https://www.balena.io/etcher/), [Ventoy](https://www.ventoy.net/en/index.html), or [Rufus](https://rufus.ie/en/)
+- Arch Linux ISO downloaded from <https://archlinux.org/download/>
+- USB drive with ISO written using [Etcher](https://www.balena.io/etcher/), [Ventoy](https://www.ventoy.net/en/index.html), or [Rufus](https://rufus.ie/en/)
+- Internet connection (required for package downloads)
 
+## Quick Start
 
-- New single command quick launch
+### Installation
 
+1. **Boot Arch ISO** and connect to internet
+2. **Run installer**:
+   ```bash
+   # Quick method (single command)
+   bash <(curl -L tinyurl.com/4b3jcbpd)
+
+   # Or manual method
+   pacman -Sy git
+   git clone --depth=1 https://github.com/limaon/ArchInstaller.git
+   cd ArchInstaller
+   ./archinstall.sh
+   ```
+
+3. **Follow interactive prompts**:
+   - User information (name, username, password)
+   - Installation type (FULL/MINIMAL/SERVER)
+   - Desktop environment (if not SERVER)
+   - Disk selection and usage percentage
+   - Filesystem choice
+   - Timezone (auto-detected with searchable menu)
+   - Locale and keyboard layout
+
+4. **Review configuration** and confirm installation
+
+5. **Reboot** when installation completes
+
+### After Installation
+
+**Verify installation success**:
+```bash
+# Run verification script (as your user)
+~/.archinstaller/verify-installation.sh
+
+# Or connect via SSH (if remote access needed)
+ssh your-username@server-ip
+~/.archinstaller/verify-installation.sh
 ```
-bash <(curl -L tinyurl.com/4b3jcbpd)
-```
 
+**Files available in `~/.archinstaller/`**:
+- `install.log` - Complete installation log
+- `verify-installation.sh` - Verification script
+- `setup.conf` - Installation configuration (password removed)
+- `fix-swap.sh` - Swap fix script (if needed)
 
-## Boot Arch ISO
+## Documentation
 
-From initial Prompt type the following commands:
-
-```
-pacman -Sy git
-git clone --depth=1 https://github.com/limaon/ArchInstaller.git
-cd ArchInstaller
-./archinstall.sh
-```
-
-### System Description
-This is completely automated arch install. It includes prompts to select your desired desktop environment, window manager, AUR helper, and whether to do a full or minimal install. The KDE desktop environment on arch includes all the packages I use on a daily basis, as well as some customizations.
+- **[Complete Documentation](docs/README.md)** - Overview and index
+- **[User Guide](docs/USER-GUIDE.md)** - Step-by-step installation guide
+- **[Architecture](docs/ARCHITECTURE.md)** - System architecture details
+- **[Functions Reference](docs/FUNCTIONS-REFERENCE.md)** - Complete function documentation
+- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and solutions
+- **[Package System](docs/PACKAGE-SYSTEM.md)** - JSON package management
 
 ## Troubleshooting
 
-__[Arch Linux RickEllis Installation Guide](https://github.com/rickellis/Arch-Linux-Install-Guide)__
+### Installation Logs
 
-__[Arch Linux Wiki Installation Guide](https://wiki.archlinux.org/title/Installation_guide)__
+All installation output is logged to `/var/log/install.log` and copied to `~/.archinstaller/install.log` for easy access after reboot.
 
-The main script will generate .log files for every script that is run as part of the installation process. These log files contain the terminal output so you can review any warnings or errors that occurred during installation and aid in troubleshooting.
-### No Wifi
+### Quick Checks
+
+```bash
+# Check for errors in log
+grep -i error /var/log/install.log
+
+# Check failed services
+systemctl --failed
+
+# Check swap status
+swapon --show
+free -h
+
+# Check network
+ip addr show
+systemctl status NetworkManager
+```
+
+### No WiFi
 
 You can check if the WiFi is blocked by running `rfkill list`.
 If it says **Soft blocked: yes**, then run `rfkill unblock wifi`
@@ -56,12 +123,33 @@ After unblocking the WiFi, you can connect to it. Go through these 5 steps:
 
 ## Reporting Issues
 
-An issue is easier to resolve if it contains a few important pieces of information.
-1. Chosen configuration from /configs/setup.conf (DONT INCLUDE PASSWORDS)
-1. Errors seen in .log files
-1. What commit/branch you used
-1. Where you were installing (VMWare, Virtualbox, Virt-Manager, Baremetal, etc)
-    1. If a VM, what was the configuration used.
+When reporting issues, please include:
+
+1. **Configuration** (from `~/.archinstaller/setup.conf` - **DO NOT INCLUDE PASSWORDS**):
+   ```bash
+   cat ~/.archinstaller/setup.conf | grep -v PASSWORD
+   ```
+
+2. **Installation log** (relevant error sections):
+   ```bash
+   grep -A 10 -B 10 "ERROR_MESSAGE" ~/.archinstaller/install.log
+   ```
+
+3. **Verification script output**:
+   ```bash
+   ~/.archinstaller/verify-installation.sh
+   ```
+
+4. **System information**:
+   - Git commit/branch used
+   - Installation environment (VMWare, VirtualBox, QEMU/KVM, Baremetal)
+   - If VM: RAM, CPU cores, disk size
+   - Hardware specs (if relevant)
+
+5. **Error details**:
+   - What step failed
+   - Error messages
+   - Screenshots (if applicable)
 
 ## Credits
 
