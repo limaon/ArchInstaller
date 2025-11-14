@@ -9,7 +9,9 @@
 
 # settings-header General Settings
 # @setting CONFIG_FILE string[$CONFIGS_DIR/setup.conf] Location of setup.conf to be used by set_option and all subsequent scripts.
-[ -f "$CONFIG_FILE" ] || touch -f "$CONFIG_FILE" # crete $CONFIG_FILE if it doesn't exist
+# Ensure config directory exists before creating file
+[[ -d "$CONFIGS_DIR" ]] || mkdir -p "$CONFIGS_DIR"
+[ -f "$CONFIG_FILE" ] || touch "$CONFIG_FILE" # create $CONFIG_FILE if it doesn't exist
 
 
 
