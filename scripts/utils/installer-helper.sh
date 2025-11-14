@@ -166,7 +166,15 @@ set_option() {
     local key="$1"
     local value="$2"
 
-    grep -Eq "^${key}.*" "$CONFIG_FILE" && sed -i "/^${key}.*/d" "$CONFIG_FILE"
+    # Ensure config directory exists
+    local config_dir=$(dirname "$CONFIG_FILE")
+    [[ -d "$config_dir" ]] || mkdir -p "$config_dir"
+
+    # Ensure config file exists
+    [[ -f "$CONFIG_FILE" ]] || touch "$CONFIG_FILE"
+
+    # Remove existing key if present (suppress errors if grep fails)
+    grep -Eq "^${key}.*" "$CONFIG_FILE" 2>/dev/null && sed -i "/^${key}.*/d" "$CONFIG_FILE"
 
     if [[ "$key" == "REAL_NAME" && "$value" =~ \  ]]; then
         echo "${key}=\"${value}\"" >>"$CONFIG_FILE"
