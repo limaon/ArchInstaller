@@ -182,6 +182,223 @@ microcode_install() {
 }
 
 
+# @description Detect if running in virtual machine
+# @noargs
+# @return 0 if VM detected, 1 otherwise
+detect_vm() {
+    # Check DMI product name
+    if [[ -f /sys/class/dmi/id/product_name ]]; then
+        local product_name=$(cat /sys/class/dmi/id/product_name 2>/dev/null)
+        case "$product_name" in
+            *VirtualBox*|*VMware*|*QEMU*|*KVM*|*Bochs*)
+                return 0
+                ;;
+        esac
+    fi
+
+    # Check lspci for virtual graphics
+    if lspci | grep -iE "VirtualBox|VMware|QEMU|Virtio" &>/dev/null; then
+        return 0
+    fi
+
+    return 1
+}
+
+# @description Detect GPU type from lspci
+# @noargs
+# @stdout GPU type: nvidia, amd, intel, unknown
+detect_gpu() {
+    local gpu_info=$(lspci | grep -iE "VGA|3D|Display" 2>/dev/null)
+
+    if echo "$gpu_info" | grep -iE "NVIDIA|GeForce" &>/dev/null; then
+        echo "nvidia"
+    elif echo "$gpu_info" | grep -iE "Radeon|AMD|ATI" &>/dev/null; then
+        echo "amd"
+    elif echo "$gpu_info" | grep -iE "Intel.*Graphics|Integrated Graphics Controller" &>/dev/null; then
+        echo "intel"
+    else
+        echo "unknown"
+    fi
+}
+
+# @description Detect hybrid graphics (NVIDIA + Intel)
+# @noargs
+# @return 0 if hybrid detected, 1 otherwise
+detect_hybrid_graphics() {
+    local gpu_info=$(lspci | grep -iE "VGA|3D|Display" 2>/dev/null)
+
+    if echo "$gpu_info" | grep -iE "NVIDIA|GeForce" &>/dev/null && \
+       echo "$gpu_info" | grep -iE "Intel.*Graphics|Integrated Graphics Controller" &>/dev/null; then
+        return 0
+    fi
+
+    return 1
+}
+
+# @description Check if NVIDIA GPU supports open-dkms (Turing+)
+# @noargs
+# @return 0 if supported, 1 otherwise
+nvidia_supports_open_dkms() {
+    local nvidia_model=$(lspci | grep -iE "NVIDIA|GeForce" | head -1)
+
+    # RTX 20xx, 30xx, 40xx, GTX 16xx, GTX 20xx series
+    if echo "$nvidia_model" | grep -iE "RTX|GTX 16|GTX 20|GTX 30|GTX 40" &>/dev/null; then
+        return 0
+    fi
+
+    return 1
+}
+
+# @description Get NVIDIA driver choice from user
+# @noargs
+# @stdout Driver type: proprietary, open-dkms, nouveau
+get_nvidia_driver_choice() {
+    local supports_open=false
+    nvidia_supports_open_dkms && supports_open=true
+
+    echo -ne "\nNVIDIA GPU detected. Select driver type:\n"
+
+    if [[ "$supports_open" == true ]]; then
+        options=(
+            "Proprietary (nvidia-dkms) - Best performance, closed-source"
+            "Open-source Kernel (nvidia-open-dkms) - Open kernel module, good performance"
+            "Open-source (nouveau) - Free software, limited performance"
+        )
+    else
+        options=(
+            "Proprietary (nvidia-dkms) - Best performance, closed-source"
+            "Open-source (nouveau) - Free software, limited performance"
+        )
+    fi
+
+    select_option ${#options[@]} 1 "${options[@]}"
+    local choice=$?
+
+    if [[ "$supports_open" == true ]]; then
+        case $choice in
+            0) echo "proprietary" ;;
+            1) echo "open-dkms" ;;
+            2) echo "nouveau" ;;
+            *) echo "proprietary" ;;
+        esac
+    else
+        case $choice in
+            0) echo "proprietary" ;;
+            1) echo "nouveau" ;;
+            *) echo "proprietary" ;;
+        esac
+    fi
+}
+
+# @description Install package intelligently (check if installed, verify exists)
+# @arg $1 Package name
+install_package_intelligent() {
+    local package="$1"
+
+    # Check if already installed
+    if pacman -Qi "$package" &>/dev/null; then
+        echo "Package $package is already installed, skipping."
+        return 0
+    fi
+
+    # Check if package exists in official repositories
+    if pacman -Si "$package" &>/dev/null; then
+        echo "Installing $package from official repository..."
+        if ! pacman -S "$package" --noconfirm --needed --color=always; then
+            echo "Error: Failed to install $package via pacman"
+            return 1
+        fi
+        return 0
+    else
+        echo "Warning: Package $package not found in repositories"
+        return 1
+    fi
+}
+
+# @description Install GPU drivers from JSON file
+# @arg $1 GPU type (vm, nvidia, amd, intel, hybrid, fallback)
+# @arg $2 Driver variant (proprietary, open-dkms, nouveau) or "" for simple types
+# @arg $3 NVIDIA driver type (if hybrid, e.g., proprietary)
+install_gpu_from_json() {
+    local gpu_type="$1"
+    local driver_variant="${2:-}"
+    local nvidia_type="${3:-}"
+
+    local json_file="$HOME/archinstaller/packages/gpu-drivers.json"
+
+    if [[ ! -f "$json_file" ]]; then
+        echo "Error: GPU drivers JSON file not found at $json_file"
+        return 1
+    fi
+
+    # Build JQ filter based on GPU type and variant
+    local jq_filter=""
+    local post_install_filter=""
+
+    if [[ "$gpu_type" == "hybrid" ]]; then
+        # Hybrid: .hybrid.nvidia-intel.proprietary.pacman[].package
+        jq_filter=".hybrid.nvidia-intel.${nvidia_type}.pacman[].package"
+        post_install_filter=".hybrid.nvidia-intel.${nvidia_type}.post_install[]?"
+    elif [[ "$gpu_type" == "nvidia" ]]; then
+        # NVIDIA: .nvidia.proprietary.pacman[].package
+        jq_filter=".nvidia.${driver_variant}.pacman[].package"
+        post_install_filter=".nvidia.${driver_variant}.post_install[]?"
+    else
+        # Simple types: .amd.pacman[].package
+        jq_filter=".${gpu_type}.pacman[].package"
+        post_install_filter=".${gpu_type}.post_install[]?"
+    fi
+
+    # Extract packages using JQ
+    local packages=()
+    while IFS= read -r package; do
+        [[ -n "$package" ]] && packages+=("$package")
+    done < <(jq --raw-output "$jq_filter" "$json_file" 2>/dev/null)
+
+    if [[ ${#packages[@]} -eq 0 ]]; then
+        echo "Error: No packages found for GPU type: $gpu_type"
+        return 1
+    fi
+
+    echo "Installing ${#packages[@]} packages for $gpu_type..."
+
+    # Install packages using intelligent installation logic
+    local failed=0
+    for package in "${packages[@]}"; do
+        if ! install_package_intelligent "$package"; then
+            ((failed++))
+        fi
+    done
+
+    if [[ $failed -gt 0 ]]; then
+        echo "Warning: $failed package(s) failed to install"
+    fi
+
+    # Execute post-installation commands
+    local post_commands=()
+    while IFS= read -r cmd; do
+        [[ -n "$cmd" ]] && post_commands+=("$cmd")
+    done < <(jq --raw-output "$post_install_filter" "$json_file" 2>/dev/null)
+
+    for cmd in "${post_commands[@]}"; do
+        echo "Running post-installation: $cmd"
+        if command -v "$cmd" &>/dev/null; then
+            $cmd || echo "Warning: $cmd failed (may need reboot)"
+        else
+            echo "Warning: Command $cmd not found"
+        fi
+    done
+
+    # Save configuration
+    set_option GPU_TYPE "$gpu_type"
+    if [[ -n "$driver_variant" ]]; then
+        set_option NVIDIA_DRIVER_TYPE "$driver_variant"
+    fi
+
+    echo "✓ GPU drivers installed successfully"
+    return 0
+}
+
 # @description Installs graphics drivers depending on detected gpu
 # @noargs
 graphics_install() {
@@ -190,18 +407,47 @@ graphics_install() {
                     Installing Graphics Drivers
 -------------------------------------------------------------------------
 "
-    # Graphics Drivers find and install
-    gpu_type=$(lspci)
-    if grep -E "NVIDIA|GeForce" <<<"${gpu_type}"; then
-        pacman -S --noconfirm --needed --color=always nvidia-dkms nvidia-settings
-        nvidia-xconfig
-    elif lspci | grep 'VGA' | grep -E "Radeon|AMD"; then
-        pacman -S --noconfirm --needed --color=always xf86-video-amdgpu
-    elif grep -E "Integrated Graphics Controller|Intel Corporation UHD" <<<"${gpu_type}"; then
-        pacman -S --noconfirm --needed --color=always libva-intel-driver libvdpau-va-gl lib32-vulkan-intel vulkan-intel libva-intel-driver libva-utils lib32-mesa
-    else
-        echo "No graphics drivers required"
+
+    # 1. Check if running in virtual machine
+    if detect_vm; then
+        echo "Virtual machine detected - installing VM graphics drivers"
+        install_gpu_from_json "vm" ""
+        return $?
     fi
+
+    # 2. Detect GPU type
+    local detected_gpu=$(detect_gpu)
+    echo "Detected GPU type: $detected_gpu"
+
+    # 3. Handle NVIDIA with user choice
+    if [[ "$detected_gpu" == "nvidia" ]]; then
+        # Check for hybrid graphics
+        if detect_hybrid_graphics; then
+            echo "Hybrid graphics detected (NVIDIA + Intel)"
+            local nvidia_driver_type=$(get_nvidia_driver_choice)
+            install_gpu_from_json "hybrid" "nvidia-intel" "$nvidia_driver_type"
+        else
+            local nvidia_driver_type=$(get_nvidia_driver_choice)
+            install_gpu_from_json "nvidia" "$nvidia_driver_type"
+        fi
+        return $?
+    fi
+
+    # 4. Handle AMD/Intel (automatic)
+    case "$detected_gpu" in
+        amd)
+            echo "AMD GPU detected - installing AMD drivers"
+            install_gpu_from_json "amd" ""
+            ;;
+        intel)
+            echo "Intel GPU detected - installing Intel drivers"
+            install_gpu_from_json "intel" ""
+            ;;
+        *)
+            echo "Unknown or no GPU detected - installing fallback drivers"
+            install_gpu_from_json "fallback" ""
+            ;;
+    esac
 }
 
 
