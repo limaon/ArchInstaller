@@ -1,6 +1,7 @@
 {
   "minimal": {
     "pacman": [
+      { "package": "autorandr" },
       { "package": "firefox" },
       { "package": "alsa-utils" },
       { "package": "pamixer" },
