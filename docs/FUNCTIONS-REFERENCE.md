@@ -98,6 +98,45 @@ echo "You chose: ${options[$selected_index]}"
 
 ---
 
+### select_option_with_search()
+```bash
+select_option_with_search num_options num_columns "${options[@]}"
+return $?  # Selected index
+```
+**Description**: Interactive menu with inline search functionality for large lists.
+
+**Parameters**:
+- `$1` - Number of options (can be ignored)
+- `$2` - Number of columns (typically 1-3)
+- `$3+` - Array of options
+
+**Return**: Index of selected option (via `$?`)
+
+**Controls**:
+- `↑/↓` or `k/j` - Navigate up/down
+- `/` - Enter search mode
+- Type characters - Filter list (case-insensitive)
+- `Backspace` - Remove characters from search
+- `Enter` - Confirm selection (exits search mode if active)
+
+**Features**:
+- **Search Mode**: Press `/` to filter options in real-time
+- **Pagination**: Shows up to 10 items at a time for readability
+- **Auto-scroll**: Automatically scrolls to keep selected item visible
+- **Case-insensitive**: Search matches regardless of case
+
+**Example**:
+```bash
+timezones=(Africa/Abidjan Africa/Algiers America/Manaus America/Sao_Paulo ...)
+select_option_with_search ${#timezones[@]} 1 "${timezones[@]}"
+selected_index=$?
+echo "Selected: ${timezones[$selected_index]}"
+```
+
+**Use Case**: Ideal for selecting from large lists (timezones, packages, etc.) where search speeds up selection.
+
+---
+
 ### sequence()
 ```bash
 sequence
@@ -401,14 +440,25 @@ set_btrfs
 ```bash
 timezone
 ```
-**Description**: Timezone detection and confirmation.
+**Description**: Interactive timezone selection with automatic detection and search functionality.
 
 **Behavior**:
-- Detects via `curl https://ipapi.co/timezone`
-- Asks for confirmation
-- Allows manual input if incorrect
+1. **Automatic Detection**: Attempts to detect timezone via `curl https://ipapi.co/timezone`
+2. **User Choice**: Offers to use detected timezone or select from list
+3. **Interactive Selection**: If "Select from list" is chosen:
+   - Displays all available timezones from `/usr/share/zoneinfo`
+   - Uses `select_option_with_search()` for searchable menu
+   - Shows up to 10 items at a time (paginated)
+   - Press `/` to search, arrow keys to navigate
+4. **Validation**: Verifies timezone file exists before saving
 
-**Saves**: `TIMEZONE` to setup.conf
+**Features**:
+- Automatic detection with fallback to manual selection
+- Search functionality (press `/` to filter)
+- Paginated display (10 items max)
+- Case-insensitive search
+
+**Saves**: `TIMEZONE` to setup.conf (format: `Region/City`, e.g., `America/Sao_Paulo`)
 
 ---
 

@@ -1,0 +1,138 @@
+{
+	"vm": {
+		"pacman": [
+			{ "package": "mesa" },
+			{ "package": "xorg-server" },
+			{ "package": "xorg-xinit" }
+		],
+		"aur": []
+	},
+	"nvidia": {
+		"proprietary": {
+			"pacman": [
+				{ "package": "dkms" },
+				{ "package": "libva-nvidia-driver" },
+				{ "package": "nvidia-dkms" },
+				{ "package": "nvidia-settings" },
+				{ "package": "nvidia-utils" },
+				{ "package": "xorg-server" },
+				{ "package": "xorg-xinit" }
+			],
+			"aur": [],
+			"post_install": ["nvidia-xconfig"]
+		},
+		"open-dkms": {
+			"pacman": [
+				{ "package": "dkms" },
+				{ "package": "libva-nvidia-driver" },
+				{ "package": "nvidia-open-dkms" },
+				{ "package": "nvidia-settings" },
+				{ "package": "nvidia-utils" },
+				{ "package": "xorg-server" },
+				{ "package": "xorg-xinit" }
+			],
+			"aur": [],
+			"post_install": ["nvidia-xconfig"]
+		},
+		"nouveau": {
+			"pacman": [
+				{ "package": "libva-mesa-driver" },
+				{ "package": "mesa" },
+				{ "package": "vulkan-nouveau" },
+				{ "package": "xf86-video-nouveau" },
+				{ "package": "xorg-server" },
+				{ "package": "xorg-xinit" }
+			],
+			"aur": [],
+			"post_install": []
+		}
+	},
+	"amd": {
+		"pacman": [
+			{ "package": "libva-mesa-driver" },
+			{ "package": "mesa" },
+			{ "package": "vulkan-radeon" },
+			{ "package": "xf86-video-amdgpu" },
+			{ "package": "xf86-video-ati" },
+			{ "package": "xorg-server" },
+			{ "package": "xorg-xinit" }
+		],
+		"aur": [],
+		"post_install": []
+	},
+	"intel": {
+		"pacman": [
+			{ "package": "intel-media-driver" },
+			{ "package": "libva-intel-driver" },
+			{ "package": "mesa" },
+			{ "package": "vulkan-intel" },
+			{ "package": "xorg-server" },
+			{ "package": "xorg-xinit" }
+		],
+		"aur": [],
+		"post_install": []
+	},
+	"hybrid": {
+		"nvidia-intel": {
+			"proprietary": {
+				"pacman": [
+					{ "package": "dkms" },
+					{ "package": "intel-media-driver" },
+					{ "package": "libva-intel-driver" },
+					{ "package": "libva-nvidia-driver" },
+					{ "package": "mesa" },
+					{ "package": "nvidia-dkms" },
+					{ "package": "nvidia-settings" },
+					{ "package": "nvidia-utils" },
+					{ "package": "vulkan-intel" },
+					{ "package": "xorg-server" },
+					{ "package": "xorg-xinit" }
+				],
+				"aur": [],
+				"post_install": ["nvidia-xconfig"]
+			},
+			"open-dkms": {
+				"pacman": [
+					{ "package": "dkms" },
+					{ "package": "intel-media-driver" },
+					{ "package": "libva-intel-driver" },
+					{ "package": "libva-nvidia-driver" },
+					{ "package": "mesa" },
+					{ "package": "nvidia-open-dkms" },
+					{ "package": "nvidia-settings" },
+					{ "package": "nvidia-utils" },
+					{ "package": "vulkan-intel" },
+					{ "package": "xorg-server" },
+					{ "package": "xorg-xinit" }
+				],
+				"aur": [],
+				"post_install": ["nvidia-xconfig"]
+			},
+			"nouveau": {
+				"pacman": [
+					{ "package": "intel-media-driver" },
+					{ "package": "libva-intel-driver" },
+					{ "package": "libva-mesa-driver" },
+					{ "package": "mesa" },
+					{ "package": "vulkan-intel" },
+					{ "package": "vulkan-nouveau" },
+					{ "package": "xf86-video-nouveau" },
+					{ "package": "xorg-server" },
+					{ "package": "xorg-xinit" }
+				],
+				"aur": [],
+				"post_install": []
+			}
+		}
+	},
+	"fallback": {
+		"pacman": [
+			{ "package": "mesa" },
+			{ "package": "xorg-server" },
+			{ "package": "xorg-xinit" }
+		],
+		"aur": [],
+		"post_install": []
+	}
+}
+

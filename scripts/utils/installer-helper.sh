@@ -517,7 +517,7 @@ source_file() {
 }
 
 
-# @description Copy logs to installed system and exit script
+# @description Copy logs to installed system and user home, copy verification script
 # @noargs
 end_script() {
     echo "Copying logs"
@@ -526,5 +526,40 @@ end_script() {
     else
         echo -ne "ERROR! Log directory not found"
         exit 0
+    fi
+
+    # Copy logs and verification script to user home (if USERNAME is set)
+    if [[ -n "${USERNAME:-}" ]] && [[ -d "/mnt/home/$USERNAME" ]]; then
+        echo "Copying logs and verification script to user home"
+        mkdir -p "/mnt/home/$USERNAME/.archinstaller"
+
+        # Copy installation log
+        cp -v "$LOG_FILE" "/mnt/home/$USERNAME/.archinstaller/install.log"
+
+        # Copy verification script
+        if [[ -f "${SCRIPT_DIR}/scripts/verify-installation.sh" ]]; then
+            cp -v "${SCRIPT_DIR}/scripts/verify-installation.sh" "/mnt/home/$USERNAME/.archinstaller/verify-installation.sh"
+            chmod +x "/mnt/home/$USERNAME/.archinstaller/verify-installation.sh"
+        fi
+
+        # Copy swap fix script
+        if [[ -f "${SCRIPT_DIR}/scripts/fix-swap.sh" ]]; then
+            cp -v "${SCRIPT_DIR}/scripts/fix-swap.sh" "/mnt/home/$USERNAME/.archinstaller/fix-swap.sh"
+            chmod +x "/mnt/home/$USERNAME/.archinstaller/fix-swap.sh"
+        fi
+
+        # Copy config file (without password)
+        if [[ -f "$CONFIG_FILE" ]]; then
+            grep -v "^PASSWORD=" "$CONFIG_FILE" > "/mnt/home/$USERNAME/.archinstaller/setup.conf" || true
+        fi
+
+        # Set ownership using arch-chroot (user exists in installed system)
+        if arch-chroot /mnt id "$USERNAME" &>/dev/null; then
+            arch-chroot /mnt chown -R "$USERNAME:$USERNAME" "/home/$USERNAME/.archinstaller"
+            echo "Files copied to /home/$USERNAME/.archinstaller/"
+        else
+            echo "Warning: User $USERNAME not found in installed system, skipping chown"
+            echo "Files copied to /home/$USERNAME/.archinstaller/ (ownership will be set on first login)"
+        fi
     fi
 }

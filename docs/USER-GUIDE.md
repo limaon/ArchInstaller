@@ -269,14 +269,50 @@ Enter a STRONG password for encryption (different from user password).
 
 ### 7. Timezone
 
+The installer provides an interactive timezone selection with automatic detection and search functionality.
+
+#### Automatic Detection
+
 ```
-System detected your timezone to be 'America/New_York'
-Is this correct?
-  Yes
-  No
+System detected your timezone: America/Sao_Paulo
+Select timezone selection method:
+  > Use detected timezone
+    Select from list
 ```
 
-If incorrect, choose "No" and enter manually. Ex: `America/Chicago`, `Europe/London`
+If the detected timezone is correct, select "Use detected timezone" and press Enter.
+
+#### Manual Selection with Search
+
+If you choose "Select from list", you'll see a searchable list of all available timezones:
+
+```
+Select timezone:
+  > Africa/Abidjan
+    Africa/Algiers
+    Africa/Bissau
+    ...
+    America/Manaus
+    America/Sao_Paulo
+    ...
+
+Press '/' to search
+```
+
+**Features**:
+- **Search**: Press `/` to enter search mode, then type to filter timezones (case-insensitive)
+- **Navigation**: Use arrow keys (↑↓) or `k`/`j` to navigate
+- **Selection**: Press Enter to select
+- **Pagination**: Shows up to 10 items at a time for better readability
+
+**Example**: To find "America/Sao_Paulo":
+1. Press `/` to enter search mode
+2. Type "sao" or "paulo"
+3. List filters automatically
+4. Navigate to desired timezone
+5. Press Enter to select
+
+The timezone is saved to `configs/setup.conf` as `TIMEZONE=America/Sao_Paulo` and applied during system installation.
 
 ---
 
@@ -615,7 +651,64 @@ sudo snapper -c root create --description "test"
 
 ---
 
-## Installation Logs
+## Verifying Installation Success
+
+### Automatic Verification Script
+
+After installation completes and you reboot the system, you can verify everything worked correctly:
+
+#### Option 1: Run Locally After Reboot
+
+After logging into your new system:
+
+```bash
+# Run the verification script (as your user - it will use sudo when needed)
+~/.archinstaller/verify-installation.sh
+```
+
+#### Option 2: Connect via SSH
+
+The installer automatically configures SSH for remote access. After reboot:
+
+1. **Find the server IP address** (on the server):
+   ```bash
+   ip addr show
+   # or
+   hostname -I
+   ```
+
+2. **Connect remotely** (from another machine):
+   ```bash
+   ssh your-username@server-ip-address
+   ```
+
+3. **Run verification script**:
+   ```bash
+   ~/.archinstaller/verify-installation.sh
+   ```
+
+#### What the Script Checks
+
+The verification script automatically checks:
+- Installation logs for errors and warnings
+- System services status
+- Network and SSH configuration
+- Swap configuration (ZRAM and swap file)
+- User account setup and permissions
+- Desktop environment installation
+- AUR helper installation
+- Disk space usage
+
+#### Files Available After Installation
+
+The installer automatically copies these files to `~/.archinstaller/`:
+- `install.log` - Complete installation log
+- `verify-installation.sh` - Verification script
+- `setup.conf` - Installation configuration (password removed for security)
+
+These files persist even after the installer cleans up temporary files.
+
+### Manual Verification
 
 All logs are in `/var/log/install.log`:
 
@@ -626,9 +719,21 @@ less /var/log/install.log
 # Search for errors
 grep -i error /var/log/install.log
 
+# Search for warnings
+grep -i warning /var/log/install.log
+
 # Last 50 lines
 tail -n 50 /var/log/install.log
+
+# Check for failed services
+systemctl --failed
+
+# Check swap
+swapon --show
+free -h
 ```
+
+For detailed troubleshooting, see **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)**.
 
 ---
 
