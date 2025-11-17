@@ -2,7 +2,7 @@
 	"pacman": [
 		{ "package": "grub-btrfs" },
 		{ "package": "snap-pac" },
-		{ "package": "snapper" }
+		{ "package": "snapper" },
 		{ "package": "inotify-tools" }
 	],
 	"aur": [
