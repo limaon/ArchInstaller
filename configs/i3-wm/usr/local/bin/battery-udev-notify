@@ -1,0 +1,105 @@
+#!/bin/bash
+# battery-udev-notify - Udev wrapper for battery charging notifications
+# Detects logged-in user and calls battery-charging script
+# Called by udev rules when power adapter is connected/disconnected
+
+# Show help message
+show_help() {
+    cat << EOF
+battery-udev-notify - Udev wrapper for battery charging notifications
+
+DESCRIPTION:
+    Wrapper script that detects logged-in X user and calls battery-charging
+    to send desktop notifications when power adapter is connected/disconnected.
+    Typically called automatically by udev rules when power supply changes.
+
+USAGE:
+    battery-udev-notify STATE
+
+ARGUMENTS:
+    STATE           Charging state: "charging" or "discharging"
+
+OPTIONS:
+    -h, --help      Show this help message and exit
+
+EXAMPLES:
+    battery-udev-notify charging     # Notify that charger is connected
+    battery-udev-notify discharging  # Notify that charger is disconnected
+    battery-udev-notify --help       # Show help message
+
+HOW IT WORKS:
+    1. Validates the STATE argument (charging or discharging)
+    2. Detects logged-in X user via loginctl or who
+    3. Calls /usr/local/bin/battery-charging with STATE argument
+    4. Exits silently if no user is logged in
+
+UDEV INTEGRATION:
+    This script is called by udev rules in:
+    /etc/udev/rules.d/60-battery-notifications.rules
+
+    Example udev rule:
+    ACTION=="change", SUBSYSTEM=="power_supply", ATTR{type}=="Mains", \\
+    ENV{POWER_SUPPLY_ONLINE}=="1", \\
+    RUN+="/usr/local/bin/battery-udev-notify charging"
+
+    ACTION=="change", SUBSYSTEM=="power_supply", ATTR{type}=="Mains", \\
+    ENV{POWER_SUPPLY_ONLINE}=="0", \\
+    RUN+="/usr/local/bin/battery-udev-notify discharging"
+
+DEPENDENCIES:
+    - battery-charging  # Called to send notification
+    - loginctl          # User session detection (systemd)
+    - who               # User session detection (fallback)
+
+NOTES:
+    - This script runs as root (via udev)
+    - It detects and calls battery-charging for logged-in users
+    - Exits silently if no user is logged into X session
+    - Can be called manually for testing (requires root/sudo)
+
+EXIT CODES:
+    0   Success (notification sent or no user logged in)
+    1   Error (invalid arguments or battery-charging failed)
+
+AUTHOR:
+    Part of ArchInstaller - Battery notification system for i3-wm
+
+EOF
+}
+
+# Check for help argument
+if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+    show_help
+    exit 0
+fi
+
+BATTERY_STATE="$1"
+
+# Validate input
+if [[ "$BATTERY_STATE" != "charging" ]] && [[ "$BATTERY_STATE" != "discharging" ]]; then
+    echo "Error: Invalid state '$BATTERY_STATE'. Use 'charging' or 'discharging'."
+    echo "Run 'battery-udev-notify --help' for more information."
+    exit 1
+fi
+
+# Detect user of X session
+X_USER=""
+if command -v loginctl &>/dev/null; then
+    # Try loginctl first (more robust)
+    X_USER=$(loginctl list-sessions 2>/dev/null | grep -E 'session-.*seat' | grep -E 'tty|:0' | head -n1 | awk '{print $3}')
+fi
+
+if [[ -z "$X_USER" ]] && command -v who &>/dev/null; then
+    # Fallback to who
+    X_USER=$(who | grep -E '\(:0\)' | awk '{print $1}' | head -n1)
+fi
+
+# Exit silently if no user logged in
+if [[ -z "$X_USER" ]]; then
+    exit 0
+fi
+
+# Call battery-charging script with state argument
+/usr/local/bin/battery-charging "$BATTERY_STATE"
+
+exit $?

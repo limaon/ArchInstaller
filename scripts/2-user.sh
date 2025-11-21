@@ -35,6 +35,12 @@ install_fonts
 desktop_environment_install
 
 
+# Installs battery notifications for i3-wm desktop environment
+# Configures scripts, systemd timers, and udev rules for battery monitoring
+# on 'software-install.sh'.
+i3wm_battery_notifications
+
+
 # Installs Btrfs packages based on the specified filesystem type, utilizing JQ
 # to parse a JSON file for package names and installing them via Pacman or an
 # AUR helper if specified on 'software-install.sh'

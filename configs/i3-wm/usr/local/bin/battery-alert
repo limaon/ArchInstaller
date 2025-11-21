@@ -1,0 +1,136 @@
+#!/bin/bash
+# battery-alert - Battery level notification script for i3-wm
+# Checks battery level and sends notifications when low/critical/full
+# Designed to run periodically via systemd timer
+
+# Show help message
+show_help() {
+    cat << EOF
+battery-alert - Battery level notification script for i3-wm
+
+DESCRIPTION:
+    Checks battery level and sends desktop notifications when:
+    - Battery is fully charged (>99% and connected)
+    - Battery is low (≤20% and discharging)
+    - Battery is critical (≤5% and discharging)
+
+USAGE:
+    battery-alert [OPTIONS]
+
+OPTIONS:
+    -h, --help      Show this help message and exit
+
+EXAMPLES:
+    battery-alert              # Check battery and send notification if needed
+    battery-alert --help       # Show help message
+
+NOTIFICATIONS:
+    The script uses notify-send to display desktop notifications:
+    - "Battery Charged" when battery is >99% and charging
+    - "Low Battery" when battery ≤20% and discharging
+    - "Battery Critical" when battery ≤5% and discharging
+
+    Notification levels can be customized by editing the script:
+    - WARNING_LEVEL=20   # Low battery threshold (%)
+    - CRITICAL_LEVEL=5   # Critical battery threshold (%)
+
+DEPENDENCIES:
+    - acpi           # Battery information
+    - notify-send    # Desktop notifications (from libnotify)
+    - dunst          # Notification daemon (should be running)
+
+ENVIRONMENT:
+    The script automatically detects:
+    - DISPLAY                    # X display server
+    - DBUS_SESSION_BUS_ADDRESS   # DBus session address
+
+FILES:
+    Lock files are created in /tmp/ to prevent duplicate notifications:
+    - /tmp/battery-\$USER-full      # Full battery notification sent
+    - /tmp/battery-\$USER-empty     # Low battery notification sent
+    - /tmp/battery-\$USER-critical  # Critical battery notification sent
+
+EXIT CODES:
+    0   Success (no action needed or notification sent)
+    1   Error (invalid arguments or dependencies missing)
+
+AUTHOR:
+    Part of ArchInstaller - Battery notification system for i3-wm
+
+EOF
+}
+
+# Check for help argument
+if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+    show_help
+    exit 0
+fi
+
+# Exit silently if no battery (desktop systems)
+if ! acpi -b &>/dev/null || [[ -z "$(acpi -b 2>/dev/null)" ]]; then
+    exit 0
+fi
+
+# Detect user DISPLAY if not set
+if [[ -z "${DISPLAY:-}" ]]; then
+    # Try to get DISPLAY from loginctl
+    X_USER=$(loginctl list-sessions 2>/dev/null | grep -E 'session-.*seat' | head -n1 | awk '{print $3}')
+    if [[ -n "$X_USER" ]]; then
+        X_SESSION=$(loginctl show-user "$X_USER" -p Display 2>/dev/null | cut -d= -f2)
+        export DISPLAY="${X_SESSION:-:0}"
+    else
+        export DISPLAY="${DISPLAY:-:0}"
+    fi
+fi
+
+# Detect DBUS_SESSION_BUS_ADDRESS if not set
+if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]]; then
+    USER_ID=$(id -u)
+    if [[ -S "/run/user/${USER_ID}/bus" ]]; then
+        export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${USER_ID}/bus"
+    fi
+fi
+
+# Battery levels for notifications
+WARNING_LEVEL=20
+CRITICAL_LEVEL=5
+
+# Get battery status
+BATTERY_INFO=$(acpi -b 2>/dev/null | grep "Battery 0" | head -n1)
+if [[ -z "$BATTERY_INFO" ]]; then
+    exit 0
+fi
+
+# Check if discharging
+BATTERY_DISCHARGING=$(echo "$BATTERY_INFO" | grep -c "Discharging" || echo "0")
+BATTERY_LEVEL=$(echo "$BATTERY_INFO" | grep -oE '[0-9]+%' | grep -oE '[0-9]+' || echo "")
+
+if [[ -z "$BATTERY_LEVEL" ]]; then
+    exit 0
+fi
+
+# Lock files per user to avoid duplicate notifications
+FULL_FILE="/tmp/battery-${USER}-full"
+EMPTY_FILE="/tmp/battery-${USER}-empty"
+CRITICAL_FILE="/tmp/battery-${USER}-critical"
+
+# Reset notification flags when state changes
+if [[ "$BATTERY_DISCHARGING" -eq 1 ]] && [[ -f "$FULL_FILE" ]]; then
+    rm -f "$FULL_FILE"
+elif [[ "$BATTERY_DISCHARGING" -eq 0 ]] && [[ -f "$EMPTY_FILE" ]]; then
+    rm -f "$EMPTY_FILE"
+fi
+
+# Send notifications based on battery state
+if [[ "$BATTERY_LEVEL" -gt 99 ]] && [[ "$BATTERY_DISCHARGING" -eq 0 ]] && [[ ! -f "$FULL_FILE" ]]; then
+    notify-send "Battery Charged" "Battery is fully charged." -i "battery" -r 9991 2>/dev/null
+    touch "$FULL_FILE"
+elif [[ "$BATTERY_LEVEL" -le "$WARNING_LEVEL" ]] && [[ "$BATTERY_DISCHARGING" -eq 1 ]] && [[ ! -f "$EMPTY_FILE" ]]; then
+    notify-send "Low Battery" "${BATTERY_LEVEL}% of battery remaining." -u critical -i "battery-alert" -r 9991 2>/dev/null
+    touch "$EMPTY_FILE"
+elif [[ "$BATTERY_LEVEL" -le "$CRITICAL_LEVEL" ]] && [[ "$BATTERY_DISCHARGING" -eq 1 ]] && [[ ! -f "$CRITICAL_FILE" ]]; then
+    notify-send "Battery Critical" "The computer will shutdown soon." -u critical -i "battery-alert" -r 9991 2>/dev/null
+    touch "$CRITICAL_FILE"
+fi
+
+exit 0

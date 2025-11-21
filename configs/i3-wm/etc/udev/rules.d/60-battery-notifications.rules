@@ -1,0 +1,5 @@
+# Battery notifications udev rules for i3-wm
+# Triggers notifications when power adapter is connected/disconnected
+
+ACTION=="change", SUBSYSTEM=="power_supply", ATTR{type}=="Mains", ENV{POWER_SUPPLY_ONLINE}=="1", RUN+="/usr/local/bin/battery-udev-notify charging"
+ACTION=="change", SUBSYSTEM=="power_supply", ATTR{type}=="Mains", ENV{POWER_SUPPLY_ONLINE}=="0", RUN+="/usr/local/bin/battery-udev-notify discharging"

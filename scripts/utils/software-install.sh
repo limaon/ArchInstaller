@@ -742,3 +742,115 @@ essential_services() {
 
     fi
 }
+
+
+# @description Install battery notifications for i3-wm
+# @noargs
+i3wm_battery_notifications() {
+    # Only install for i3-wm desktop environment
+    if [[ "${DESKTOP_ENV:-}" != "i3-wm" ]]; then
+        return 0
+    fi
+
+    echo -ne "
+-------------------------------------------------------------------------
+                    Installing Battery Notifications for i3-wm
+-------------------------------------------------------------------------
+"
+
+    # Check if acpi and libnotify are installed (should be via i3-wm.json)
+    # Note: These should already be installed via desktop_environment_install,
+    # but we check anyway
+    if ! pacman -Qi acpi &>/dev/null; then
+        echo "Warning: acpi not found, battery notifications may not work"
+    fi
+
+    if ! pacman -Qi libnotify &>/dev/null; then
+        echo "Warning: libnotify not found, battery notifications may not work"
+    fi
+
+    # Check if battery notification configs exist
+    if [[ ! -d ~/archinstaller/configs/i3-wm/usr/local/bin ]]; then
+        echo "Warning: Battery notification scripts not found, skipping..."
+        return 1
+    fi
+
+    # Copy scripts to /usr/local/bin/ (requires sudo)
+    echo "Installing battery notification scripts..."
+    if [[ -d ~/archinstaller/configs/i3-wm/usr/local/bin ]]; then
+        sudo mkdir -p /usr/local/bin/
+        sudo cp ~/archinstaller/configs/i3-wm/usr/local/bin/battery-* /usr/local/bin/ 2>/dev/null || true
+        sudo chmod 755 /usr/local/bin/battery-* 2>/dev/null || true
+        echo "Battery scripts installed to /usr/local/bin/"
+    fi
+
+    # Copy systemd user units to /etc/skel/ for future users (requires sudo)
+    echo "Installing systemd user units..."
+    if [[ -d ~/archinstaller/configs/i3-wm/etc/skel/.config/systemd/user ]]; then
+        sudo mkdir -p /etc/skel/.config/systemd/user/
+        sudo cp ~/archinstaller/configs/i3-wm/etc/skel/.config/systemd/user/* /etc/skel/.config/systemd/user/ 2>/dev/null || true
+        echo "Systemd user units copied to /etc/skel/.config/systemd/user/"
+    fi
+
+    # Copy systemd user units and dunst config to current user's home (no sudo needed)
+    if [[ -n "${USERNAME:-}" ]] && [[ -d "$HOME" ]]; then
+        echo "Configuring battery notifications for current user..."
+        mkdir -p "$HOME/.config/systemd/user/"
+        if [[ -d /etc/skel/.config/systemd/user ]]; then
+            cp /etc/skel/.config/systemd/user/* "$HOME/.config/systemd/user/" 2>/dev/null || true
+        fi
+        echo "Systemd user units configured for current user"
+
+        # Copy dunst configuration if available
+        if [[ -f /etc/skel/.config/dunst/dunstrc ]]; then
+            echo "Configuring dunst for current user..."
+            mkdir -p "$HOME/.config/dunst/"
+            cp /etc/skel/.config/dunst/dunstrc "$HOME/.config/dunst/dunstrc" 2>/dev/null || true
+            echo "Dunst configuration copied to ~/.config/dunst/dunstrc"
+        fi
+
+        # Enable timer for current user
+        # Note: systemctl --user enable works even without user session running
+        # It creates symlinks in ~/.config/systemd/user/.../ directories
+        echo "Enabling battery notification timer for current user..."
+        if systemctl --user enable battery-alert.timer 2>/dev/null; then
+            echo "Battery alert timer enabled for current user"
+        else
+            # Fallback: manually create symlinks if systemctl fails
+            echo "Creating timer symlinks manually..."
+            mkdir -p "$HOME/.config/systemd/user/timers.target.wants/"
+            ln -sf "$HOME/.config/systemd/user/battery-alert.timer" \
+                   "$HOME/.config/systemd/user/timers.target.wants/battery-alert.timer" 2>/dev/null || true
+            echo "Timer symlink created"
+        fi
+
+        # Reload systemd user daemon if running (optional - will reload on next login)
+        if systemctl --user daemon-reload 2>/dev/null; then
+            echo "Systemd user daemon reloaded"
+
+            # Try to start timer if user session is active
+            if systemctl --user start battery-alert.timer 2>/dev/null; then
+                echo "Battery alert timer started"
+            else
+                echo "Note: Timer will start automatically after first login"
+            fi
+        else
+            echo "Note: Systemd user daemon not running - timer will be active after first login"
+        fi
+    fi
+
+    # Note: Timer for future users will be enabled via /etc/skel/ on first login
+    # Users can enable it manually with: systemctl --user enable --now battery-alert.timer
+
+    # Copy udev rules (requires sudo)
+    echo "Installing udev rules..."
+    if [[ -d ~/archinstaller/configs/i3-wm/etc/udev/rules.d ]]; then
+        sudo mkdir -p /etc/udev/rules.d/
+        sudo cp ~/archinstaller/configs/i3-wm/etc/udev/rules.d/* /etc/udev/rules.d/ 2>/dev/null || true
+        sudo chmod 644 /etc/udev/rules.d/60-battery-notifications.rules 2>/dev/null || true
+        echo "Udev rules installed"
+        echo "Note: Udev rules will be active after reboot"
+    fi
+
+    echo "Battery notifications configuration complete!"
+}

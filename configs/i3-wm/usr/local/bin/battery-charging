@@ -1,0 +1,149 @@
+#!/bin/bash
+# battery-charging - Battery charging state notification script
+# Notifies when charger is plugged/unplugged
+# Called by battery-udev-notify wrapper
+
+# Show help message
+show_help() {
+    cat << EOF
+battery-charging - Battery charging state notification script
+
+DESCRIPTION:
+    Sends desktop notification when power adapter is connected/disconnected.
+    Typically called automatically by battery-udev-notify when udev detects
+    power supply changes.
+
+USAGE:
+    battery-charging STATE
+
+ARGUMENTS:
+    STATE           Charging state: "charging" or "discharging"
+
+OPTIONS:
+    -h, --help      Show this help message and exit
+
+EXAMPLES:
+    battery-charging charging     # Notify that charger is connected
+    battery-charging discharging  # Notify that charger is disconnected
+    battery-charging --help       # Show help message
+
+NOTIFICATIONS:
+    The script sends a desktop notification via notify-send:
+    - Title: "Charging" or "Discharging"
+    - Message: Current battery percentage (if available)
+    - Icon: battery-charging or battery-discharging
+    - Duration: 5 seconds
+    - Priority: Normal
+
+DEPENDENCIES:
+    - acpi           # Battery information
+    - notify-send    # Desktop notifications (from libnotify)
+    - loginctl       # User session detection (systemd)
+    - who            # User session detection (fallback)
+    - su             # Run commands as user
+
+ENVIRONMENT:
+    Automatically configures for logged-in X user:
+    - DISPLAY                    # X display server
+    - XAUTHORITY                 # X authorization
+    - DBUS_SESSION_BUS_ADDRESS   # DBus session address
+
+NOTES:
+    - This script is typically called by battery-udev-notify (via udev)
+    - Can also be called manually for testing
+    - Exits silently if no battery is present (desktop systems)
+    - Exits silently if no user is logged into X session
+
+EXIT CODES:
+    0   Success (notification sent or no action needed)
+    1   Error (invalid arguments, no state provided, or no battery/user)
+
+AUTHOR:
+    Part of ArchInstaller - Battery notification system for i3-wm
+
+EOF
+}
+
+# Check for help argument
+if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+    show_help
+    exit 0
+fi
+
+BATTERY_STATE="$1"
+
+# Exit if no state provided
+if [[ -z "$BATTERY_STATE" ]]; then
+    echo "Error: No state provided. Use 'charging' or 'discharging'."
+    echo "Run 'battery-charging --help' for more information."
+    exit 1
+fi
+
+# Exit silently if no battery (desktop systems)
+if ! acpi -b &>/dev/null || [[ -z "$(acpi -b 2>/dev/null)" ]]; then
+    exit 0
+fi
+
+# Get battery level
+BATTERY_INFO=$(acpi -b 2>/dev/null | grep "Battery 0" | head -n1)
+if [[ -z "$BATTERY_INFO" ]]; then
+    exit 0
+fi
+
+BATTERY_LEVEL=$(echo "$BATTERY_INFO" | grep -oE '[0-9]+%' | grep -oE '[0-9]+' || echo "")
+
+# Detect user of X session
+X_USER=""
+if command -v loginctl &>/dev/null; then
+    # Try loginctl first (more robust)
+    X_USER=$(loginctl list-sessions 2>/dev/null | grep -E 'session-.*seat' | grep -E 'tty|:0' | head -n1 | awk '{print $3}')
+fi
+
+if [[ -z "$X_USER" ]] && command -v who &>/dev/null; then
+    # Fallback to who
+    X_USER=$(who | grep -E '\(:0\)' | awk '{print $1}' | head -n1)
+fi
+
+# Exit if no user found
+if [[ -z "$X_USER" ]]; then
+    exit 0
+fi
+
+# Get user ID
+USER_ID=$(id -u "$X_USER" 2>/dev/null || echo "")
+if [[ -z "$USER_ID" ]]; then
+    exit 0
+fi
+
+# Configure environment variables
+export DISPLAY="${DISPLAY:-:0}"
+export XAUTHORITY="/home/${X_USER}/.Xauthority"
+
+# Set DBUS address
+if [[ -S "/run/user/${USER_ID}/bus" ]]; then
+    export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${USER_ID}/bus"
+fi
+
+# Determine message and icon based on state
+case "$BATTERY_STATE" in
+    "charging")
+        BATTERY_MSG="Charging"
+        BATTERY_ICON="battery-charging"
+        ;;
+    "discharging")
+        BATTERY_MSG="Discharging"
+        BATTERY_ICON="battery-discharging"
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+
+# Send notification as the user
+if [[ -n "$BATTERY_LEVEL" ]]; then
+    su - "$X_USER" -c "DISPLAY='${DISPLAY}' DBUS_SESSION_BUS_ADDRESS='${DBUS_SESSION_BUS_ADDRESS}' XAUTHORITY='${XAUTHORITY}' notify-send '${BATTERY_MSG}' '${BATTERY_LEVEL}% of battery charged.' -u normal -i '${BATTERY_ICON}' -t 5000 -r 9991" 2>/dev/null
+else
+    su - "$X_USER" -c "DISPLAY='${DISPLAY}' DBUS_SESSION_BUS_ADDRESS='${DBUS_SESSION_BUS_ADDRESS}' XAUTHORITY='${XAUTHORITY}' notify-send '${BATTERY_MSG}' 'Power adapter ${BATTERY_STATE}.' -u normal -i '${BATTERY_ICON}' -t 5000 -r 9991" 2>/dev/null
+fi
+
+exit 0

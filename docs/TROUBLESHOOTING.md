@@ -400,6 +400,170 @@ If you encounter errors, gather this information:
 
 ---
 
+## Battery Notifications (i3-wm)
+
+### Problem: Battery notifications not working
+
+**Symptoms**: No notifications appear for battery level or charger connection.
+
+**Diagnosis**:
+
+```bash
+# Check if timer is enabled
+systemctl --user status battery-alert.timer
+
+# Check if scripts exist
+ls -la /usr/local/bin/battery-*
+
+# Check if dependencies are installed
+which acpi
+which notify-send
+
+# Check if dunst is running (notification daemon)
+systemctl --user status dunst
+
+# Test script manually
+/usr/local/bin/battery-alert
+
+# Check systemd unit files
+ls -la ~/.config/systemd/user/battery-alert.*
+
+# Check udev rules
+ls -la /etc/udev/rules.d/60-battery-notifications.rules
+```
+
+**Solutions**:
+
+#### Timer not enabled
+```bash
+# Enable and start timer
+systemctl --user enable battery-alert.timer
+systemctl --user start battery-alert.timer
+
+# Reload systemd user daemon if needed
+systemctl --user daemon-reload
+```
+
+#### Dependencies missing
+```bash
+# Install required packages
+sudo pacman -S acpi libnotify
+
+# Start notification daemon (dunst should be in i3 autostart)
+dunst &
+```
+
+#### Scripts not found
+```bash
+# If configs are available, copy scripts manually
+sudo cp ~/.archinstaller/configs/i3-wm/usr/local/bin/battery-* /usr/local/bin/
+sudo chmod 755 /usr/local/bin/battery-*
+
+# Copy systemd units
+mkdir -p ~/.config/systemd/user/
+cp ~/.archinstaller/configs/i3-wm/etc/skel/.config/systemd/user/* ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable battery-alert.timer
+```
+
+#### Dunst not running
+```bash
+# Start dunst manually
+dunst &
+
+# Add to i3 config if not present
+echo 'exec --no-startup-id dunst' >> ~/.config/i3/config
+
+# Restart i3 (press Mod+Shift+R in i3)
+```
+
+#### Udev rules not working
+```bash
+# Check if udev rules exist
+cat /etc/udev/rules.d/60-battery-notifications.rules
+
+# Reload udev rules
+sudo udevadm control --reload-rules
+sudo udevadm trigger --subsystem-match=power_supply
+
+# Test udev trigger manually
+sudo udevadm trigger --action=change --subsystem-match=power_supply
+```
+
+#### Desktop system (no battery)
+**Expected behavior**: Scripts exit silently if no battery is detected. This is normal.
+
+```bash
+# Check if battery exists
+acpi -b
+
+# If no output, system doesn't have a battery (desktop)
+# Notifications won't work, but this is expected
+```
+
+### Problem: Too many notifications
+
+**Solution**: Lock files prevent duplicate notifications. They are automatically managed, but you can clear them manually:
+
+```bash
+# Remove lock files (resets notification state)
+rm -f /tmp/battery-$USER-*
+```
+
+### Problem: Want to customize notification levels
+
+**Solution**: Edit the script:
+
+```bash
+# Edit warning/critical levels
+sudo nano /usr/local/bin/battery-alert
+
+# Change these lines:
+# WARNING_LEVEL=20   # Change to your preferred level
+# CRITICAL_LEVEL=5   # Change to your preferred level
+```
+
+### Problem: Want to change check interval
+
+**Solution**: Edit the systemd timer:
+
+```bash
+# Edit timer unit
+systemctl --user edit battery-alert.timer
+
+# Or edit file directly
+nano ~/.config/systemd/user/battery-alert.timer
+
+# Change these lines:
+# OnBootSec=5min      # Time after boot to first check
+# OnUnitActiveSec=5min # Interval between checks
+```
+
+### Useful Commands
+
+```bash
+# View help for scripts
+battery-alert --help
+battery-charging --help
+battery-udev-notify --help
+
+# Check timer logs
+journalctl --user -u battery-alert.service -f
+
+# View timer status
+systemctl --user status battery-alert.timer
+
+# Disable notifications
+systemctl --user disable battery-alert.timer
+systemctl --user stop battery-alert.timer
+
+# Re-enable notifications
+systemctl --user enable battery-alert.timer
+systemctl --user start battery-alert.timer
+```
+
+---
+
 ## Quick Commands Summary
 
 ```bash

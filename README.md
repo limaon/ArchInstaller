@@ -11,6 +11,7 @@ An automated and interactive Arch Linux installer that transforms the complex ma
 - **Custom Disk Usage**: Choose percentage of disk to use (5-100%) instead of using entire disk
 - **Multiple Filesystems**: Support for ext4, btrfs (with snapshots), and LUKS encryption
 - **Desktop Environments**: KDE, GNOME, XFCE, Cinnamon, i3-wm, Awesome, Openbox, Budgie, Deepin, LXDE, MATE
+- **Battery Notifications**: Automatic battery monitoring for i3-wm (laptops) with desktop notifications
 - **Installation Profiles**: FULL (complete desktop), MINIMAL (basic desktop), SERVER (CLI only)
 - **Automatic SSH Setup**: SSH server configured and enabled for remote access
 - **Post-Installation Verification**: Automatic verification script to check installation success
