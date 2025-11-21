@@ -672,6 +672,39 @@ btrfs_install
 
 ---
 
+### i3wm_battery_notifications()
+```bash
+i3wm_battery_notifications
+```
+**Description**: Installs and configures battery notifications for i3-wm.
+
+**Condition**: Only if `DESKTOP_ENV=i3-wm`
+
+**What it does**:
+1. Verifies dependencies (`acpi`, `libnotify`)
+2. Copies scripts to `/usr/local/bin/`:
+   - `battery-alert` - Periodic battery level checks
+   - `battery-charging` - Charging state notifications
+   - `battery-udev-notify` - Udev wrapper script
+3. Copies systemd user units to `/etc/skel/.config/systemd/user/`:
+   - `battery-alert.service` - Service that runs battery-alert
+   - `battery-alert.timer` - Timer that triggers service every 5 minutes
+4. Configures systemd units for current user
+5. Enables timer for current user
+6. Copies udev rules to `/etc/udev/rules.d/`:
+   - `60-battery-notifications.rules` - Triggers notifications on plug/unplug
+
+**Scripts**:
+- `battery-alert`: Checks battery level, sends notifications when low/critical/full
+- `battery-charging`: Sends notification when charger connected/disconnected
+- `battery-udev-notify`: Wrapper called by udev to notify logged-in user
+
+**Help**: All scripts support `-h` or `--help` flags
+
+**Note**: Timer may need to be manually enabled after first login if systemd user session wasn't active during installation
+
+---
+
 ### user_theming()
 ```bash
 user_theming

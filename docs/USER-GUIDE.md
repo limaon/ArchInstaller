@@ -503,6 +503,31 @@ You'll see the graphical login screen (SDDM, GDM, or LightDM).
 - **KDE/GNOME**: Click network icon in panel
 - **Terminal**: Use `nmtui` or `nmcli`
 
+### 4. Enable Battery Notifications (i3-wm only, if not enabled)
+
+If you installed **i3-wm** on a laptop, battery notifications are automatically installed but may need to be enabled:
+
+```bash
+# Enable battery notification timer
+systemctl --user enable battery-alert.timer
+systemctl --user start battery-alert.timer
+
+# Verify status
+systemctl --user status battery-alert.timer
+```
+
+**What it does**:
+- Checks battery level every 5 minutes
+- Notifies when battery is low (≤20%), critical (≤5%), or fully charged (>99%)
+- Notifies immediately when charger is connected/disconnected
+
+**See help**:
+```bash
+battery-alert --help
+battery-charging --help
+battery-udev-notify --help
+```
+
 ---
 
 ## Recommended Post-Installation

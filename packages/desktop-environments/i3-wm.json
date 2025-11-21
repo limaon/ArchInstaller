@@ -10,6 +10,8 @@
       { "package": "xarchiver" },
       { "package": "dmenu" },
       { "package": "dunst" },
+      { "package": "acpi" },
+      { "package": "libnotify" },
       { "package": "i3-wm" },
       { "package": "i3blocks" },
       { "package": "i3lock" },
