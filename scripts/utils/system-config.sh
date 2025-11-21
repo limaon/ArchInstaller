@@ -655,30 +655,47 @@ grub_config() {
     # Configure resume parameter for hibernation (if swap file exists)
     if [[ -f /swapfile ]]; then
         echo -e "\nConfiguring GRUB for hibernation support..."
-        # Get UUID of swap file
-        SWAP_UUID=$(findmnt -no UUID -T /swapfile 2>/dev/null || blkid -s UUID -o value -t TYPE=swap 2>/dev/null | head -n1)
 
+        # Method 1: Try to get UUID of swap file using blkid
+        SWAP_UUID=$(blkid -s UUID -o value /swapfile 2>/dev/null)
+
+        # Method 2: If blkid fails, try to get UUID from swapon output
         if [[ -z "$SWAP_UUID" ]]; then
-            # Try to get UUID from /swapfile directly
-            SWAP_UUID=$(blkid -s UUID -o value /swapfile 2>/dev/null)
+            SWAP_UUID=$(swapon --show=UUID --noheadings /swapfile 2>/dev/null | tr -d '[:space:]')
         fi
 
+        # Method 3: If still no UUID, try findmnt (requires swap to be mounted)
+        if [[ -z "$SWAP_UUID" ]]; then
+            SWAP_UUID=$(findmnt -no UUID -T /swapfile 2>/dev/null)
+        fi
+
+        # Method 4: Use file path as fallback (per ArchWiki: resume=/swapfile)
+        # This works but UUID is preferred
+        RESUME_PARAM=""
         if [[ -n "$SWAP_UUID" ]]; then
-            # Check if resume parameter already exists
-            if ! grep -q "resume=UUID=$SWAP_UUID" /etc/default/grub; then
-                # Add resume parameter (before splash if it exists, or at the end)
-                if grep -q "GRUB_CMDLINE_LINUX_DEFAULT.*splash" /etc/default/grub; then
-                    sed -i "s|GRUB_CMDLINE_LINUX_DEFAULT=\"\(.*splash\)|GRUB_CMDLINE_LINUX_DEFAULT=\"resume=UUID=$SWAP_UUID \1|" /etc/default/grub
-                else
-                    sed -i "s|GRUB_CMDLINE_LINUX_DEFAULT=\"\(.*\)\"|GRUB_CMDLINE_LINUX_DEFAULT=\"\1 resume=UUID=$SWAP_UUID\"|" /etc/default/grub
-                fi
-                echo "Resume parameter added: resume=UUID=$SWAP_UUID"
-            else
-                echo "Resume parameter already configured: resume=UUID=$SWAP_UUID"
-            fi
+            RESUME_PARAM="resume=UUID=$SWAP_UUID"
+            echo "Detected swap file UUID: $SWAP_UUID"
         else
-            echo "Warning: Could not determine swap file UUID for hibernation"
-            echo "Hibernation may not work correctly without resume parameter"
+            # Fallback: use file path directly (works but UUID is preferred)
+            RESUME_PARAM="resume=/swapfile"
+            echo "Warning: Could not detect swap file UUID, using file path as fallback"
+            echo "         Using: resume=/swapfile"
+        fi
+
+        # Check if resume parameter already exists (any form)
+        if ! grep -q "resume=" /etc/default/grub; then
+            # Add resume parameter to GRUB_CMDLINE_LINUX_DEFAULT
+            # Add before splash if it exists, or at the end
+            if grep -q "GRUB_CMDLINE_LINUX_DEFAULT.*splash" /etc/default/grub; then
+                sed -i "s|GRUB_CMDLINE_LINUX_DEFAULT=\"\(.*splash\)|GRUB_CMDLINE_LINUX_DEFAULT=\"$RESUME_PARAM \1|" /etc/default/grub
+            else
+                # Add at the end of GRUB_CMDLINE_LINUX_DEFAULT
+                sed -i "s|GRUB_CMDLINE_LINUX_DEFAULT=\"\(.*\)\"|GRUB_CMDLINE_LINUX_DEFAULT=\"\1 $RESUME_PARAM\"|" /etc/default/grub
+            fi
+            echo "Resume parameter added: $RESUME_PARAM"
+        else
+            echo "Resume parameter already configured in GRUB"
+            echo "  Current resume parameter: $(grep -oP 'resume=[^\s"]*' /etc/default/grub | head -n1)"
         fi
     else
         echo -e "\nNo swap file found (/swapfile). Skipping hibernation configuration."
