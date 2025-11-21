@@ -1,0 +1,112 @@
+#!/bin/bash
+#
+# check-swap-for-hibernate - Check if swap is sufficient for hibernation
+# @file check-swap-for-hibernate
+# @brief Verifies if system has enough swap to hibernate
+# @description Checks if total swap is >= total RAM for hibernation support
+
+# Show help message
+show_help() {
+    cat << EOF
+check-swap-for-hibernate - Check if swap is sufficient for hibernation
+
+DESCRIPTION:
+    Verifies if the system has enough swap space to support hibernation.
+    Hibernation requires swap space equal to or greater than total RAM.
+
+USAGE:
+    check-swap-for-hibernate [OPTIONS]
+
+OPTIONS:
+    -h, --help      Show this help message and exit
+    -v, --verbose   Show detailed information
+
+EXAMPLES:
+    check-swap-for-hibernate              # Check swap (exit code 0 if OK)
+    check-swap-for-hibernate --verbose    # Show detailed info
+    check-swap-for-hibernate --help       # Show help
+
+EXIT CODES:
+    0   Swap is sufficient for hibernation (swap >= RAM)
+    1   Swap is insufficient for hibernation (swap < RAM)
+    2   Error (cannot determine RAM or swap)
+
+AUTHOR:
+    Part of ArchInstaller - Auto suspend/hibernate for i3-wm
+
+EOF
+}
+
+# Check for help argument
+if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+    show_help
+    exit 0
+fi
+
+VERBOSE=false
+if [[ "$1" == "-v" ]] || [[ "$1" == "--verbose" ]]; then
+    VERBOSE=true
+fi
+
+# Get RAM size in GB
+RAM_GB=$(free -g | awk '/^Mem:/{print $2}')
+if [[ -z "$RAM_GB" ]] || [[ "$RAM_GB" -lt 1 ]]; then
+    echo "Error: Could not determine RAM size" >&2
+    exit 2
+fi
+
+# Get swap size in GB
+# Try multiple methods to get swap size
+SWAP_GB=0
+
+# Method 1: swapon --show (most reliable)
+if command -v swapon &>/dev/null; then
+    SWAP_BYTES=$(swapon --show=SIZE --noheadings --bytes 2>/dev/null | awk '{sum+=$1} END {print sum}')
+    if [[ -n "$SWAP_BYTES" ]] && [[ "$SWAP_BYTES" -gt 0 ]]; then
+        SWAP_GB=$((SWAP_BYTES / 1024 / 1024 / 1024))
+    fi
+fi
+
+# Method 2: free -g (fallback)
+if [[ "$SWAP_GB" -eq 0 ]]; then
+    SWAP_GB=$(free -g | awk '/^Swap:/{print $2}')
+    if [[ -z "$SWAP_GB" ]]; then
+        SWAP_GB=0
+    fi
+fi
+
+# Check if swap was detected
+if [[ "$SWAP_GB" -eq 0 ]]; then
+    if [[ "$VERBOSE" == true ]]; then
+        echo "Error: No swap detected on system" >&2
+        echo "RAM: ${RAM_GB}GB"
+        echo "Swap: Not detected"
+        echo "Hibernation requires swap >= RAM" >&2
+    fi
+    exit 2
+fi
+
+# Compare swap with RAM
+if [[ "$VERBOSE" == true ]]; then
+    echo "System memory check:"
+    echo "  RAM:  ${RAM_GB}GB"
+    echo "  Swap: ${SWAP_GB}GB"
+    echo ""
+fi
+
+if [[ "$SWAP_GB" -ge "$RAM_GB" ]]; then
+    if [[ "$VERBOSE" == true ]]; then
+        echo "✓ Swap is sufficient for hibernation"
+        echo "  Swap (${SWAP_GB}GB) >= RAM (${RAM_GB}GB)"
+    fi
+    exit 0
+else
+    if [[ "$VERBOSE" == true ]]; then
+        echo "✗ Swap is insufficient for hibernation"
+        echo "  Swap (${SWAP_GB}GB) < RAM (${RAM_GB}GB)"
+        echo "  Minimum required: ${RAM_GB}GB swap"
+        echo ""
+        echo "Note: System will suspend instead of hibernating"
+    fi
+    exit 1
+fi

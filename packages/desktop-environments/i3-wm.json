@@ -37,7 +37,8 @@
       { "package": "lightdm-gtk-greeter" }
     ],
     "aur": [
-      { "package": "xautocfg" }
+      { "package": "xautocfg" },
+      { "package": "xidlehook" }
     ]
   },
   "full": {
