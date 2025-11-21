@@ -56,21 +56,59 @@ if [[ -z "$RAM_GB" ]] || [[ "$RAM_GB" -lt 1 ]]; then
 fi
 
 # Get swap size in GB
-# Try multiple methods to get swap size
+# IMPORTANT: Only count persistent swap (swap file or swap partition), NOT ZRAM
+# ZRAM is volatile (compressed RAM) and cannot be used for hibernation
+# Hibernation requires swap on disk (persistent storage)
+
 SWAP_GB=0
+ZRAM_GB=0
 
 # Method 1: swapon --show (most reliable)
+# Filter out ZRAM devices (they are named /dev/zram*)
+# IMPORTANT: ZRAM cannot be used for hibernation (it's volatile RAM)
 if command -v swapon &>/dev/null; then
-    SWAP_BYTES=$(swapon --show=SIZE --noheadings --bytes 2>/dev/null | awk '{sum+=$1} END {print sum}')
+    # swapon --show=SIZE,NAME --noheadings --bytes outputs: SIZE(bytes) NAME
+    # We exclude entries where NAME starts with /dev/zram
+
+    # Get persistent swap only (exclude ZRAM)
+    SWAP_BYTES=$(swapon --show=SIZE,NAME --noheadings --bytes 2>/dev/null | \
+        awk '$2 !~ /^\/dev\/zram/ {sum+=$1} END {print sum+0}')
+
+    # Get ZRAM size for informational purposes
+    ZRAM_BYTES=$(swapon --show=SIZE,NAME --noheadings --bytes 2>/dev/null | \
+        awk '$2 ~ /^\/dev\/zram/ {sum+=$1} END {print sum+0}')
+
     if [[ -n "$SWAP_BYTES" ]] && [[ "$SWAP_BYTES" -gt 0 ]]; then
         SWAP_GB=$((SWAP_BYTES / 1024 / 1024 / 1024))
     fi
+
+    if [[ -n "$ZRAM_BYTES" ]] && [[ "$ZRAM_BYTES" -gt 0 ]]; then
+        ZRAM_GB=$((ZRAM_BYTES / 1024 / 1024 / 1024))
+    fi
 fi
 
-# Method 2: free -g (fallback)
+# Method 2: Check swap file directly
+if [[ "$SWAP_GB" -eq 0 ]] && [[ -f /swapfile ]]; then
+    # Get swap file size
+    SWAPFILE_SIZE=$(stat -c%s /swapfile 2>/dev/null)
+    if [[ -n "$SWAPFILE_SIZE" ]] && [[ "$SWAPFILE_SIZE" -gt 0 ]]; then
+        SWAP_GB=$((SWAPFILE_SIZE / 1024 / 1024 / 1024))
+    fi
+fi
+
+# Method 3: free -g (only as last resort, and subtract ZRAM if detected)
 if [[ "$SWAP_GB" -eq 0 ]]; then
-    SWAP_GB=$(free -g | awk '/^Swap:/{print $2}')
-    if [[ -z "$SWAP_GB" ]]; then
+    TOTAL_SWAP_GB=$(free -g | awk '/^Swap:/{print $2}')
+    if [[ -n "$TOTAL_SWAP_GB" ]]; then
+        # If we detected ZRAM, subtract it from total swap
+        if [[ "$ZRAM_GB" -gt 0 ]]; then
+            SWAP_GB=$((TOTAL_SWAP_GB - ZRAM_GB))
+            # Ensure non-negative
+            [[ "$SWAP_GB" -lt 0 ]] && SWAP_GB=0
+        else
+            SWAP_GB=$TOTAL_SWAP_GB
+        fi
+    else
         SWAP_GB=0
     fi
 fi
@@ -90,23 +128,48 @@ fi
 if [[ "$VERBOSE" == true ]]; then
     echo "System memory check:"
     echo "  RAM:  ${RAM_GB}GB"
-    echo "  Swap: ${SWAP_GB}GB"
+    if [[ "$ZRAM_GB" -gt 0 ]]; then
+        echo "  ZRAM: ${ZRAM_GB}GB (volatile - not counted for hibernation)"
+        echo "  Swap (persistent): ${SWAP_GB}GB"
+        echo ""
+        echo "Note: ZRAM is RAM-based (volatile) and cannot be used for hibernation."
+        echo "      Only persistent swap (swap file/partition) counts for hibernation."
+    else
+        echo "  Swap: ${SWAP_GB}GB"
+    fi
     echo ""
 fi
 
 if [[ "$SWAP_GB" -ge "$RAM_GB" ]]; then
     if [[ "$VERBOSE" == true ]]; then
         echo "✓ Swap is sufficient for hibernation"
-        echo "  Swap (${SWAP_GB}GB) >= RAM (${RAM_GB}GB)"
+        echo "  Persistent swap (${SWAP_GB}GB) >= RAM (${RAM_GB}GB)"
+        if [[ "$ZRAM_GB" -gt 0 ]]; then
+            echo "  Note: ${ZRAM_GB}GB ZRAM detected but not used for hibernation"
+        fi
     fi
     exit 0
 else
     if [[ "$VERBOSE" == true ]]; then
         echo "✗ Swap is insufficient for hibernation"
-        echo "  Swap (${SWAP_GB}GB) < RAM (${RAM_GB}GB)"
-        echo "  Minimum required: ${RAM_GB}GB swap"
+        echo "  Persistent swap (${SWAP_GB}GB) < RAM (${RAM_GB}GB)"
+        echo "  Minimum required: ${RAM_GB}GB persistent swap (swap file or partition)"
+        if [[ "$ZRAM_GB" -gt 0 ]]; then
+            echo ""
+            echo "  Note: ${ZRAM_GB}GB ZRAM detected but cannot be used for hibernation"
+            echo "        ZRAM is volatile (compressed RAM) and is lost on power loss"
+            echo "        Hibernation requires persistent swap on disk"
+        fi
         echo ""
-        echo "Note: System will suspend instead of hibernating"
+        echo "System will suspend instead of hibernating on battery"
+        echo ""
+        echo "To enable hibernation, create a swap file:"
+        echo "  sudo fallocate -l ${RAM_GB}G /swapfile"
+        echo "  sudo chmod 600 /swapfile"
+        echo "  sudo mkswap -U clear --file /swapfile"
+        echo "  sudo swapon /swapfile"
+        echo "  echo '/swapfile none swap defaults 0 0' | sudo tee -a /etc/fstab"
+        echo "  sudo grub-mkconfig -o /boot/grub/grub.cfg"
     fi
     exit 1
 fi
