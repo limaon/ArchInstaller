@@ -652,6 +652,39 @@ grub_config() {
     echo -e "\n Backing up Grub config..."
     cp -an /etc/default/grub /etc/default/grub.bak
 
+    # Configure resume parameter for hibernation (if swap file exists)
+    if [[ -f /swapfile ]]; then
+        echo -e "\nConfiguring GRUB for hibernation support..."
+        # Get UUID of swap file
+        SWAP_UUID=$(findmnt -no UUID -T /swapfile 2>/dev/null || blkid -s UUID -o value -t TYPE=swap 2>/dev/null | head -n1)
+
+        if [[ -z "$SWAP_UUID" ]]; then
+            # Try to get UUID from /swapfile directly
+            SWAP_UUID=$(blkid -s UUID -o value /swapfile 2>/dev/null)
+        fi
+
+        if [[ -n "$SWAP_UUID" ]]; then
+            # Check if resume parameter already exists
+            if ! grep -q "resume=UUID=$SWAP_UUID" /etc/default/grub; then
+                # Add resume parameter (before splash if it exists, or at the end)
+                if grep -q "GRUB_CMDLINE_LINUX_DEFAULT.*splash" /etc/default/grub; then
+                    sed -i "s|GRUB_CMDLINE_LINUX_DEFAULT=\"\(.*splash\)|GRUB_CMDLINE_LINUX_DEFAULT=\"resume=UUID=$SWAP_UUID \1|" /etc/default/grub
+                else
+                    sed -i "s|GRUB_CMDLINE_LINUX_DEFAULT=\"\(.*\)\"|GRUB_CMDLINE_LINUX_DEFAULT=\"\1 resume=UUID=$SWAP_UUID\"|" /etc/default/grub
+                fi
+                echo "Resume parameter added: resume=UUID=$SWAP_UUID"
+            else
+                echo "Resume parameter already configured: resume=UUID=$SWAP_UUID"
+            fi
+        else
+            echo "Warning: Could not determine swap file UUID for hibernation"
+            echo "Hibernation may not work correctly without resume parameter"
+        fi
+    else
+        echo -e "\nNo swap file found (/swapfile). Skipping hibernation configuration."
+        echo "Note: Hibernation requires a swap file or swap partition"
+    fi
+
     if [[ "$INSTALL_TYPE" != "SERVER" ]]; then
         echo -e "\nSetting wallpaper for GRUB..."
         # WALLPAPER_PATH="/usr/share/backgrounds/archlinux/archwave.png"
@@ -812,8 +845,6 @@ greeter-session=lightdm-gtk-greeter" > /etc/lightdm/lightdm.conf
 
         # Base configuration (always applied)
         declare -A base_greeter_config=(
-            ["background"]="/usr/share/backgrounds/archlinux/geolanes.png"
-            ["user-background"]="true"
             ["font-name"]="Ubuntu 12"
             ["xft-antialias"]="true"
             ["transition-duration"]="1000"
@@ -822,20 +853,27 @@ greeter-session=lightdm-gtk-greeter" > /etc/lightdm/lightdm.conf
             ["show-clock"]="false"
             ["default-user-image"]="#archlinux"
             ["xft-hintstyle"]="hintfull"
-            ["clock-format"]="%H:%M"
             ["panel-position"]="top"
             ["xft-dpi"]="96"
             ["xft-rgba"]="rgb"
             ["active-monitor"]="1"
             ["round-user-image"]="false"
-            ["indicators"]="~host;~spacer;~clock;~spacer;~language;~session;~a11y;~power"
+            ["indicators"]="~host;~spacer;~language;~session;~a11y;~power"
         )
 
-        # Theme configuration (only for FULL installation)
+        # Background configuration based on installation type
         if [[ "${INSTALL_TYPE}" == "FULL" ]]; then
+            # FULL: Use wallpaper image
+            base_greeter_config["background"]="/usr/share/backgrounds/archlinux/geolanes.png"
+            base_greeter_config["user-background"]="true"
+            # Theme configuration (only for FULL installation)
             base_greeter_config["icon-theme-name"]="Pop"
             base_greeter_config["cursor-theme-name"]="Pop"
             base_greeter_config["theme-name"]="Yaru-blue-dark"
+        else
+            # MINIMAL: Use solid color background
+            base_greeter_config["background"]="#6a6a6a"
+            base_greeter_config["user-background"]="false"
         fi
 
         for key in "${!base_greeter_config[@]}"; do
@@ -906,8 +944,9 @@ configure_tlp() {
         sudo sed -i 's/^#\?DISK_APM_LEVEL_ON_BAT=.*/DISK_APM_LEVEL_ON_BAT="128"/' "$TLP_CONF"
         sudo sed -i 's/^#\?DISK_APM_LEVEL_ON_AC=.*/DISK_APM_LEVEL_ON_AC="254"/' "$TLP_CONF"
 
-        # Bluetooth hangs when not used
-        sudo sed -i 's/^#\?DEVICES_TO_DISABLE_ON_BAT=.*/DEVICES_TO_DISABLE_ON_BAT="bluetooth"/' "$TLP_CONF"
+        # Note: DEVICES_TO_DISABLE_ON_BAT is not set, so bluetooth will remain enabled on battery
+        # If you want to disable bluetooth on battery to save power, uncomment the line below:
+        # sudo sed -i 's/^#\?DEVICES_TO_DISABLE_ON_BAT=.*/DEVICES_TO_DISABLE_ON_BAT="bluetooth"/' "$TLP_CONF"
 
         # Defines aggressiveness in the scaling of the CPU
         sudo sed -i 's/^#\?CPU_SCALING_GOVERNOR_ON_BAT=.*/CPU_SCALING_GOVERNOR_ON_BAT=powersave/' "$TLP_CONF"
@@ -957,4 +996,58 @@ plymouth_config() {
     plymouth-set-default-theme -R arch-glow # sets the theme and runs mkinitcpio
 
     echo -e "\n Plymouth theme installed"
+}
+
+
+# @description Configure PAM to allow 5 password attempts before lockout
+# @noargs
+configure_pam_faillock() {
+    echo -ne "
+-------------------------------------------------------------------------
+                    Configuring PAM Password Attempts
+-------------------------------------------------------------------------
+"
+    # Configure faillock to allow 5 attempts before lockout
+    FAILLOCK_CONF="/etc/security/faillock.conf"
+
+    # Create or update faillock.conf
+    mkdir -p /etc/security/
+
+    # Check if faillock.conf exists
+    if [[ ! -f "$FAILLOCK_CONF" ]]; then
+        # Create default faillock.conf with 5 attempts
+        cat > "$FAILLOCK_CONF" << 'EOF'
+# faillock configuration file
+# This file is parsed by faillock(8).
+# See 'man faillock.conf' for more information.
+
+# Maximum number of consecutive failed login attempts before the account is locked
+deny = 5
+
+# Time in seconds after which the counter of failed login attempts will be reset
+fail_interval = 900
+
+# Time in seconds that must elapse before failed login attempts counter is reset
+# in case the user tries to authenticate before the fail_interval expires
+unlock_time = 600
+EOF
+        echo "Created $FAILLOCK_CONF with 5 attempts configuration"
+    else
+        # Update existing faillock.conf
+        # Update deny value to 5 if it exists
+        if grep -q "^deny\s*=" "$FAILLOCK_CONF"; then
+            sed -i 's/^deny\s*=.*/deny = 5/' "$FAILLOCK_CONF"
+        else
+            # Add deny = 5 if it doesn't exist (after comments)
+            sed -i '/^#/a deny = 5' "$FAILLOCK_CONF" || echo "deny = 5" >> "$FAILLOCK_CONF"
+        fi
+
+        echo "Updated $FAILLOCK_CONF: deny = 5"
+    fi
+
+    # Note: The default Arch Linux PAM configuration uses faillock.conf
+    # The configuration in /etc/pam.d/system-auth should already reference pam_faillock
+    # If needed, we can verify that pam_faillock is being used
+    echo "PAM password attempts configured: 5 attempts before lockout"
+    echo "Configuration file: $FAILLOCK_CONF"
 }

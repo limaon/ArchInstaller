@@ -1,0 +1,192 @@
+#!/bin/bash
+#
+# auto-suspend-hibernate - Automatic suspend/hibernate based on power state
+# @file auto-suspend-hibernate
+# @brief Automatically suspends or hibernates based on AC/battery state
+# @description Called by xidlehook when system is idle
+#              - On AC: suspends (suspend to RAM)
+#              - On battery: hibernates (suspend to disk) if swap is sufficient
+
+# Show help message
+show_help() {
+    cat << EOF
+auto-suspend-hibernate - Automatic suspend/hibernate based on power state
+
+DESCRIPTION:
+    Automatically suspends or hibernates the system based on power adapter state.
+    Called by xidlehook when user is idle for configured period.
+
+    Behavior:
+    - On AC (plugged in): Suspends (suspend to RAM) - fast wake
+    - On battery: Hibernates (suspend to disk) - saves battery, slower wake
+
+    Hibernation requires swap >= RAM. If swap is insufficient, falls back to
+    suspension even on battery.
+
+USAGE:
+    auto-suspend-hibernate [OPTIONS]
+
+OPTIONS:
+    -h, --help      Show this help message and exit
+    -v, --verbose   Show detailed information
+
+EXAMPLES:
+    auto-suspend-hibernate              # Execute suspend/hibernate
+    auto-suspend-hibernate --verbose    # Show detailed info before action
+    auto-suspend-hibernate --help       # Show help
+
+POWER STATES:
+    AC (on-line):   systemctl suspend   (fast, ~2-5 seconds)
+    Battery:        systemctl hibernate (slow, ~10-30 seconds, saves battery)
+
+DEPENDENCIES:
+    - acpi                    # Power state detection
+    - check-swap-for-hibernate # Swap verification
+    - systemd                 # Suspend/hibernate commands
+
+ENVIRONMENT:
+    This script is typically called by xidlehook after period of inactivity.
+    It can also be called manually for testing.
+
+NOTES:
+    - Requires sufficient swap for hibernation (swap >= RAM)
+    - Desktop systems (no battery) will always suspend
+    - Can be called manually: sudo auto-suspend-hibernate
+
+AUTHOR:
+    Part of ArchInstaller - Auto suspend/hibernate for i3-wm
+
+EOF
+}
+
+# Check for help argument
+if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+    show_help
+    exit 0
+fi
+
+VERBOSE=false
+if [[ "$1" == "-v" ]] || [[ "$1" == "--verbose" ]]; then
+    VERBOSE=true
+fi
+
+# Detect user DISPLAY if not set
+if [[ -z "${DISPLAY:-}" ]]; then
+    # Try to get DISPLAY from loginctl
+    X_USER=$(loginctl list-sessions 2>/dev/null | grep -E 'session-.*seat' | head -n1 | awk '{print $3}')
+    if [[ -n "$X_USER" ]]; then
+        X_SESSION=$(loginctl show-user "$X_USER" -p Display 2>/dev/null | cut -d= -f2)
+        export DISPLAY="${X_SESSION:-:0}"
+    else
+        export DISPLAY="${DISPLAY:-:0}"
+    fi
+fi
+
+# Detect DBUS_SESSION_BUS_ADDRESS if not set
+if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]]; then
+    USER_ID=$(id -u)
+    if [[ -S "/run/user/${USER_ID}/bus" ]]; then
+        export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${USER_ID}/bus"
+    fi
+fi
+
+# Check if running as root (for systemctl commands)
+if [[ $EUID -ne 0 ]]; then
+    # Not root - need sudo
+    SUDO_CMD="sudo"
+else
+    SUDO_CMD=""
+fi
+
+# Detect power state
+POWER_STATE="unknown"
+BATTERY_EXISTS=false
+
+# Check if battery exists
+if acpi -b &>/dev/null && [[ -n "$(acpi -b 2>/dev/null)" ]]; then
+    BATTERY_EXISTS=true
+
+    # Check AC adapter status
+    if acpi -a | grep -q "on-line"; then
+        POWER_STATE="ac"
+    elif acpi -a | grep -q "off-line"; then
+        POWER_STATE="battery"
+    fi
+else
+    # No battery detected (desktop system)
+    POWER_STATE="desktop"
+    BATTERY_EXISTS=false
+fi
+
+if [[ "$VERBOSE" == true ]]; then
+    echo "Power state detection:"
+    echo "  Battery detected: $([[ "$BATTERY_EXISTS" == true ]] && echo "Yes" || echo "No")"
+    echo "  Power state: $POWER_STATE"
+    echo ""
+fi
+
+# Decide action based on power state
+if [[ "$POWER_STATE" == "desktop" ]]; then
+    # Desktop system - always suspend (no hibernation)
+    if [[ "$VERBOSE" == true ]]; then
+        echo "Desktop system detected (no battery)"
+        echo "Action: Suspend (suspend to RAM)"
+    fi
+
+    # Suspend
+    $SUDO_CMD systemctl suspend
+    exit $?
+
+elif [[ "$POWER_STATE" == "ac" ]]; then
+    # On AC power - suspend (fast wake)
+    if [[ "$VERBOSE" == true ]]; then
+        echo "AC power detected (plugged in)"
+        echo "Action: Suspend (suspend to RAM - fast wake)"
+    fi
+
+    # Suspend
+    $SUDO_CMD systemctl suspend
+    exit $?
+
+elif [[ "$POWER_STATE" == "battery" ]]; then
+    # On battery - hibernate (if swap sufficient) or suspend (fallback)
+    if [[ "$VERBOSE" == true ]]; then
+        echo "Battery power detected (discharging)"
+        echo "Checking swap for hibernation..."
+    fi
+
+    # Check if swap is sufficient for hibernation
+    if /usr/local/bin/check-swap-for-hibernate >/dev/null 2>&1; then
+        # Swap is sufficient - hibernate
+        if [[ "$VERBOSE" == true ]]; then
+            echo "Swap is sufficient for hibernation"
+            echo "Action: Hibernate (suspend to disk - saves battery)"
+        fi
+
+        # Hibernate
+        $SUDO_CMD systemctl hibernate
+        exit $?
+    else
+        # Swap insufficient - fallback to suspend
+        if [[ "$VERBOSE" == true ]]; then
+            echo "Warning: Swap is insufficient for hibernation"
+            echo "Falling back to suspend instead"
+            echo "Action: Suspend (suspend to RAM)"
+        fi
+
+        # Fallback: suspend
+        $SUDO_CMD systemctl suspend
+        exit $?
+    fi
+
+else
+    # Unknown power state - default to suspend
+    if [[ "$VERBOSE" == true ]]; then
+        echo "Warning: Could not determine power state"
+        echo "Default action: Suspend (suspend to RAM)"
+    fi
+
+    # Default: suspend
+    $SUDO_CMD systemctl suspend
+    exit $?
+fi

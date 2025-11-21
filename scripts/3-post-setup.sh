@@ -41,6 +41,10 @@ display_manager
 # services for full installations function from 'software-install.sh'
 essential_services
 
+# Function to configure PAM password attempts (allow 5 attempts before lockout)
+# function from 'system-config.sh'
+configure_pam_faillock
+
 echo -ne "
 -------------------------------------------------------------------------
                     Configuring SSH
