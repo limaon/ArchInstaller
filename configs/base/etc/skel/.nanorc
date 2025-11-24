@@ -1,0 +1,77 @@
+# ~/.nanorc - Nano editor configuration for root user
+# Based on ArchWiki: https://wiki.archlinux.org/title/GNU_nano
+
+################################################################################
+##  SYNTAX HIGHLIGHTING                                                       ##
+################################################################################
+
+# Include system-wide syntax files
+include "/usr/share/nano/*.nanorc"
+
+################################################################################
+##  DISPLAY OPTIONS                                                           ##
+################################################################################
+
+# Show line numbers
+set linenumbers
+
+# Show cursor position in status bar
+set constantshow
+
+# Smooth scrolling
+set smooth
+
+# Show whitespace
+# set whitespace "·"
+
+################################################################################
+##  EDITING OPTIONS                                                           ##
+################################################################################
+
+# Auto-indent new lines
+set autoindent
+
+# Convert tabs to spaces
+set tabsize 4
+set tabstospaces
+
+# Wrap text at 80 characters
+set fill 80
+
+# Break long lines
+set breaklonglines
+
+# Allow mouse support (if terminal supports it)
+set mouse
+
+################################################################################
+##  BACKUP AND RECOVERY                                                       ##
+################################################################################
+
+# Create backup files
+set backup
+
+# Backup directory (create if needed)
+# set backupdir "/root/.nano-backups"
+
+################################################################################
+##  KEY BINDINGS                                                               ##
+################################################################################
+
+# Unbind Ctrl+K (cut line) - too dangerous for root
+# unbind ^k
+
+# Unbind Ctrl+U (cut to beginning) - too dangerous for root
+# unbind ^u
+
+################################################################################
+##  SECURITY                                                                   ##
+################################################################################
+
+# Disable suspending (Ctrl+Z) - prevents accidental suspension
+unbind ^z
+
+################################################################################
+##  END OF CONFIGURATION                                                     ##
+################################################################################
+

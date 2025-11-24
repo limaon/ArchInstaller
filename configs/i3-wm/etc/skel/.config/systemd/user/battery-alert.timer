@@ -1,0 +1,13 @@
+[Unit]
+Description=Battery Level Alert Timer
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+

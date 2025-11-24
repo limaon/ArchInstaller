@@ -10,12 +10,14 @@
       { "package": "fastfetch" },
       { "package": "firefox" },
       { "package": "gnome-keyring" },
+      { "package": "gnome-themes-extra" },
       { "package": "i3-wm" },
       { "package": "i3blocks" },
       { "package": "i3lock" },
       { "package": "i3status" },
       { "package": "ibus" },
-      { "package": "kitty" },
+      { "package": "jq" },
+      { "package": "xterm" },
       { "package": "kvantum" },
       { "package": "kvantum-qt5" },
       { "package": "libnotify" },
@@ -39,7 +41,8 @@
     ],
     "aur": [
       { "package": "xautocfg" },
-      { "package": "xidlehook" }
+      { "package": "xidlehook" },
+      { "package": "zafiro-icon-theme" }
     ]
   },
   "full": {
@@ -56,7 +59,6 @@
       { "package": "maim" },
       { "package": "mpv" },
       { "package": "nsxiv" },
-      { "package": "pop-icon-theme" },
       { "package": "qbittorrent" },
       { "package": "ripgrep" },
       { "package": "unclutter" },
@@ -73,7 +75,7 @@
     "aur": [
       { "package": "asdf-vm" },
       { "package": "kvantum-theme-vimix-git" },
-      { "package": "yaru-gtk-theme" }
+      { "package": "zafiro-icon-theme" }
     ]
   }
 }

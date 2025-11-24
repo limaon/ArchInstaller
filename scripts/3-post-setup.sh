@@ -49,6 +49,27 @@ configure_pam_faillock
 # function from 'system-config.sh'
 configure_pipewire
 
+# Configure root user shell
+echo -ne "
+-------------------------------------------------------------------------
+                    Configuring Root User Shell
+-------------------------------------------------------------------------
+"
+# Copy root configuration files if they exist
+if [[ -d "$HOME"/archinstaller/configs/base/root ]]; then
+    ROOT_CONFIG_DIR="$HOME"/archinstaller/configs/base/root
+
+    # Copy all root shell configuration files at once
+    # Using cp -a to preserve permissions and copy recursively
+    if cp -a "$ROOT_CONFIG_DIR"/. /root/ 2>/dev/null; then
+        echo "Root user shell configuration complete"
+    else
+        echo "Warning: Some root configuration files may not have been copied"
+    fi
+else
+    echo "Root shell configuration directory not found, skipping"
+fi
+
 echo -ne "
 -------------------------------------------------------------------------
                     Configuring SSH

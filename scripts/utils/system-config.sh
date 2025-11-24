@@ -577,6 +577,40 @@ extra_repos() {
 }
 
 
+# @description Configure base skel directory with common configurations for all users
+# Copies editor configurations and other base files to /etc/skel/
+# @noargs
+configure_base_skel() {
+    echo -ne "
+-------------------------------------------------------------------------
+                    Configuring Base Skel Directory
+-------------------------------------------------------------------------
+"
+    # Copy base skel configurations to /etc/skel/ if they exist
+    if [[ -d "$HOME"/archinstaller/configs/base/etc/skel ]]; then
+        SKEL_CONFIG_DIR="$HOME"/archinstaller/configs/base/etc/skel
+
+        # Copy everything from base skel to /etc/skel/ recursively
+        # Using cp -a to preserve permissions and copy directories recursively
+        if cp -a "$SKEL_CONFIG_DIR"/. /etc/skel/ 2>/dev/null; then
+            echo "Base skel configurations copied to /etc/skel/"
+
+            # List copied files for verification
+            if [[ -f /etc/skel/.nanorc ]]; then
+                echo "  - .nanorc configured"
+            fi
+            if [[ -d /etc/skel/.config/nvim ]]; then
+                echo "  - Neovim configuration configured"
+            fi
+        else
+            echo "Warning: Failed to copy base skel configurations"
+        fi
+    else
+        echo "Base skel configuration directory not found, skipping"
+    fi
+}
+
+
 # @description Adds user that was setup prior to installation
 # @noargs
 add_user() {
@@ -876,30 +910,52 @@ greeter-session=lightdm-gtk-greeter" > /etc/lightdm/lightdm.conf
             ["active-monitor"]="1"
             ["round-user-image"]="false"
             ["indicators"]="~host;~spacer;~language;~session;~a11y;~power"
+            ["position"]="50%,center 50%,center"
+            ["draw-grid"]="false"
+            ["clock-format"]="%H:%M"
+            ["keyboard"]=""
+            ["hide-user-image"]="false"
+            ["logo"]=""
+            ["other-monitors-logo"]=""
+            ["battery"]=""
         )
 
-        # Background configuration based on installation type
+        # Background and theme configuration based on installation type
         if [[ "${INSTALL_TYPE}" == "FULL" ]]; then
             # FULL: Use wallpaper image
             base_greeter_config["background"]="/usr/share/backgrounds/archlinux/geolanes.png"
             base_greeter_config["user-background"]="true"
-            # Theme configuration (only for FULL installation)
-            base_greeter_config["icon-theme-name"]="Pop"
-            base_greeter_config["cursor-theme-name"]="Pop"
-            base_greeter_config["theme-name"]="Yaru-blue-dark"
+            base_greeter_config["draw-user-backgrounds"]="true"
+            # Theme configuration for FULL installation (using Adwaita-dark theme)
+            base_greeter_config["icon-theme-name"]="zafiro-dark"
+            base_greeter_config["cursor-theme-name"]="Adwaita"
+            base_greeter_config["theme-name"]="Adwaita-dark"
         else
-            # MINIMAL: Use solid color background
+            # MINIMAL: Use solid color background with dark theme
             base_greeter_config["background"]="#6a6a6a"
             base_greeter_config["user-background"]="false"
+            base_greeter_config["draw-user-backgrounds"]="false"
+            # Dark theme configuration for MINIMAL installation (using Adwaita-dark theme)
+            base_greeter_config["icon-theme-name"]="zafiro-dark"
+            base_greeter_config["cursor-theme-name"]="Adwaita"
+            base_greeter_config["theme-name"]="Adwaita-dark"
         fi
 
+        # Apply configuration: remove existing entries first, then add new ones
         for key in "${!base_greeter_config[@]}"; do
-            if grep -q "^#${key}=" "$CONFIG_FILE"; then
-                sed -i "s|^#${key}=.*|${key}=${base_greeter_config[$key]}|" "$CONFIG_FILE"
-            else
+            # Remove existing entry (commented or not)
+            sed -i "/^#*${key}=/d" "$CONFIG_FILE"
+        done
+
+        # Add all configurations
+        for key in "${!base_greeter_config[@]}"; do
+            # Skip empty values
+            if [[ -n "${base_greeter_config[$key]}" ]]; then
                 echo "${key}=${base_greeter_config[$key]}" >> "$CONFIG_FILE"
             fi
         done
+
+        echo "LightDM GTK greeter configured with dark theme for i3-wm"
 
     # If none of the above, use lightdm as fallback
     else

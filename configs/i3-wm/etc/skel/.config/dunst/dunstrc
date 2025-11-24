@@ -1,0 +1,422 @@
+[global]
+    ### Display ###
+
+    # Which monitor should the notifications be displayed on.
+    monitor = 0
+
+    # Display notification on the specified screen.
+    follow = keyboard
+
+    # The geometry of the window
+    # geometry = "300x5-30+20"
+    # The maximum size of a single notification
+    # width = (0, 800)
+    # height = (0, 600)
+
+    # Show only count if there are more notifications
+    # show_indicators = true
+
+    # The maximum number of notification windows
+    notification_limit = 5
+
+    ### Progress bar ###
+
+    # Show progress bar for notifications with progress hint
+    progress_bar = true
+    progress_bar_height = 10
+    progress_bar_frame_width = 1
+    progress_bar_min_width = 150
+    progress_bar_max_width = 300
+
+    ### Behavior ###
+
+    # How long a notification will be displayed (in seconds)
+    timeout = 10
+
+    # Minimum timeout (in seconds)
+    # timeout = 10
+
+    # Notification timeout for low urgency notifications (in seconds)
+    # timeout_low = 10
+
+    # Notification timeout for normal urgency notifications (in seconds)
+    # timeout_normal = 10
+
+    # Notification timeout for critical urgency notifications (in seconds)
+    timeout_critical = 0
+
+    # Don't timeout notifications with critical urgency
+    # timeout_critical = 0
+
+    # The format of the shortcut indicator
+    # shortcut = "<action> <key>"
+
+    # Show age of message if message is older than show_age_threshold seconds
+    # Set to -1 to disable.
+    show_age_threshold = 60
+
+    # The maximum age of a notification before it's considered old (seconds)
+    # Set to 0 to disable.
+    # max_age = 0
+
+    # Respect the app's requested urgency level
+    respect_timeout = false
+
+    # Respect the app's requested urgency level for critical notifications
+    respect_critical_timeout = true
+
+    # Indicate that notification is old
+    # indicate_hidden = true
+
+    # Alignment of message text.
+    # Possible values are "left", "center" and "right".
+    alignment = left
+
+    # Vertical alignment of message text and icon.
+    # Possible values are "top", "center" and "bottom".
+    vertical_alignment = center
+
+    # Show how many messages are currently hidden (because of geometry).
+    # indicate_hidden = yes
+
+    # Shrink window if it's smaller than the width.  Will be ignored if width is 0.
+    shrink = no
+
+    # The transparency of the window.  Range: [0; 100].
+    # This option will only work if a compositor is running (e.g. xcompmgr, compton, picom).
+    transparency = 0
+
+    # Don't remove messages, if the user is idle (no mouse or keyboard input)
+    # for longer than idle_threshold seconds.
+    # Set to 0 to disable.
+    # idle_threshold = 120
+
+    # Which mouse button actions are enabled
+    # Possible values are "none", "do_action", "close_current", "close_all", "close_last".
+    mouse_left_click = close_current
+    mouse_middle_click = do_action
+    mouse_right_click = close_all
+
+    ### Font ###
+
+    # Font stack with fallbacks: Terminus Nerd Font (primary), Terminus, DejaVu Sans Mono, and emoji fonts
+    font = Terminus 12
+
+    ### Icons ###
+
+    # Align icons left/right/off
+    icon_position = left
+    max_icon_size = 64
+
+    # Paths to Zafiro icon theme (consistent with GTK theme)
+    icon_path = /usr/share/icons/zafiro-dark/16x16/status/:/usr/share/icons/zafiro-dark/16x16/devices/:/usr/share/icons/zafiro-dark/16x16/apps/:/usr/share/icons/zafiro-dark/24x24/status/:/usr/share/icons/zafiro-dark/24x24/devices/:/usr/share/icons/zafiro-dark/24x24/apps/:/usr/share/icons/Zafiro-Dark/16x16/status/:/usr/share/icons/Zafiro-Dark/16x16/devices/
+
+    ### Stacking ###
+
+    # Show a count of how many notifications are hidden
+    # indicate_hidden = true
+
+    # Sticky notifications that can't be removed
+    # sticky_history = false
+
+    # Maximum number of notifications to keep in history
+    history_length = 20
+
+    ### Misc/Advanced ###
+
+    # dmenu path.
+    # dmenu = /usr/bin/dmenu -p dunst:
+
+    # Browser for opening urls in context menu.
+    browser = /usr/bin/firefox -new-tab
+
+    # Always run rule definitions in client context
+    # Always run rule definitions in client context
+    always_run_script = true
+
+    # Define the title of the windows spawned by dunst
+    title = Dunst
+
+    # Define the class of the windows spawned by dunst
+    class = Dunst
+
+    # Print a notification on startup.
+    # This is mainly for error detection, since dbus (re-)starts dunst
+    # automatically after a crash.
+    startup_notification = false
+
+    # Manage dunst's desire for talking
+    # Can be one of the following values:
+    #  crit: Critical features. Dunst aborts
+    #  warn: Only non-fatal warnings
+    #  mesg: Important Messages
+    #  info: all unimportant stuff
+    # debug: all less than debug stuff
+    verbosity = mesg
+
+    # Define the corner radius of the notification window
+    # in pixel size. If the radius is 0, you have no rounded
+    # corners.
+    # The radius will be automatically lowered if it exceeds half of the
+    # notification height to avoid clipping corners and undesirable
+    # artifacts.
+    corner_radius = 8
+
+    # Ignore the dbus closeNotification message.
+    # Useful to enforce the timeout set by dunst configuration. Without this
+    # parameter, an application may close the notification sent before the
+    # user defined timeout.
+    ignore_dbusclose = false
+
+    # Wayland only: if this is enabled, a layer surface will be created for
+    # the notifications, making them independent from the wl_output lifetime.
+    # layer = on
+
+    ### Legacy
+
+    # Use the Xinerama extension instead of RandR for multi-monitor support.
+    # This setting is provided for compatibility with older nvidia drivers that
+    # do not support RandR and using it on systems that support RandR is highly
+    # discouraged.
+    # force_xinerama = false
+
+    ### Experimental
+
+    # Tell the notification daemon to resize the window in steps instead of
+    # continuously.  This is a workaround for X11, which does not support
+    # resizing windows while they are being drawn.  This might cause some
+    # notifications to be resized incorrectly.
+    # force_xwayland = false
+
+    ### Per application rules ###
+
+[experimental]
+    # Calculate the dpi to use on a per-monitor basis.
+    # If this setting is enabled the Xft.dpi value will be ignored and instead
+    # dunst will attempt to calculate an appropriate dpi value for each monitor
+    # using the resolution and physical size. This might be useful in setups
+    # where there are multiple screens with very different dpi values.
+    per_monitor_dpi = false
+
+[shortcuts]
+    # Shortcuts are specified as [modifier+][modifier+]...key
+    # Available modifiers: "ctrl", "mod1" (alt), "mod2", "mod3", "mod4" (super/windows key), "mod5" (altgr), "A"-"Z", "0"-"9"
+    # Multiple modifiers can be combined with "+"
+    # A special key is "clear" to remove all shortcuts.
+    # You can use "X" to get a key's name.
+
+    # Close notification.
+    close = ctrl+space
+
+    # Close all notifications.
+    close_all = ctrl+shift+space
+
+    # Redisplay last message(s).
+    # On the US keyboard layout "grave" is normally above TAB and left
+    # of "1". Make sure this key actually exists on your keyboard layout,
+    # e.g. check output of 'xmodmap -pke' if you don't use a US layout.
+    history = ctrl+grave
+
+    # Context menu.
+    context = ctrl+shift+period
+
+[urgency_low]
+    # IMPORTANT: colors have to be defined in quotation marks.
+    # Otherwise the "#" and following would be interpreted as a comment.
+    background = "#222222"
+    foreground = "#888888"
+    frame_color = "#222222"
+    timeout = 10
+    # Icon for notifications with low urgency, uncomment to enable
+    #default_icon = /path/to/icon
+
+[urgency_normal]
+    background = "#285577"
+    foreground = "#ffffff"
+    frame_color = "#4c7899"
+    timeout = 10
+    # Icon for notifications with normal urgency, uncomment to enable
+    #default_icon = /path/to/icon
+
+[urgency_critical]
+    background = "#900000"
+    foreground = "#ffffff"
+    frame_color = "#ff0000"
+    timeout = 0
+    # Icon for notifications with critical urgency, uncomment to enable
+    #default_icon = /path/to/icon
+
+# Every section that isn't one of the above is interpreted as a rules to
+# override settings for certain messages.
+#
+# Messages can be matched by "appname", "summary", "body", "icon", "category",
+# "msg_urgency" and you can override the "timeout", "urgency", "foreground",
+# "background", "new_icon" and "format".
+#
+# Shell-like globbing will be expanded if you want to match multiple tags with
+# one entry, e.g. <tag>_<number>. See `man 7 glob` for more info.
+#
+# SCRIPTING
+# You can specify a script that gets run when a rule matches by
+# setting the "script" option.
+# The script will be called as follows:
+#   script appname summary body icon urgency
+# where urgency can be "LOW", "NORMAL" or "CRITICAL".
+#
+# NOTE: if you don't want a notification to be displayed, set the format
+# to "".
+# NOTE: It might be helpful to run dunst -print to see what information
+# is passed to each rule.
+
+# Battery notifications (from battery-alert script)
+# These rules ensure battery notifications are displayed with appropriate urgency
+[battery-alert]
+    appname = battery-alert
+    urgency = critical
+    timeout = 0
+
+[battery-charging]
+    appname = battery-charging
+    urgency = normal
+    timeout = 5
+
+# Ignore transient notifications in history
+# Prevents short-lived notifications from cluttering the history
+[transient_history_ignore]
+    match_transient = yes
+    history_ignore = yes
+
+# Show critical notifications even in fullscreen
+# Ensures important notifications are always visible
+[fullscreen_show_critical]
+    msg_urgency = critical
+    fullscreen = show
+
+# Volume control notifications
+# Customize volume notifications for better visibility
+[volume]
+    appname = "Volume"
+    summary = "*"
+    timeout = 2
+    urgency = low
+    format = "<b>%s</b>\n%b"
+
+# Brightness control notifications
+# Customize brightness notifications
+[brightness]
+    appname = "Brightness"
+    summary = "*"
+    timeout = 2
+    urgency = low
+    format = "<b>%s</b>\n%b"
+
+# NetworkManager notifications
+# Network connection/disconnection notifications
+[network]
+    appname = "NetworkManager"
+    summary = "*"
+    timeout = 5
+    urgency = normal
+
+# System updates notifications
+# Package manager notifications (pacman, yay, etc.)
+[updates]
+    appname = "PackageKit"
+    summary = "*"
+    timeout = 10
+    urgency = normal
+
+# Screenshot notifications
+# Screenshot tool notifications (maim, flameshot, etc.)
+[screenshot]
+    appname = "maim"
+    summary = "*"
+    timeout = 3
+    urgency = low
+
+[screenshot-flameshot]
+    appname = "flameshot"
+    summary = "*"
+    timeout = 3
+    urgency = low
+
+# Media player notifications
+# Spotify, mpv, and other media players
+[spotify]
+    appname = "Spotify"
+    summary = "*"
+    timeout = 5
+    urgency = low
+    format = "<b>%s</b>\n%b"
+
+[mpv]
+    appname = "mpv"
+    summary = "*"
+    timeout = 3
+    urgency = low
+
+# Browser notifications
+# Firefox, Chromium, etc.
+[firefox]
+    appname = "Firefox"
+    summary = "*"
+    timeout = 10
+    urgency = normal
+
+[chromium]
+    appname = "Chromium"
+    summary = "*"
+    timeout = 10
+    urgency = normal
+
+# File manager notifications
+# PCManFM, Thunar, etc.
+[file-manager]
+    appname = "pcmanfm"
+    summary = "*"
+    timeout = 5
+    urgency = low
+
+# Email client notifications
+# Thunderbird, Evolution, etc.
+[email]
+    appname = "Thunderbird"
+    summary = "*"
+    timeout = 10
+    urgency = normal
+
+# Calendar/reminder notifications
+# Calendar applications
+[calendar]
+    category = "calendar"
+    timeout = 10
+    urgency = normal
+
+# System notifications
+# System-wide notifications
+[system]
+    category = "system"
+    timeout = 5
+    urgency = normal
+
+# Device notifications
+# USB, disk, etc.
+[device]
+    category = "device"
+    timeout = 5
+    urgency = normal
+
+# Ignore certain low-priority notifications
+# Skip notifications that are not important
+[ignore-low-priority]
+    msg_urgency = low
+    format = ""
+
+# Custom format for application-specific notifications
+# Example: Custom format for specific apps
+[custom-format]
+    appname = "CustomApp"
+    format = "<b>%a</b> - %s\n%b"
+    timeout = 5
+
+# vim: ft=cfg
