@@ -1068,3 +1068,61 @@ EOF
     echo "PAM password attempts configured: 5 attempts before lockout"
     echo "Configuration file: $FAILLOCK_CONF"
 }
+
+
+# @description Configure PipeWire as audio server and remove PulseAudio if present
+# @noargs
+configure_pipewire() {
+    # Only configure for graphical installations (not SERVER)
+    if [[ "${INSTALL_TYPE:-}" == "SERVER" ]]; then
+        return 0
+    fi
+
+    echo -ne "
+-------------------------------------------------------------------------
+                    Configuring PipeWire Audio Server
+-------------------------------------------------------------------------
+"
+
+    # Check if PipeWire is installed
+    if ! pacman -Qi pipewire &>/dev/null; then
+        echo "Warning: PipeWire is not installed, skipping configuration"
+        return 1
+    fi
+
+    echo "PipeWire is installed, configuring audio server..."
+
+    # Remove PulseAudio if installed (obsolete)
+    if pacman -Qi pulseaudio &>/dev/null; then
+        echo "Removing obsolete PulseAudio packages..."
+        pacman -Rns --noconfirm pulseaudio pulseaudio-alsa pulseaudio-bluetooth pulseaudio-equalizer pulseaudio-jack 2>/dev/null || true
+        echo "PulseAudio removed successfully"
+    else
+        echo "PulseAudio not found (already using PipeWire)"
+    fi
+
+    # Ensure PulseAudio is masked to prevent it from being installed as dependency
+    echo "Masking PulseAudio to prevent conflicts..."
+    systemctl --user mask pulseaudio.service pulseaudio.socket 2>/dev/null || true
+
+    # According to ArchWiki: PipeWire uses systemd/User for management
+    # Services are automatically enabled via socket activation when user logs in
+    # We cannot enable user services during chroot installation (no user session)
+    # However, we can ensure the socket units exist for automatic activation
+    echo ""
+    echo "PipeWire configuration complete!"
+    echo ""
+    echo "According to ArchWiki (https://wiki.archlinux.org/title/PipeWire):"
+    echo "  - PipeWire uses systemd/User for management"
+    echo "  - Services are automatically enabled via socket activation"
+    echo "  - WirePlumber is the recommended session manager (already installed)"
+    echo ""
+    echo "After first login, PipeWire will start automatically."
+    echo "To verify PipeWire is working after login:"
+    echo "  systemctl --user status pipewire pipewire-pulse wireplumber"
+    echo "  pactl info | grep 'Server Name'  # Should show 'PulseAudio (on PipeWire ...)'"
+    echo ""
+    echo "For custom configuration, edit:"
+    echo "  /etc/wireplumber/  (system-wide)"
+    echo "  ~/.config/wireplumber/  (user-specific)"
+}

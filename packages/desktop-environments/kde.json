@@ -100,9 +100,6 @@
 				"package": "plasma-nm"
 			},
 			{
-				"package": "plasma-pa"
-			},
-			{
 				"package": "plasma-wayland-session"
 			},
 			{
