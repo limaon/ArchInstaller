@@ -9,9 +9,9 @@ configs/*.log
 # Replit-specific files
 .replit
 replit.nix
-.config/
 .upm/
 .cache/
 .pythonlibs/
 replit.md
 .breakpoints
+docs/implementation-plans

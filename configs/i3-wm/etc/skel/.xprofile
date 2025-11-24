@@ -7,7 +7,7 @@ export GTK2_RC_FILES="$HOME/.gtkrc-2.0"
 export GTK_IM_MODULE=ibus
 export QT_IM_MODULE=ibus
 export XMODIFIERS=@im=ibus
-export XCURSOR_THEME="Pop"
+export XCURSOR_THEME="Adwaita"
 export XCURSOR_SIZE=24
 export XDG_SESSION_TYPE=x11
 export GDK_BACKEND=x11

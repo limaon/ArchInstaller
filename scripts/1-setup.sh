@@ -71,6 +71,11 @@ graphics_install
 user_theming
 
 
+# Configure base skel directory before creating user (so user gets configs automatically)
+# function from 'system-config.sh'
+configure_base_skel
+
+
 # If this file run without configuration, ask for basic user info before setting up user
 if ! source "$HOME"/archinstaller/configs/setup.conf; then
     user_info

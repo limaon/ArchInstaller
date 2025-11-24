@@ -1,5 +1,5 @@
-/* GTK3 CSS Customization for i3-wm */
-/* This file allows custom styling of GTK3 applications */
+/* GTK4 CSS Customization for i3-wm */
+/* This file allows custom styling of GTK4 applications */
 
 /* Remove window frame shadows for better integration with i3-wm */
 .window-frame {
@@ -9,8 +9,8 @@
 
 /* Optional: Customize scrollbars for better visibility */
 scrollbar {
-  -GtkScrollbar-has-backward-stepper: false;
-  -GtkScrollbar-has-forward-stepper: false;
+  min-width: 10px;
+  min-height: 10px;
 }
 
 scrollbar slider {
@@ -20,5 +20,6 @@ scrollbar slider {
 
 /* Optional: Improve contrast for dark theme */
 * {
-  -GtkWidget-focus-line-width: 1;
+  outline-width: 1px;
 }
+

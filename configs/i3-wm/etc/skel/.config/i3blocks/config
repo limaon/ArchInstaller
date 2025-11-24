@@ -1,0 +1,73 @@
+# i3blocks configuration file
+# See https://vivien.github.io/i3blocks/ for documentation
+
+# Global settings
+command=
+interval=persist
+markup=pango
+separator_block_width=15
+
+# Workspace indicator (i3 workspace switcher)
+[i3workspaces]
+command=~/.config/i3blocks/scripts/i3workspaces
+interval=persist
+markup=pango
+
+# CPU usage
+[cpu_usage]
+command=~/.config/i3blocks/scripts/cpu_usage
+label=CPU
+interval=5
+color=#3584E4
+
+# Memory usage
+[memory]
+command=~/.config/i3blocks/scripts/memory
+label=MEM
+interval=5
+color=#26A269
+
+# Disk usage
+[disk]
+command=~/.config/i3blocks/scripts/disk
+label=DISK
+interval=30
+color=#C19C00
+
+# Volume control (PipeWire/PulseAudio)
+[volume]
+command=~/.config/i3blocks/scripts/volume
+interval=once
+signal=10
+markup=pango
+# Click actions: left=mute, right=open volume control
+# Left click: toggle mute
+# Right click: open pavucontrol (if installed)
+# Middle click: open alsamixer (if installed)
+
+# Brightness control
+[brightness]
+command=~/.config/i3blocks/scripts/brightness
+interval=once
+signal=1
+markup=pango
+# Click actions: left/right to adjust brightness
+
+# Battery (if available)
+[battery]
+command=~/.config/i3blocks/scripts/battery
+interval=30
+markup=pango
+
+# Network status
+[network]
+command=~/.config/i3blocks/scripts/network
+interval=5
+markup=pango
+
+# Date and time
+[time]
+command=date '+%Y-%m-%d %H:%M:%S'
+interval=1
+markup=pango
+

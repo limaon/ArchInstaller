@@ -1,0 +1,122 @@
+# ~/.inputrc - Readline configuration for root user
+# Based on ArchWiki: https://wiki.archlinux.org/title/Readline
+
+################################################################################
+##  BELL                                                                      ##
+################################################################################
+
+# Disable audible bell
+set bell-style none
+
+# Visual bell (flash screen instead of beeping)
+# set bell-style visible
+
+################################################################################
+##  COMPLETION                                                                ##
+################################################################################
+
+# Show all completions immediately
+set show-all-if-ambiguous on
+
+# Show completions on first tab press
+set show-all-if-unmodified on
+
+# Menu completion: cycle through completions with Tab
+set menu-complete-display-prefix on
+
+################################################################################
+##  HISTORY                                                                   ##
+################################################################################
+
+# Ignore duplicate entries in history
+set history-size 5000
+
+# Ignore lines starting with space
+set HISTCONTROL=ignoreboth
+
+# Incremental search: search history as you type
+"\e[A": history-search-backward
+"\e[B": history-search-forward
+
+# Search history with Ctrl+R (default, but explicit)
+"\C-r": reverse-search-history
+
+################################################################################
+##  KEY BINDINGS                                                              ##
+################################################################################
+
+# Use vi mode (press ESC to enter command mode)
+# Uncomment to enable:
+# set editing-mode vi
+
+# Emacs mode (default)
+set editing-mode emacs
+
+# Make Tab cycle through completions
+"\t": menu-complete
+"\e[Z": menu-complete-backward
+
+# Ctrl+Left/Right to move by word
+"\e[1;5C": forward-word
+"\e[1;5D": backward-word
+
+# Alt+Left/Right to move by word (alternative)
+"\e[1;3C": forward-word
+"\e[1;3D": backward-word
+
+# Home/End keys
+"\e[1~": beginning-of-line
+"\e[4~": end-of-line
+
+# Delete key
+"\e[3~": delete-char
+
+################################################################################
+##  DISPLAY                                                                   ##
+################################################################################
+
+# Show matching brackets/parentheses
+set show-match-pair on
+
+# Highlight matching brackets
+set blink-matching-paren on
+
+# Mark symlinked directories with @
+set mark-symlinked-directories on
+
+# Colorize completions
+set colored-stats on
+set colored-completion-prefix on
+
+################################################################################
+##  CASE SENSITIVITY                                                          ##
+################################################################################
+
+# Case-insensitive completion
+set completion-ignore-case on
+
+# Case-sensitive if typed in mixed case
+set completion-map-case on
+
+################################################################################
+##  MISCELLANEOUS                                                             ##
+################################################################################
+
+# Expand variables in directory names
+set expand-tilde on
+
+# Enable 8-bit input
+set input-meta on
+set output-meta on
+set convert-meta off
+
+# Disable flow control (Ctrl+S/Ctrl+Q)
+set disable-completion off
+
+# Enable horizontal scrolling for long lines
+set horizontal-scroll-mode off
+
+################################################################################
+##  END OF CONFIGURATION                                                     ##
+################################################################################
+
