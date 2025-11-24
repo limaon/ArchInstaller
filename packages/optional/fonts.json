@@ -11,7 +11,6 @@
     { "package": "noto-fonts-emoji" },
     { "package": "powerline-fonts" },
     { "package": "terminus-font" },
-    { "package": "ttf-terminus-nerd" },
     { "package": "ttc-iosevka" },
     { "package": "ttf-comfortaa" },
     { "package": "ttf-dejavu" },
@@ -22,6 +21,7 @@
     { "package": "ttf-jetbrains-mono-nerd" },
     { "package": "ttf-liberation" },
     { "package": "ttf-opensans" },
+    { "package": "ttf-terminus-nerd" },
     { "package": "ttf-ubuntu-font-family" },
     { "package": "ttf-ubuntu-mono-nerd" }
   ],

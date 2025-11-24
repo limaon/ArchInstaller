@@ -12,6 +12,11 @@
 			{ "package": "man-db" },
 			{ "package": "man-pages" },
 			{ "package": "mesa" },
+			{ "package": "pipewire" },
+			{ "package": "pipewire-alsa" },
+			{ "package": "pipewire-pulse" },
+			{ "package": "wireplumber" },
+			{ "package": "alsa-utils" },
 			{ "package": "xorg" },
 			{ "package": "xorg-apps" },
 			{ "package": "xorg-drivers" },
@@ -24,6 +29,7 @@
 	"full": {
 		"pacman": [
 			{ "package": "archlinux-wallpaper" },
+			{ "package": "pipewire" },
 			{ "package": "pipewire-alsa" },
 			{ "package": "pipewire-jack" },
 			{ "package": "pipewire-pulse" },

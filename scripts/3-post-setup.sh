@@ -45,6 +45,10 @@ essential_services
 # function from 'system-config.sh'
 configure_pam_faillock
 
+# Function to configure PipeWire audio server and remove PulseAudio
+# function from 'system-config.sh'
+configure_pipewire
+
 echo -ne "
 -------------------------------------------------------------------------
                     Configuring SSH
