@@ -1051,15 +1051,25 @@ EOF
         echo "Created $FAILLOCK_CONF with 5 attempts configuration"
     else
         # Update existing faillock.conf
-        # Update deny value to 5 if it exists
-        if grep -q "^deny\s*=" "$FAILLOCK_CONF"; then
-            sed -i 's/^deny\s*=.*/deny = 5/' "$FAILLOCK_CONF"
+        # First, remove all existing deny lines to avoid duplicates
+        sed -i '/^deny\s*=/d' "$FAILLOCK_CONF"
+
+        # Add deny = 5 after the header comments (after first non-empty, non-comment section)
+        # Find a good place to insert: after comments but before other config lines
+        # If we find a line like "fail_interval" or "unlock_time", add before it
+        if grep -q "^fail_interval\|^unlock_time" "$FAILLOCK_CONF"; then
+            # Insert before first config line (fail_interval or unlock_time)
+            sed -i '/^fail_interval\|^unlock_time/i deny = 5' "$FAILLOCK_CONF"
+        elif grep -q "^[^#[:space:]]" "$FAILLOCK_CONF"; then
+            # File has non-comment, non-empty lines, add before first one
+            sed -i '/^[^#[:space:]]/i deny = 5' "$FAILLOCK_CONF"
         else
-            # Add deny = 5 if it doesn't exist (after comments)
-            sed -i '/^#/a deny = 5' "$FAILLOCK_CONF" || echo "deny = 5" >> "$FAILLOCK_CONF"
+            # File has only comments/empty lines, add at the end
+            echo "" >> "$FAILLOCK_CONF"
+            echo "deny = 5" >> "$FAILLOCK_CONF"
         fi
 
-        echo "Updated $FAILLOCK_CONF: deny = 5"
+        echo "Updated $FAILLOCK_CONF: deny = 5 (removed duplicates)"
     fi
 
     # Note: The default Arch Linux PAM configuration uses faillock.conf
