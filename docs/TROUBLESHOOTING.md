@@ -400,6 +400,311 @@ If you encounter errors, gather this information:
 
 ---
 
+## Auto Suspend/Hibernate (i3-wm)
+
+### Como Testar a Implementação de Suspend/Hibernate
+
+Após a instalação do sistema com i3-wm, você pode verificar se a implementação de suspend/hibernate automático está funcionando corretamente:
+
+#### 1. Verificações Básicas
+
+**Verificar se `xidlehook` está instalado**:
+```bash
+which xidlehook
+xidlehook --version
+```
+
+**Se não estiver instalado** (porque escolheu `AUR_HELPER=NONE`):
+```bash
+# Instalar base-devel e git primeiro
+sudo pacman -S base-devel git
+
+# Clonar e compilar xidlehook manualmente
+cd /tmp
+git clone https://aur.archlinux.org/xidlehook.git
+cd xidlehook
+makepkg -si
+```
+
+**Verificar se os scripts estão instalados**:
+```bash
+ls -la /usr/local/bin/auto-suspend-hibernate
+ls -la /usr/local/bin/check-swap-for-hibernate
+
+# Testar scripts
+/usr/local/bin/check-swap-for-hibernate --help
+/usr/local/bin/auto-suspend-hibernate --help
+```
+
+**Verificar se o i3 config está configurado**:
+```bash
+grep -i "xidlehook" ~/.config/i3/config
+# Deve mostrar algo como:
+# exec --no-startup-id xidlehook \
+#   --not-when-audio \
+#   --not-when-fullscreen \
+#   --timer 1800 \
+#   'notify-send -u normal "Inatividade" "O sistema irá hibernar/suspender em 30 segundos..."' \
+#   '' \
+#   --timer 30 \
+#   '/usr/local/bin/auto-suspend-hibernate' \
+#   ''
+```
+
+**Verificar configuração do GRUB (resume=)**:
+```bash
+grep -i "resume" /etc/default/grub
+# Deve mostrar algo como:
+# GRUB_CMDLINE_LINUX_DEFAULT="... resume=UUID=..."
+```
+
+**Verificar swap**:
+```bash
+# Verificar swap ativo
+swapon --show
+free -h
+
+# Verificar se swap é suficiente para hibernação
+/usr/local/bin/check-swap-for-hibernate --verbose
+```
+
+**Verificar configuração do systemd logind**:
+```bash
+cat /etc/systemd/logind.conf.d/50-hibernate.conf
+# Deve mostrar configurações de lid switch e power keys
+```
+
+#### 2. Testes Manuais
+
+**Testar detecção de energia (AC/Bateria)**:
+```bash
+# Verificar status de energia
+acpi -a  # Deve mostrar "on-line" ou "off-line"
+acpi -b  # Deve mostrar status da bateria
+
+# Testar script de suspend/hibernate (verbose para ver o que decide)
+/usr/local/bin/auto-suspend-hibernate --verbose
+```
+
+**Testar hibernação manual**:
+```bash
+# Verificar swap primeiro
+/usr/local/bin/check-swap-for-hibernate --verbose
+
+# Se swap for suficiente, testar hibernação manual
+# AVISO: Isso vai hibernar o sistema!
+systemctl hibernate
+
+# Após retornar, verificar se programas ainda estão abertos
+```
+
+**Testar suspensão manual**:
+```bash
+# Testar suspensão manual
+# AVISO: Isso vai suspender o sistema!
+systemctl suspend
+
+# Após retornar, verificar se sistema retornou rapidamente
+```
+
+#### 3. Testar xidlehook Manualmente
+
+**Testar xidlehook com tempo reduzido** (para teste rápido):
+```bash
+# Parar xidlehook se estiver rodando (do autostart do i3)
+pkill xidlehook
+
+# Testar com tempo reduzido (30 segundos até aviso, 10 segundos até ação)
+xidlehook \
+  --not-when-audio \
+  --not-when-fullscreen \
+  --timer 30 \
+  'notify-send -u normal "Teste" "Aviso de inatividade!"' \
+  '' \
+  --timer 10 \
+  '/usr/local/bin/auto-suspend-hibernate' \
+  ''
+
+# Agora não mexa no computador por 30 segundos
+# Você deve ver uma notificação após 30 segundos
+# O sistema deve suspender/hibernar após mais 10 segundos (40 segundos total)
+```
+
+**Verificar se xidlehook está rodando**:
+```bash
+ps aux | grep xidlehook
+# Deve mostrar processo do xidlehook rodando
+```
+
+**Ver logs do xidlehook** (se houver):
+```bash
+# Verificar logs do systemd (se xidlehook foi iniciado via systemd)
+journalctl --user -f | grep -i xidlehook
+```
+
+#### 4. Testar Comportamento Automático
+
+**Reiniciar o i3** para garantir que xidlehook inicia:
+```bash
+# No i3-wm, pressione Mod+Shift+R (geralmente Alt+Shift+R)
+# Ou reinciar o i3 manualmente
+i3-msg restart
+```
+
+**Verificar se xidlehook iniciou automaticamente**:
+```bash
+# Aguardar alguns segundos após login no i3
+ps aux | grep xidlehook
+```
+
+**Testar inatividade**:
+1. Faça login no i3-wm
+2. Não mexa no computador por **30 minutos e 30 segundos** (tempo padrão configurado)
+3. Após 30 minutos, você deve ver uma notificação: "O sistema irá hibernar/suspender em 30 segundos..."
+4. Se não mexer, após mais 30 segundos o sistema deve suspender ou hibernar
+
+**Comportamento esperado**:
+- **Com carregador conectado (AC)**: Sistema suspende (suspend to RAM)
+- **Sem carregador (Bateria)**:
+  - Se swap >= RAM: Sistema hiberna (suspend to disk)
+  - Se swap < RAM: Sistema suspende (suspend to RAM, fallback)
+
+**Durante áudio ou tela cheia**: xidlehook não executa (graças a `--not-when-audio` e `--not-when-fullscreen`)
+
+#### 5. Verificações de Troubleshooting
+
+**Problema: xidlehook não inicia automaticamente**
+
+```bash
+# Verificar i3 config
+cat ~/.config/i3/config | grep -A 10 xidlehook
+
+# Verificar se xidlehook está instalado
+which xidlehook
+
+# Tentar iniciar manualmente
+xidlehook --help
+```
+
+**Problema: Script auto-suspend-hibernate não funciona**
+
+```bash
+# Testar script manualmente com verbose
+/usr/local/bin/auto-suspend-hibernate --verbose
+
+# Verificar permissões
+ls -la /usr/local/bin/auto-suspend-hibernate
+ls -la /usr/local/bin/check-swap-for-hibernate
+
+# Verificar se acpi está instalado
+which acpi
+acpi -b
+```
+
+**Problema: Hibernação não funciona (sempre suspende)**
+
+```bash
+# Verificar swap
+swapon --show
+free -h
+/usr/local/bin/check-swap-for-hibernate --verbose
+
+# Verificar GRUB resume=
+grep resume /etc/default/grub
+# Se não houver resume=, regenerar GRUB:
+sudo grub-mkconfig -o /boot/grub/grub.cfg
+
+# Verificar se swap file existe
+ls -lh /swapfile
+
+# Verificar UUID do swap
+sudo findmnt -no UUID -T /swapfile
+# Ou
+sudo blkid | grep swap
+```
+
+**Problema: Sistema não retorna da hibernação**
+
+```bash
+# Verificar se resume= está no GRUB
+grep resume /boot/grub/grub.cfg
+
+# Verificar se UUID está correto
+sudo blkid | grep swap
+grep resume /etc/default/grub
+
+# Regenerar initramfs (pode ajudar)
+sudo mkinitcpio -P
+```
+
+**Problema: xidlehook executa mesmo com áudio/tela cheia**
+
+```bash
+# Verificar configuração no i3 config
+grep -A 10 xidlehook ~/.config/i3/config
+# Deve ter --not-when-audio e --not-when-fullscreen
+
+# Reiniciar i3 para aplicar mudanças
+i3-msg restart
+```
+
+#### 6. Comandos Úteis para Diagnóstico
+
+```bash
+# Verificar tudo de uma vez
+echo "=== Verificando Auto Suspend/Hibernate ==="
+echo ""
+echo "1. xidlehook instalado:"
+which xidlehook && xidlehook --version || echo "Não instalado"
+echo ""
+echo "2. Scripts instalados:"
+ls -la /usr/local/bin/auto-suspend-hibernate /usr/local/bin/check-swap-for-hibernate 2>/dev/null || echo "Scripts não encontrados"
+echo ""
+echo "3. i3 config configurado:"
+grep -q xidlehook ~/.config/i3/config && echo "✓ Configurado" || echo "✗ Não configurado"
+echo ""
+echo "4. GRUB resume=:"
+grep -q resume /etc/default/grub && echo "✓ Configurado" || echo "✗ Não configurado"
+echo ""
+echo "5. Swap status:"
+swapon --show
+echo ""
+echo "6. Swap suficiente para hibernação:"
+/usr/local/bin/check-swap-for-hibernate --verbose 2>/dev/null || echo "Script não encontrado"
+echo ""
+echo "7. Status de energia:"
+acpi -a 2>/dev/null || echo "acpi não disponível"
+echo ""
+echo "8. xidlehook rodando:"
+ps aux | grep -v grep | grep xidlehook && echo "✓ Rodando" || echo "✗ Não está rodando"
+```
+
+#### 7. Personalização (Opcional)
+
+**Alterar tempos de inatividade**:
+
+Edite `~/.config/i3/config` e modifique os valores de `--timer`:
+```bash
+# Tempo padrão: 30 minutos (1800 segundos) até aviso, 30 segundos até ação
+# Para testar mais rápido, use: --timer 60 (1 minuto) e --timer 10 (10 segundos)
+exec --no-startup-id xidlehook \
+  --not-when-audio \
+  --not-when-fullscreen \
+  --timer 1800 \  # Alterar para tempo desejado (em segundos)
+  'notify-send ...' \
+  '' \
+  --timer 30 \  # Alterar para tempo desejado (em segundos)
+  '/usr/local/bin/auto-suspend-hibernate' \
+  ''
+```
+
+**Reiniciar i3** após alterar:
+```bash
+i3-msg restart
+```
+
+---
+
 ## Battery Notifications (i3-wm)
 
 ### Problem: Battery notifications not working
