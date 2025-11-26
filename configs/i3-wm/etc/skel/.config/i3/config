@@ -80,13 +80,13 @@ bindsym XF86AudioMicMute exec --no-startup-id pactl set-source-mute @DEFAULT_SOU
 ################################################################################
 
 # Start a terminal
-bindsym $mod+Return exec $terminal
+bindsym --release $mod+Return exec $terminal
 
 # Kill focused window
 bindsym $mod+Shift+q kill
 
 # Start application launcher
-bindsym $mod+d exec --no-startup-id $menu
+bindsym --release $mod+d exec --no-startup-id $menu
 
 ################################################################################
 ##  WINDOW FOCUS (VIM STYLE: hjkl)                                          ##
@@ -124,11 +124,8 @@ bindsym $mod+Shift+Right move right
 ##  WINDOW LAYOUT                                                            ##
 ################################################################################
 
-# Split in horizontal orientation
-bindsym $mod+h split h
-
-# Split in vertical orientation
-bindsym $mod+v split v
+# Split in horizontal and vertical orientation
+bindsym $mod+semicolon split toggle
 
 # Enter fullscreen mode for the focused container
 bindsym $mod+f fullscreen toggle
@@ -200,7 +197,7 @@ bindsym $mod+Shift+c reload
 bindsym $mod+Shift+r restart
 
 # Exit i3 (logs you out of your X session)
-bindsym $mod+Shift+e exec "i3-nagbar -t warning -m 'You pressed the exit shortcut. Do you really want to exit i3? This will end your X session.' -B 'Yes, exit i3' 'i3-msg exit'"
+bindsym --release $mod+Shift+e exec "i3-nagbar -t warning -m 'You pressed the exit shortcut. Do you really want to exit i3? This will end your X session.' -B 'Yes, exit i3' 'i3-msg exit'"
 
 ################################################################################
 ##  RESIZE MODE (VIM STYLE: hjkl)                                           ##
@@ -270,3 +267,18 @@ exec --no-startup-id systemctl start --user xautocfg.service
 # xss-lock grabs a logind suspend inhibit lock and will use i3lock to lock the
 # screen before suspend. Use loginctl lock-session to lock your screen.
 exec --no-startup-id xss-lock --transfer-sleep-lock -- i3lock --nofork
+
+# Auto suspend/hibernate on inactivity using xidlehook
+# - 30 minutes (1800s) until warning notification
+# - 30 seconds after warning until suspend/hibernate
+# - Does not trigger when audio is playing or in fullscreen mode
+# - Behavior: Suspend on AC, Hibernate on battery (if swap sufficient)
+exec --no-startup-id xidlehook \
+  --not-when-audio \
+  --not-when-fullscreen \
+  --timer 1800 \
+  'notify-send -u normal -i info "Inactivity" "The system will hibernate/suspend in 30 seconds..."' \
+  '' \
+  --timer 30 \
+  '/usr/local/bin/auto-suspend-hibernate' \
+  ''

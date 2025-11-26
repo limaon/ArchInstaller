@@ -302,6 +302,63 @@ echo "/swapfile none swap defaults 0 0" | sudo tee -a /etc/fstab
 
 **Reference**: [ArchWiki - Swap](https://wiki.archlinux.org/title/Swap)
 
+#### Swap File Creation Requirements
+
+The installer automatically creates a swap file based on intelligent hardware analysis. The decision considers RAM amount, storage type (SSD/HDD), installation type, and available disk space.
+
+**Decision Table by RAM:**
+
+| RAM | SSD | HDD | Strategy | Swap File Size |
+|-----|-----|-----|----------|----------------|
+| **< 4GB** | ❌ No | ❌ No | ZRAM only (2x RAM) | N/A |
+| **4-8GB** | ❌ No | ✅ **Yes** | ZRAM (2x RAM) + Swap File | **2GB** |
+| **8-16GB** | ❌ No | ✅ **Yes** | Swap File only | **4GB** |
+| **16-32GB** | ✅ **Yes** | ✅ **Yes** | Swap File only | **2GB (SSD)** or **4GB (HDD)** |
+| **> 32GB** | ✅ **Yes** | ✅ **Yes** | Swap File only | **1GB (SSD)** or **2GB (HDD)** |
+
+**Special Cases:**
+- **SERVER installations**: Always creates 4GB swap file, regardless of RAM or storage type
+- **Disk space requirement**: Needs at least (SWAP_SIZE + 2GB) free space
+- **If insufficient space**: Swap file is not created, uses ZRAM only if available
+
+**Why swap file wasn't created:**
+
+1. **Check RAM amount:**
+   ```bash
+   free -h
+   grep MemTotal /proc/meminfo
+   ```
+
+2. **Check storage type:**
+   ```bash
+   lsblk -n --output TYPE,ROTA /dev/sda  # Replace /dev/sda with your disk
+   # SSD: ROTA=0, HDD: ROTA=1
+   ```
+
+3. **Check available space:**
+   ```bash
+   df -h /
+   ```
+
+4. **Check installation type:**
+   ```bash
+   grep INSTALL_TYPE ~/.archinstaller/setup.conf
+   ```
+
+**Swap file location:**
+- Path: `/swapfile` (root of filesystem)
+- Permissions: `600` (rw-------)
+- Created with: `mkswap --file`
+
+**Automatic configuration:**
+When created, the swap file is automatically:
+- Activated immediately (`swapon /swapfile`)
+- Added to `/etc/fstab` for automatic activation on boot
+- Configured with appropriate priority (50 if ZRAM exists, default otherwise)
+- Configured `vm.swappiness` (10 if ZRAM exists, 60 otherwise)
+
+**Reference**: Function `low_memory_config()` in `scripts/utils/system-config.sh`
+
 #### Issue: AUR Helper Not Working
 
 ```bash
@@ -402,303 +459,322 @@ If you encounter errors, gather this information:
 
 ## Auto Suspend/Hibernate (i3-wm)
 
-### Como Testar a Implementação de Suspend/Hibernate
+### How to Test the Suspend/Hibernate Implementation
 
-Após a instalação do sistema com i3-wm, você pode verificar se a implementação de suspend/hibernate automático está funcionando corretamente:
+After installing the system with i3-wm, you can verify if the automatic suspend/hibernate implementation is working correctly:
 
-#### 1. Verificações Básicas
+#### 1. Basic Checks
 
-**Verificar se `xidlehook` está instalado**:
+**Check if `xidlehook` is installed**:
 ```bash
 which xidlehook
 xidlehook --version
 ```
 
-**Se não estiver instalado** (porque escolheu `AUR_HELPER=NONE`):
+**If not installed** (because you chose `AUR_HELPER=NONE`):
 ```bash
-# Instalar base-devel e git primeiro
+# Install base-devel and git first
 sudo pacman -S base-devel git
 
-# Clonar e compilar xidlehook manualmente
+# Clone and compile xidlehook manually
 cd /tmp
 git clone https://aur.archlinux.org/xidlehook.git
 cd xidlehook
 makepkg -si
 ```
 
-**Verificar se os scripts estão instalados**:
+**Check if scripts are installed**:
 ```bash
 ls -la /usr/local/bin/auto-suspend-hibernate
 ls -la /usr/local/bin/check-swap-for-hibernate
 
-# Testar scripts
+# Test scripts
 /usr/local/bin/check-swap-for-hibernate --help
 /usr/local/bin/auto-suspend-hibernate --help
 ```
 
-**Verificar se o i3 config está configurado**:
+**Check if i3 config is configured**:
 ```bash
 grep -i "xidlehook" ~/.config/i3/config
-# Deve mostrar algo como:
+# Should show something like:
 # exec --no-startup-id xidlehook \
 #   --not-when-audio \
 #   --not-when-fullscreen \
 #   --timer 1800 \
-#   'notify-send -u normal "Inatividade" "O sistema irá hibernar/suspender em 30 segundos..."' \
+#   'notify-send -u normal "Inactivity" "The system will hibernate/suspend in 30 seconds..."' \
 #   '' \
 #   --timer 30 \
 #   '/usr/local/bin/auto-suspend-hibernate' \
 #   ''
 ```
 
-**Verificar configuração do GRUB (resume=)**:
+**Check GRUB configuration (resume=)**:
 ```bash
 grep -i "resume" /etc/default/grub
-# Deve mostrar algo como:
+# Should show something like:
 # GRUB_CMDLINE_LINUX_DEFAULT="... resume=UUID=..."
 ```
 
-**Verificar swap**:
+**Note**: The `resume=` parameter is automatically added to GRUB when:
+- A swap file exists at `/swapfile` (created by the installer's intelligent swap configuration)
+- This enables hibernation support by telling the kernel which swap device to resume from
+- The installer automatically detects the swap file UUID and adds it during GRUB configuration
+- If no swap file exists, this parameter is **not** added (hibernation won't work without swap)
+
+**When swap file is created (and thus `resume=` is added):**
+- **4-8GB RAM + HDD**: Swap file (2GB) is created → `resume=` is added
+- **8-16GB RAM + HDD**: Swap file (4GB) is created → `resume=` is added
+- **16-32GB RAM + SSD/HDD**: Swap file (2GB SSD / 4GB HDD) is created → `resume=` is added
+- **>32GB RAM + SSD/HDD**: Swap file (1GB SSD / 2GB HDD) is created → `resume=` is added
+- **SERVER installations**: Swap file (4GB) is always created → `resume=` is always added
+
+**When swap file is NOT created (and thus `resume=` is NOT added):**
+- **<4GB RAM**: Only ZRAM, no swap file → `resume=` is **not** added
+- **4-8GB RAM + SSD**: Only ZRAM, no swap file → `resume=` is **not** added
+- **8-16GB RAM + SSD**: Only ZRAM, no swap file → `resume=` is **not** added
+- **Insufficient disk space**: Swap file not created → `resume=` is **not** added
+
+**Check swap**:
 ```bash
-# Verificar swap ativo
+# Check active swap
 swapon --show
 free -h
 
-# Verificar se swap é suficiente para hibernação
+# Check if swap is sufficient for hibernation
 /usr/local/bin/check-swap-for-hibernate --verbose
 ```
 
-**Verificar configuração do systemd logind**:
+**Check systemd logind configuration**:
 ```bash
 cat /etc/systemd/logind.conf.d/50-hibernate.conf
-# Deve mostrar configurações de lid switch e power keys
+# Should show lid switch and power keys configuration
 ```
 
-#### 2. Testes Manuais
+#### 2. Manual Tests
 
-**Testar detecção de energia (AC/Bateria)**:
+**Test power detection (AC/Battery)**:
 ```bash
-# Verificar status de energia
-acpi -a  # Deve mostrar "on-line" ou "off-line"
-acpi -b  # Deve mostrar status da bateria
+# Check power status
+acpi -a  # Should show "on-line" or "off-line"
+acpi -b  # Should show battery status
 
-# Testar script de suspend/hibernate (verbose para ver o que decide)
+# Test suspend/hibernate script (verbose to see what it decides)
 /usr/local/bin/auto-suspend-hibernate --verbose
 ```
 
-**Testar hibernação manual**:
+**Test manual hibernation**:
 ```bash
-# Verificar swap primeiro
+# Check swap first
 /usr/local/bin/check-swap-for-hibernate --verbose
 
-# Se swap for suficiente, testar hibernação manual
-# AVISO: Isso vai hibernar o sistema!
+# If swap is sufficient, test manual hibernation
+# WARNING: This will hibernate the system!
 systemctl hibernate
 
-# Após retornar, verificar se programas ainda estão abertos
+# After returning, verify if programs are still open
 ```
 
-**Testar suspensão manual**:
+**Test manual suspension**:
 ```bash
-# Testar suspensão manual
-# AVISO: Isso vai suspender o sistema!
+# Test manual suspension
+# WARNING: This will suspend the system!
 systemctl suspend
 
-# Após retornar, verificar se sistema retornou rapidamente
+# After returning, verify if system returned quickly
 ```
 
-#### 3. Testar xidlehook Manualmente
+#### 3. Test xidlehook Manually
 
-**Testar xidlehook com tempo reduzido** (para teste rápido):
+**Test xidlehook with reduced time** (for quick testing):
 ```bash
-# Parar xidlehook se estiver rodando (do autostart do i3)
+# Stop xidlehook if it's running (from i3 autostart)
 pkill xidlehook
 
-# Testar com tempo reduzido (30 segundos até aviso, 10 segundos até ação)
+# Test with reduced time (30 seconds until warning, 10 seconds until action)
 xidlehook \
   --not-when-audio \
   --not-when-fullscreen \
   --timer 30 \
-  'notify-send -u normal "Teste" "Aviso de inatividade!"' \
+  'notify-send -u normal "Test" "Inactivity warning!"' \
   '' \
   --timer 10 \
   '/usr/local/bin/auto-suspend-hibernate' \
   ''
 
-# Agora não mexa no computador por 30 segundos
-# Você deve ver uma notificação após 30 segundos
-# O sistema deve suspender/hibernar após mais 10 segundos (40 segundos total)
+# Now don't touch the computer for 30 seconds
+# You should see a notification after 30 seconds
+# The system should suspend/hibernate after another 10 seconds (40 seconds total)
 ```
 
-**Verificar se xidlehook está rodando**:
+**Check if xidlehook is running**:
 ```bash
 ps aux | grep xidlehook
-# Deve mostrar processo do xidlehook rodando
+# Should show xidlehook process running
 ```
 
-**Ver logs do xidlehook** (se houver):
+**View xidlehook logs** (if available):
 ```bash
-# Verificar logs do systemd (se xidlehook foi iniciado via systemd)
+# Check systemd logs (if xidlehook was started via systemd)
 journalctl --user -f | grep -i xidlehook
 ```
 
-#### 4. Testar Comportamento Automático
+#### 4. Test Automatic Behavior
 
-**Reiniciar o i3** para garantir que xidlehook inicia:
+**Restart i3** to ensure xidlehook starts:
 ```bash
-# No i3-wm, pressione Mod+Shift+R (geralmente Alt+Shift+R)
-# Ou reinciar o i3 manualmente
+# In i3-wm, press Mod+Shift+R (usually Alt+Shift+R)
+# Or restart i3 manually
 i3-msg restart
 ```
 
-**Verificar se xidlehook iniciou automaticamente**:
+**Check if xidlehook started automatically**:
 ```bash
-# Aguardar alguns segundos após login no i3
+# Wait a few seconds after login to i3
 ps aux | grep xidlehook
 ```
 
-**Testar inatividade**:
-1. Faça login no i3-wm
-2. Não mexa no computador por **30 minutos e 30 segundos** (tempo padrão configurado)
-3. Após 30 minutos, você deve ver uma notificação: "O sistema irá hibernar/suspender em 30 segundos..."
-4. Se não mexer, após mais 30 segundos o sistema deve suspender ou hibernar
+**Test inactivity**:
+1. Log into i3-wm
+2. Do not touch the computer for **30 minutes and 30 seconds** (default configured time)
+3. After 30 minutes, you should see a notification: "The system will hibernate/suspend in 30 seconds..."
+4. If you don't touch it, after another 30 seconds the system should suspend or hibernate
 
-**Comportamento esperado**:
-- **Com carregador conectado (AC)**: Sistema suspende (suspend to RAM)
-- **Sem carregador (Bateria)**:
-  - Se swap >= RAM: Sistema hiberna (suspend to disk)
-  - Se swap < RAM: Sistema suspende (suspend to RAM, fallback)
+**Expected behavior**:
+- **With charger connected (AC)**: System suspends (suspend to RAM)
+- **Without charger (Battery)**:
+  - If swap >= RAM: System hibernates (suspend to disk)
+  - If swap < RAM: System suspends (suspend to RAM, fallback)
 
-**Durante áudio ou tela cheia**: xidlehook não executa (graças a `--not-when-audio` e `--not-when-fullscreen`)
+**During audio or fullscreen**: xidlehook does not execute (thanks to `--not-when-audio` and `--not-when-fullscreen`)
 
-#### 5. Verificações de Troubleshooting
+#### 5. Troubleshooting Checks
 
-**Problema: xidlehook não inicia automaticamente**
+**Problem: xidlehook does not start automatically**
 
 ```bash
-# Verificar i3 config
+# Check i3 config
 cat ~/.config/i3/config | grep -A 10 xidlehook
 
-# Verificar se xidlehook está instalado
+# Check if xidlehook is installed
 which xidlehook
 
-# Tentar iniciar manualmente
+# Try starting manually
 xidlehook --help
 ```
 
-**Problema: Script auto-suspend-hibernate não funciona**
+**Problem: auto-suspend-hibernate script does not work**
 
 ```bash
-# Testar script manualmente com verbose
+# Test script manually with verbose
 /usr/local/bin/auto-suspend-hibernate --verbose
 
-# Verificar permissões
+# Check permissions
 ls -la /usr/local/bin/auto-suspend-hibernate
 ls -la /usr/local/bin/check-swap-for-hibernate
 
-# Verificar se acpi está instalado
+# Check if acpi is installed
 which acpi
 acpi -b
 ```
 
-**Problema: Hibernação não funciona (sempre suspende)**
+**Problem: Hibernation does not work (always suspends)**
 
 ```bash
-# Verificar swap
+# Check swap
 swapon --show
 free -h
 /usr/local/bin/check-swap-for-hibernate --verbose
 
-# Verificar GRUB resume=
+# Check GRUB resume=
 grep resume /etc/default/grub
-# Se não houver resume=, regenerar GRUB:
+# If there's no resume=, regenerate GRUB:
 sudo grub-mkconfig -o /boot/grub/grub.cfg
 
-# Verificar se swap file existe
+# Check if swap file exists
 ls -lh /swapfile
 
-# Verificar UUID do swap
+# Check swap UUID
 sudo findmnt -no UUID -T /swapfile
-# Ou
+# Or
 sudo blkid | grep swap
 ```
 
-**Problema: Sistema não retorna da hibernação**
+**Problem: System does not return from hibernation**
 
 ```bash
-# Verificar se resume= está no GRUB
+# Check if resume= is in GRUB
 grep resume /boot/grub/grub.cfg
 
-# Verificar se UUID está correto
+# Check if UUID is correct
 sudo blkid | grep swap
 grep resume /etc/default/grub
 
-# Regenerar initramfs (pode ajudar)
+# Regenerate initramfs (may help)
 sudo mkinitcpio -P
 ```
 
-**Problema: xidlehook executa mesmo com áudio/tela cheia**
+**Problem: xidlehook executes even with audio/fullscreen**
 
 ```bash
-# Verificar configuração no i3 config
+# Check configuration in i3 config
 grep -A 10 xidlehook ~/.config/i3/config
-# Deve ter --not-when-audio e --not-when-fullscreen
+# Should have --not-when-audio and --not-when-fullscreen
 
-# Reiniciar i3 para aplicar mudanças
+# Restart i3 to apply changes
 i3-msg restart
 ```
 
-#### 6. Comandos Úteis para Diagnóstico
+#### 6. Useful Commands for Diagnosis
 
 ```bash
-# Verificar tudo de uma vez
-echo "=== Verificando Auto Suspend/Hibernate ==="
+# Check everything at once
+echo "=== Checking Auto Suspend/Hibernate ==="
 echo ""
-echo "1. xidlehook instalado:"
-which xidlehook && xidlehook --version || echo "Não instalado"
+echo "1. xidlehook installed:"
+which xidlehook && xidlehook --version || echo "Not installed"
 echo ""
-echo "2. Scripts instalados:"
-ls -la /usr/local/bin/auto-suspend-hibernate /usr/local/bin/check-swap-for-hibernate 2>/dev/null || echo "Scripts não encontrados"
+echo "2. Scripts installed:"
+ls -la /usr/local/bin/auto-suspend-hibernate /usr/local/bin/check-swap-for-hibernate 2>/dev/null || echo "Scripts not found"
 echo ""
-echo "3. i3 config configurado:"
-grep -q xidlehook ~/.config/i3/config && echo "✓ Configurado" || echo "✗ Não configurado"
+echo "3. i3 config configured:"
+grep -q xidlehook ~/.config/i3/config && echo "✓ Configured" || echo "✗ Not configured"
 echo ""
 echo "4. GRUB resume=:"
-grep -q resume /etc/default/grub && echo "✓ Configurado" || echo "✗ Não configurado"
+grep -q resume /etc/default/grub && echo "✓ Configured" || echo "✗ Not configured"
 echo ""
 echo "5. Swap status:"
 swapon --show
 echo ""
-echo "6. Swap suficiente para hibernação:"
-/usr/local/bin/check-swap-for-hibernate --verbose 2>/dev/null || echo "Script não encontrado"
+echo "6. Sufficient swap for hibernation:"
+/usr/local/bin/check-swap-for-hibernate --verbose 2>/dev/null || echo "Script not found"
 echo ""
-echo "7. Status de energia:"
-acpi -a 2>/dev/null || echo "acpi não disponível"
+echo "7. Power status:"
+acpi -a 2>/dev/null || echo "acpi not available"
 echo ""
-echo "8. xidlehook rodando:"
-ps aux | grep -v grep | grep xidlehook && echo "✓ Rodando" || echo "✗ Não está rodando"
+echo "8. xidlehook running:"
+ps aux | grep -v grep | grep xidlehook && echo "✓ Running" || echo "✗ Not running"
 ```
 
-#### 7. Personalização (Opcional)
+#### 7. Customization (Optional)
 
-**Alterar tempos de inatividade**:
+**Change inactivity times**:
 
-Edite `~/.config/i3/config` e modifique os valores de `--timer`:
+Edit `~/.config/i3/config` and modify the `--timer` values:
 ```bash
-# Tempo padrão: 30 minutos (1800 segundos) até aviso, 30 segundos até ação
-# Para testar mais rápido, use: --timer 60 (1 minuto) e --timer 10 (10 segundos)
+# Default time: 30 minutes (1800 seconds) until warning, 30 seconds until action
+# For faster testing, use: --timer 60 (1 minute) and --timer 10 (10 seconds)
 exec --no-startup-id xidlehook \
   --not-when-audio \
   --not-when-fullscreen \
-  --timer 1800 \  # Alterar para tempo desejado (em segundos)
+  --timer 1800 \  # Change to desired time (in seconds)
   'notify-send ...' \
   '' \
-  --timer 30 \  # Alterar para tempo desejado (em segundos)
+  --timer 30 \  # Change to desired time (in seconds)
   '/usr/local/bin/auto-suspend-hibernate' \
   ''
 ```
 
-**Reiniciar i3** após alterar:
+**Restart i3** after changing:
 ```bash
 i3-msg restart
 ```
