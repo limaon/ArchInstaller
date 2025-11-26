@@ -1095,6 +1095,22 @@ EOF
     fi
 
     echo ""
+    # Configure sudoers to allow suspend/hibernate without password for wheel group
+    echo "Configuring sudoers to allow suspend/hibernate without password..."
+    SUDOERS_FILE="/etc/sudoers.d/99-i3wm-suspend-hibernate"
+    if [[ -w /etc/sudoers.d/ ]] || sudo test -w /etc/sudoers.d/ 2>/dev/null; then
+        sudo tee "$SUDOERS_FILE" > /dev/null << 'EOF'
+# Allow members of wheel group to suspend/hibernate without password
+# Required for auto-suspend-hibernate script to work when called by xidlehook
+%wheel ALL=(ALL) NOPASSWD: /usr/bin/systemctl suspend, /usr/bin/systemctl hibernate
+EOF
+        sudo chmod 440 "$SUDOERS_FILE"
+        echo "Sudoers configuration added: $SUDOERS_FILE"
+    else
+        echo "Warning: Cannot write to /etc/sudoers.d/ - sudoers configuration skipped"
+        echo "  You may need to manually configure sudoers to allow suspend/hibernate without password"
+    fi
+
     echo "Auto suspend/hibernate configuration complete!"
     echo ""
     echo "Note: xidlehook must be installed from AUR for automatic suspend/hibernate to work"
