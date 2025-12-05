@@ -539,11 +539,16 @@ arch_install
 ```bash
 bootloader_install
 ```
-**Description**: Installs GRUB bootloader.
+**Description**: Installs bootloader prerequisites during Phase 0 (live ISO, before chroot).
 
 **Behavior**:
-- Detects UEFI vs BIOS
-- If UEFI: installs efibootmgr
+- Detects UEFI vs Legacy BIOS via `/sys/firmware/efi`
+- **UEFI**: Installs `efibootmgr` via pacstrap (required for GRUB EFI installation)
+- **Legacy BIOS**: No additional packages needed at this stage
+
+**Note**: This function only installs prerequisites. The actual GRUB installation happens in **Phase 3** (`3-post-setup.sh`):
+- **UEFI**: `grub-install --target=x86_64-efi --efi-directory=/boot`
+- **Legacy BIOS**: `grub-install --target=i386-pc`
 
 ---
 
@@ -601,14 +606,39 @@ microcode_install
 ```bash
 graphics_install
 ```
-**Description**: Detects GPU and installs drivers.
+**Description**: Detects GPU and installs appropriate drivers using JSON-based configuration.
 
-**Detection**: `lspci`
+**Detection Flow**:
+1. **VM Detection**: Checks for VirtualBox, VMware, QEMU/KVM via DMI and lspci
+2. **GPU Detection**: Parses `lspci` for VGA/3D/Display controllers
+3. **Hybrid Detection**: Checks for NVIDIA + Intel combination
+4. **NVIDIA Choice**: If NVIDIA detected, prompts user for driver type
 
-**Drivers**:
-- NVIDIA: `nvidia-dkms nvidia-settings`
-- AMD: `xf86-video-amdgpu`
-- Intel: `vulkan-intel libva-intel-driver`
+**Source**: `packages/gpu-drivers.json`
+
+**Supported Configurations**:
+
+| GPU Type | Variants | Packages |
+|----------|----------|----------|
+| **VM** | auto | `virtualbox-guest-utils` / `open-vm-tools` / `qemu-guest-agent` |
+| **NVIDIA** | proprietary, open-dkms, nouveau | `nvidia-dkms`, `nvidia-open-dkms`, or `xf86-video-nouveau` |
+| **AMD** | auto | `xf86-video-amdgpu`, `mesa`, `vulkan-radeon`, `libva-mesa-driver` |
+| **Intel** | auto | `xf86-video-intel`, `mesa`, `vulkan-intel`, `libva-intel-driver` |
+| **Hybrid** | nvidia-intel | NVIDIA driver + Intel packages + `optimus-manager` |
+| **Fallback** | auto | `xf86-video-vesa`, `mesa` |
+
+**NVIDIA Driver Selection**:
+- **Proprietary (nvidia-dkms)**: Best performance, closed-source
+- **Open Kernel (nvidia-open-dkms)**: For Turing+ GPUs (RTX 20xx, 30xx, 40xx, GTX 16xx)
+- **Open-source (nouveau)**: Free software, limited performance
+
+**Helper Functions**:
+- `detect_vm()`: Returns 0 if running in VM
+- `detect_gpu()`: Returns `nvidia`, `amd`, `intel`, or `unknown`
+- `detect_hybrid_graphics()`: Returns 0 if NVIDIA + Intel detected
+- `nvidia_supports_open_dkms()`: Returns 0 if GPU supports open kernel module
+- `get_nvidia_driver_choice()`: Interactive menu for driver selection
+- `install_gpu_from_json()`: Installs packages from JSON based on GPU type
 
 ---
 
@@ -822,12 +852,39 @@ do_btrfs LABEL DEVICE
 ```bash
 low_memory_config
 ```
-**Description**: Configures ZRAM if <8GB RAM.
+**Description**: Intelligently configures swap based on system hardware analysis.
 
-**Behavior**:
-- Checks total memory
-- If <8GB, installs zram-generator
-- Configures zram0 with 200% RAM and zstd
+**System Analysis**:
+- RAM amount (total memory)
+- Storage type (SSD vs HDD via `lsblk ROTA`)
+- Installation type (FULL, MINIMAL, SERVER)
+- Available disk space
+
+**Decision Table by RAM**:
+
+| RAM | SSD | HDD | Strategy | Configuration |
+|-----|-----|-----|----------|---------------|
+| **<4GB** | ZRAM | ZRAM | ZRAM only | 2x RAM, zstd compression |
+| **4-8GB** | ZRAM | ZRAM+Swap | ZRAM primary | 2x RAM + 2GB swap file (HDD only) |
+| **8-16GB** | ZRAM | Swap File | Conditional | 1x RAM ZRAM (SSD) or 4GB swap (HDD) |
+| **16-32GB** | Swap File | Swap File | Swap only | 2GB (SSD) or 4GB (HDD) |
+| **>32GB** | Swap File | Swap File | Minimal swap | 1GB (SSD) or 2GB (HDD) |
+
+**Special Cases**:
+- **SERVER installations**: Always creates 4GB swap file regardless of RAM/storage
+- **Disk space requirement**: Needs at least (SWAP_SIZE + 2GB) free space
+- **ZRAM configuration**: Uses zstd compression, priority 100
+
+**Swap File Configuration**:
+- Path: `/swapfile`
+- Permissions: `600`
+- Created with: `mkswap --file` (handles btrfs nocow automatically)
+- Priority: 50 if ZRAM exists, default otherwise
+- `vm.swappiness`: 10 if ZRAM exists, 60 otherwise
+
+**GRUB Resume Parameter**:
+- Automatically adds `resume=UUID=...` to GRUB if swap file is created
+- Required for hibernation support
 
 ---
 

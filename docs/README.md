@@ -68,32 +68,16 @@ After reviewing the configuration, automatic installation begins!
 
 ```
 ArchInstaller/
-├── archinstall.sh              # Main script (entry point)
+├── archinstall.sh         # Main script
 ├── configs/
-│   └── setup.conf              # Generated configuration file
-├── scripts/
-│   ├── configuration.sh        # Interactive configuration workflow
-│   ├── 0-preinstall.sh         # Phase 0: Partitioning and pacstrap
-│   ├── 1-setup.sh              # Phase 1: System configuration
-│   ├── 2-user.sh               # Phase 2: User installation (AUR/DE)
-│   ├── 3-post-setup.sh         # Phase 3: Finalization and services
-│   └── utils/                  # Utility scripts
-│       ├── installer-helper.sh # Helper functions
-│       ├── system-checks.sh    # Security checks
-│       ├── user-options.sh     # Configuration collection
-│       ├── software-install.sh # Software installation
-│       └── system-config.sh    # System configuration
-├── packages/                   # Package definitions (JSON)
-│   ├── base.json              # Base system packages
-│   ├── btrfs.json             # Btrfs tools
-│   ├── desktop-environments/  # One JSON per DE
-│   │   ├── kde.json
-│   │   ├── gnome.json
-│   │   ├── i3-wm.json
-│   │   └── ...
-│   └── optional/
-│       └── fonts.json         # System fonts
-└── docs/                      # This documentation
+│   ├── base/              # Base configs
+│   ├── i3-wm/             # i3-wm configs
+│   ├── kde/               # KDE configs
+│   └── awesome/           # AwesomeWM configs
+├── scripts/               # Installation scripts
+│   └── utils/             # Utility scripts
+├── packages/              # Package definitions (JSON)
+└── docs/                  # Documentation
 ```
 
 ---
@@ -111,12 +95,12 @@ ArchInstaller/
 ┌─────────────────────────────────────────────────────────────┐
 │  PHASE 0: 0-preinstall.sh (Live ISO - before chroot)       │
 │     - Updates mirrors                                       │
-│     - Partitions disk (GPT)                                 │
+│     - Partitions disk (GPT for UEFI/BIOS)                   │
 │     - Creates filesystems (ext4/btrfs/LUKS)                │
 │     - Pacstrap base system                                  │
 │     - Generates fstab                                       │
-│     - Installs bootloader                                   │
-│     - Configures ZRAM if <8GB RAM                           │
+│     - Installs bootloader prerequisites (efibootmgr)        │
+│     - Configures intelligent swap (ZRAM/swap file)          │
 └─────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
@@ -126,7 +110,9 @@ ArchInstaller/
 │     - Enables multilib                                      │
 │     - Installs base packages                                │
 │     - Detects and installs microcode (Intel/AMD)            │
-│     - Detects and installs GPU drivers                      │
+│     - Detects and installs GPU drivers (JSON-based)         │
+│     - Applies themes and configurations                     │
+│     - Configures base skel directory                        │
 │     - Creates user and groups                               │
 └─────────────────────────────────────────────────────────────┘
                             ↓
@@ -135,15 +121,21 @@ ArchInstaller/
 │     - Installs AUR helper (yay/paru)                        │
 │     - Installs fonts                                        │
 │     - Installs desktop environment                          │
+│     - Configures battery notifications (i3-wm)              │
+│     - Configures auto suspend/hibernate (i3-wm)             │
 │     - Installs btrfs tools                                  │
-│     - Applies themes                                        │
 └─────────────────────────────────────────────────────────────┘
                             ↓
 ┌─────────────────────────────────────────────────────────────┐
 │  PHASE 3: 3-post-setup.sh (Chroot as root)                 │
-│     - Configures GRUB                                       │
+│     - Installs GRUB bootloader (UEFI or Legacy BIOS)        │
+│     - Configures GRUB (theme, splash, hibernation)          │
 │     - Configures display manager (SDDM/GDM/LightDM)        │
 │     - Enables services (NetworkManager, TLP, UFW, etc.)    │
+│     - Configures PAM faillock (5 password attempts)         │
+│     - Configures PipeWire audio server                      │
+│     - Configures root shell                                 │
+│     - Configures SSH server                                 │
 │     - Configures Snapper (snapshots)                        │
 │     - Configures Plymouth (boot splash)                     │
 │     - Cleanup temporary files                               │
@@ -159,10 +151,10 @@ ArchInstaller/
 
 ### Automatic Hardware Detection
 - **CPU**: Detects Intel or AMD and installs appropriate microcode
-- **GPU**: Detects NVIDIA, AMD, or Intel and installs drivers
-- **SSD/HDD**: Automatically adjusts mount options
+- **GPU**: Detects NVIDIA, AMD, Intel, or VM and installs drivers (JSON-based)
+- **SSD/HDD**: Automatically adjusts mount options and swap strategy
 - **Battery**: Installs and configures TLP only on laptops
-- **Memory**: Configures ZRAM if system has <8GB RAM
+- **Memory**: Intelligent swap configuration based on RAM, storage type, and installation type
 
 ### Multiple Filesystem Support
 - **ext4**: Simple and reliable
