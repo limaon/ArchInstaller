@@ -173,19 +173,27 @@ Input → Validation → Retry if invalid → set_option() → Next step
 ├─────────────────────────────────────────────────────────┤
 │ BASE INSTALLATION:                                      │
 │ • arch_install()               → Pacstrap base system   │
-│ • bootloader_install()         → GRUB UEFI/BIOS        │
+│ • bootloader_install()         → Bootloader prereqs     │
 │ • network_install()            → NetworkManager + VPNs │
 │ • base_install()               → Reads base.json       │
 │                                                         │
 │ HARDWARE DETECTION:                                     │
 │ • microcode_install()          → Intel/AMD automatic   │
-│ • graphics_install()           → NVIDIA/AMD/Intel      │
+│ • detect_vm()                  → VM detection          │
+│ • detect_gpu()                 → GPU type detection    │
+│ • detect_hybrid_graphics()     → Hybrid graphics check │
+│ • graphics_install()           → JSON-based drivers    │
+│ • install_gpu_from_json()      → GPU driver installer  │
 │                                                         │
 │ DESKTOP & THEMES:                                       │
 │ • install_fonts()              → Reads fonts.json      │
 │ • desktop_environment_install()→ Reads DE JSON         │
 │ • user_theming()               → Applies configs/themes│
 │ • btrfs_install()              → Snapper, grub-btrfs   │
+│                                                         │
+│ I3-WM SPECIFIC:                                         │
+│ • i3wm_battery_notifications() → Battery alerts        │
+│ • i3wm_auto_suspend_hibernate()→ Auto suspend/hibernate│
 │                                                         │
 │ AUR:                                                    │
 │ • aur_helper_install()         → Compiles AUR helper   │
@@ -207,15 +215,23 @@ elif grep -E "AuthenticAMD" <<<"${proc_type}"; then
     pacman -S amd-ucode
 fi
 
-# GPU
-gpu_type=$(lspci)
-if grep -E "NVIDIA|GeForce" <<<"${gpu_type}"; then
-    pacman -S nvidia-dkms nvidia-settings
-elif lspci | grep 'VGA' | grep -E "Radeon|AMD"; then
-    pacman -S xf86-video-amdgpu
-elif grep -E "Intel.*Graphics" <<<"${gpu_type}"; then
-    pacman -S vulkan-intel libva-intel-driver
-fi
+# GPU Detection (JSON-based)
+# 1. Check for VM (VirtualBox, VMware, QEMU)
+# 2. Detect GPU type from lspci
+# 3. Check for hybrid graphics (NVIDIA + Intel)
+# 4. For NVIDIA: offer driver choice (proprietary, open-dkms, nouveau)
+# 5. Install packages from gpu-drivers.json
+
+detect_gpu() {
+    local gpu_info=$(lspci | grep -iE "VGA|3D|Display")
+    if echo "$gpu_info" | grep -iE "NVIDIA|GeForce"; then echo "nvidia"
+    elif echo "$gpu_info" | grep -iE "Radeon|AMD|ATI"; then echo "amd"
+    elif echo "$gpu_info" | grep -iE "Intel.*Graphics"; then echo "intel"
+    else echo "unknown"; fi
+}
+
+# Install from JSON file
+install_gpu_from_json "$(detect_gpu)" "$driver_variant"
 ```
 
 **Intelligent Package Installation**:
@@ -251,7 +267,7 @@ This ensures:
 │ • do_btrfs()               → Subvolumes + mounting     │
 │                                                         │
 │ OPTIMIZATIONS:                                          │
-│ • low_memory_config()      → ZRAM if <8GB RAM          │
+│ • low_memory_config()      → Intelligent swap config   │
 │ • cpu_config()             → Makeflags multicore       │
 │                                                         │
 │ SYSTEM:                                                 │
@@ -270,6 +286,9 @@ This ensures:
 │ • snapper_config()         → Btrfs snapshots           │
 │ • configure_tlp()          → Laptop power management   │
 │ • plymouth_config()        → Boot splash               │
+│ • configure_base_skel()    → Base skel configs         │
+│ • configure_pam_faillock() → PAM password attempts     │
+│ • configure_pipewire()     → PipeWire audio server     │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -527,21 +546,32 @@ reflector -a 48 -c "$iso" -f 5 -l 20 --sort rate --save /etc/pacman.d/mirrorlist
 rankmirrors -n 5 /etc/pacman.d/mirrorlist
 ```
 
-### 3. ZRAM (Systems with <8GB RAM)
+### 3. Intelligent Swap Configuration
+
+The system intelligently configures swap based on hardware analysis:
 
 ```bash
+# Decision logic based on RAM, storage type (SSD/HDD), and installation type
 TOTAL_MEM=$(grep -i 'memtotal' /proc/meminfo | grep -o '[[:digit:]]*')
-if [[ "$TOTAL_MEM" -lt 8000000 ]]; then
-    pacman -S zram-generator
-    cat <<EOF > /etc/systemd/zram-generator.conf
-[zram0]
-zram-size = ram * 2
-compression-algorithm = zstd
-EOF
-fi
+IS_SSD=$([[ $(lsblk -n --output ROTA "${DISK}") == "0" ]] && echo 1 || echo 0)
 ```
 
-**Rationale**: 2x RAM as compressed ZRAM is more efficient than disk swap.
+**Decision Table**:
+
+| RAM | SSD | HDD | Strategy |
+|-----|-----|-----|----------|
+| <4GB | ZRAM (2x) | ZRAM (2x) | ZRAM critical for low RAM |
+| 4-8GB | ZRAM (2x) | ZRAM + 2GB swap | ZRAM primary, file backup |
+| 8-16GB | ZRAM (1x) | 4GB swap file | Light swap needs |
+| 16-32GB | 2GB swap | 4GB swap | Hibernation support |
+| >32GB | 1GB swap | 2GB swap | Minimal swap |
+
+**Special Cases**:
+- SERVER installations always get 4GB swap file
+- Swap file created with `mkswap --file` (handles btrfs nocow)
+- GRUB `resume=` parameter added automatically for hibernation
+
+**Rationale**: Adaptive configuration based on actual hardware provides optimal performance. ZRAM is preferred for SSDs (reduces wear), swap files for HDDs (ZRAM less beneficial).
 
 ### 4. Btrfs Mount Options
 
