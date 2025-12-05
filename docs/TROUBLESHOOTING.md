@@ -493,21 +493,6 @@ ls -la /usr/local/bin/check-swap-for-hibernate
 /usr/local/bin/auto-suspend-hibernate --help
 ```
 
-**Check if i3 config is configured**:
-```bash
-grep -i "xidlehook" ~/.config/i3/config
-# Should show something like:
-# exec --no-startup-id xidlehook \
-#   --not-when-audio \
-#   --not-when-fullscreen \
-#   --timer 1800 \
-#   'notify-send -u normal "Inactivity" "The system will hibernate/suspend in 30 seconds..."' \
-#   '' \
-#   --timer 30 \
-#   '/usr/local/bin/auto-suspend-hibernate' \
-#   ''
-```
-
 **Check GRUB configuration (resume=)**:
 ```bash
 grep -i "resume" /etc/default/grub
@@ -581,29 +566,6 @@ systemctl hibernate
 systemctl suspend
 
 # After returning, verify if system returned quickly
-```
-
-#### 3. Test xidlehook Manually
-
-**Test xidlehook with reduced time** (for quick testing):
-```bash
-# Stop xidlehook if it's running (from i3 autostart)
-pkill xidlehook
-
-# Test with reduced time (30 seconds until warning, 10 seconds until action)
-xidlehook \
-  --not-when-audio \
-  --not-when-fullscreen \
-  --timer 30 \
-  'notify-send -u normal "Test" "Inactivity warning!"' \
-  '' \
-  --timer 10 \
-  '/usr/local/bin/auto-suspend-hibernate' \
-  ''
-
-# Now don't touch the computer for 30 seconds
-# You should see a notification after 30 seconds
-# The system should suspend/hibernate after another 10 seconds (40 seconds total)
 ```
 
 **Check if xidlehook is running**:
@@ -753,25 +715,6 @@ acpi -a 2>/dev/null || echo "acpi not available"
 echo ""
 echo "8. xidlehook running:"
 ps aux | grep -v grep | grep xidlehook && echo "✓ Running" || echo "✗ Not running"
-```
-
-#### 7. Customization (Optional)
-
-**Change inactivity times**:
-
-Edit `~/.config/i3/config` and modify the `--timer` values:
-```bash
-# Default time: 30 minutes (1800 seconds) until warning, 30 seconds until action
-# For faster testing, use: --timer 60 (1 minute) and --timer 10 (10 seconds)
-exec --no-startup-id xidlehook \
-  --not-when-audio \
-  --not-when-fullscreen \
-  --timer 1800 \  # Change to desired time (in seconds)
-  'notify-send ...' \
-  '' \
-  --timer 30 \  # Change to desired time (in seconds)
-  '/usr/local/bin/auto-suspend-hibernate' \
-  ''
 ```
 
 **Restart i3** after changing:
@@ -942,6 +885,175 @@ systemctl --user stop battery-alert.timer
 systemctl --user enable battery-alert.timer
 systemctl --user start battery-alert.timer
 ```
+
+---
+
+## Btrfs Snapshot Restoration
+
+If you installed with btrfs filesystem, the system uses **Snapper** for snapshot management and **grub-btrfs** for booting from snapshots. The **snap-pac** package automatically creates snapshots before and after every pacman operation.
+
+### Restoring After a Failed Pacman Installation
+
+When you install a package that breaks your system, `snap-pac` has already created "pre" and "post" snapshots:
+
+#### 1. List Available Snapshots
+
+```bash
+sudo snapper -c root list
+```
+
+Example output:
+```
+ # | Type   | Pre # | Date                     | Description
+---+--------+-------+--------------------------+-------------
+ 1 | single |       | Mon Dec  4 10:00:00 2024 | Initial
+ 2 | pre    |       | Mon Dec  4 14:30:00 2024 | pacman -S problematic-package
+ 3 | post   |     2 | Mon Dec  4 14:30:05 2024 | pacman -S problematic-package
+```
+
+#### 2. Undo the Last Pacman Operation
+
+```bash
+# Revert changes between pre (2) and post (3) snapshots
+sudo snapper -c root undochange 2..3
+```
+
+This restores all files changed by that pacman operation.
+
+#### 3. Quick Undo (Last Operation)
+
+```bash
+# Find the last "pre" snapshot and undo changes to current state
+sudo snapper -c root undochange $(sudo snapper -c root list | grep "pre" | tail -1 | awk '{print $1}')..0
+```
+
+### Restoring When System Won't Boot
+
+If the system doesn't boot after a bad update:
+
+#### 1. Boot from Snapshot via GRUB
+
+1. At the GRUB menu, select **"Arch Linux snapshots"**
+2. Choose the snapshot labeled **"pre"** from before the problematic update
+3. The system boots in read-only mode from that snapshot
+
+#### 2. Make the Rollback Permanent
+
+After booting from the snapshot and verifying it works:
+
+```bash
+# Perform permanent rollback
+sudo snapper -c root rollback
+
+# Reboot to apply
+sudo reboot
+```
+
+### Restoring Individual Files
+
+If only specific files are broken:
+
+```bash
+# Restore a single file from a snapshot
+sudo snapper -c root undochange <snapshot_number> /path/to/file
+
+# Restore multiple files
+sudo snapper -c root undochange <snapshot_number> /file1 /file2 /file3
+```
+
+### Comparing Snapshots
+
+To see what changed between snapshots:
+
+```bash
+# List files that differ between two snapshots
+sudo snapper -c root status <old_number> <new_number>
+
+# Show detailed diff
+sudo snapper -c root diff <old_number> <new_number>
+```
+
+### Manual Restoration (Advanced)
+
+If you need to restore from a Live ISO:
+
+```bash
+# 1. Boot Arch Linux ISO and mount the btrfs volume
+mount /dev/sdXY /mnt
+
+# 2. List all subvolumes and snapshots
+btrfs subvolume list /mnt
+
+# 3. Rename the broken root subvolume
+mv /mnt/@ /mnt/@_broken
+
+# 4. Create a new @ from a working snapshot
+btrfs subvolume snapshot /mnt/.snapshots/<number>/snapshot /mnt/@
+
+# 5. Unmount and reboot
+umount /mnt
+reboot
+```
+
+### Useful Snapper Commands
+
+```bash
+# List all snapshots
+sudo snapper -c root list
+
+# Create manual snapshot before risky operation
+sudo snapper -c root create --description "Before manual changes"
+
+# Delete a specific snapshot
+sudo snapper -c root delete <number>
+
+# Delete old snapshots (cleanup)
+sudo snapper -c root cleanup number
+
+# View snapshot space usage
+sudo btrfs filesystem du -s /.snapshots
+
+# Enable automatic timeline snapshots (disabled by default)
+sudo systemctl enable --now snapper-timeline.timer
+sudo systemctl enable --now snapper-cleanup.timer
+```
+
+### Snapshot Types
+
+| Type | Created By | Description |
+|------|------------|-------------|
+| **pre** | snap-pac | Before pacman operations (-S, -R, -U) |
+| **post** | snap-pac | After pacman operations |
+| **single** | Manual/timeline | Manual snapshots or timeline |
+
+### GUI Tool (If Installed)
+
+For FULL installations, **btrfs-assistant** provides a graphical interface:
+
+```bash
+btrfs-assistant
+```
+
+Features:
+- Visual snapshot browser
+- One-click restore
+- Subvolume management
+- Disk usage analysis
+
+### Important Notes
+
+1. **@home is separate**: The `@home` subvolume is NOT included in root snapshots. Your personal files in `/home` are not affected by system rollbacks.
+
+2. **Snapshots ≠ Backups**: Snapshots are on the same disk. For real backups, copy to another device.
+
+3. **Space limit**: Snapshots are limited to 50% of disk space (`SPACE_LIMIT="0.5"` in snapper config).
+
+4. **After rollback**: Regenerate GRUB to update the snapshot menu:
+   ```bash
+   sudo grub-mkconfig -o /boot/grub/grub.cfg
+   ```
+
+**Reference**: [ArchWiki - Snapper](https://wiki.archlinux.org/title/Snapper)
 
 ---
 
