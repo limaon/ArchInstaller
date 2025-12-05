@@ -642,6 +642,162 @@ graphics_install
 
 ---
 
+### detect_vm()
+```bash
+detect_vm
+```
+**Description**: Detects if the system is running inside a virtual machine.
+
+**Detection Methods**:
+1. **DMI Product Name**: Reads `/sys/class/dmi/id/product_name` for VM signatures
+2. **lspci Output**: Checks for virtual graphics adapters
+
+**Detected VMs**:
+- VirtualBox
+- VMware
+- QEMU/KVM
+- Bochs
+
+**Return**: 0 if VM detected, 1 otherwise
+
+**Example**:
+```bash
+if detect_vm; then
+    echo "Running in virtual machine"
+fi
+```
+
+---
+
+### detect_gpu()
+```bash
+detect_gpu
+```
+**Description**: Detects the primary GPU type from lspci output.
+
+**Detection**: Parses `lspci | grep -iE "VGA|3D|Display"`
+
+**Return** (stdout): One of `nvidia`, `amd`, `intel`, `unknown`
+
+**Patterns Matched**:
+- NVIDIA: `NVIDIA`, `GeForce`
+- AMD: `Radeon`, `AMD`, `ATI`
+- Intel: `Intel.*Graphics`, `Integrated Graphics Controller`
+
+**Example**:
+```bash
+gpu_type=$(detect_gpu)
+echo "Detected GPU: $gpu_type"
+```
+
+---
+
+### detect_hybrid_graphics()
+```bash
+detect_hybrid_graphics
+```
+**Description**: Detects if the system has hybrid graphics (NVIDIA + Intel).
+
+**Detection**: Checks if both NVIDIA and Intel GPUs are present in lspci output.
+
+**Return**: 0 if hybrid detected, 1 otherwise
+
+**Use Case**: Laptops with switchable graphics (Optimus)
+
+---
+
+### nvidia_supports_open_dkms()
+```bash
+nvidia_supports_open_dkms
+```
+**Description**: Checks if the NVIDIA GPU supports the open kernel module.
+
+**Supported GPUs** (Turing architecture and newer):
+- RTX 20xx series
+- RTX 30xx series
+- RTX 40xx series
+- GTX 16xx series
+
+**Return**: 0 if supported, 1 otherwise
+
+**Note**: Open kernel module provides better integration with Linux kernel but requires newer GPUs.
+
+---
+
+### get_nvidia_driver_choice()
+```bash
+get_nvidia_driver_choice
+```
+**Description**: Interactive menu for selecting NVIDIA driver type.
+
+**Options** (if GPU supports open-dkms):
+1. Proprietary (nvidia-dkms) - Best performance, closed-source
+2. Open-source Kernel (nvidia-open-dkms) - Open kernel module, good performance
+3. Open-source (nouveau) - Free software, limited performance
+
+**Options** (older GPUs):
+1. Proprietary (nvidia-dkms)
+2. Open-source (nouveau)
+
+**Return** (stdout): `proprietary`, `open-dkms`, or `nouveau`
+
+---
+
+### install_gpu_from_json()
+```bash
+install_gpu_from_json GPU_TYPE [DRIVER_VARIANT] [NVIDIA_TYPE]
+```
+**Description**: Installs GPU drivers from the JSON configuration file.
+
+**Parameters**:
+- `$1` - GPU type: `vm`, `nvidia`, `amd`, `intel`, `hybrid`, `fallback`
+- `$2` - Driver variant (optional): `proprietary`, `open-dkms`, `nouveau`, `nvidia-intel`
+- `$3` - NVIDIA type for hybrid (optional): driver type when hybrid
+
+**Source**: `packages/gpu-drivers.json`
+
+**Behavior**:
+1. Reads package list from JSON based on GPU type and variant
+2. Installs each package using `install_package_intelligent()`
+3. Executes post-install commands if defined in JSON
+
+**JSON Structure**:
+```json
+{
+  "nvidia": {
+    "proprietary": {
+      "packages": ["nvidia-dkms", "nvidia-utils", ...],
+      "post_install": ["nvidia-xconfig"]
+    }
+  }
+}
+```
+
+---
+
+### install_package_intelligent()
+```bash
+install_package_intelligent PACKAGE
+```
+**Description**: Intelligently installs a package, checking if already installed and verifying it exists.
+
+**Parameters**:
+- `$1` - Package name to install
+
+**Behavior**:
+1. **Check if installed**: Skips if `pacman -Qi` succeeds
+2. **Check if exists**: Uses `pacman -Si` to verify package exists in repositories
+3. **Install**: Uses `pacman -S` with `--noconfirm --needed`
+
+**Return**: 0 on success, 1 on failure
+
+**Example**:
+```bash
+install_package_intelligent "firefox"
+```
+
+---
+
 ### aur_helper_install()
 ```bash
 aur_helper_install
@@ -732,6 +888,43 @@ i3wm_battery_notifications
 **Help**: All scripts support `-h` or `--help` flags
 
 **Note**: Timer may need to be manually enabled after first login if systemd user session wasn't active during installation
+
+---
+
+### i3wm_auto_suspend_hibernate()
+```bash
+i3wm_auto_suspend_hibernate
+```
+**Description**: Installs and configures automatic suspend/hibernate on inactivity for i3-wm.
+
+**Condition**: Only if `DESKTOP_ENV=i3-wm`
+
+**What it installs**:
+
+1. **Scripts to `/usr/local/bin/`**:
+   - `auto-suspend-hibernate` - Decides between suspend/hibernate based on power state
+   - `check-swap-for-hibernate` - Verifies if swap is sufficient for hibernation
+
+2. **Systemd logind configuration** (`/etc/systemd/logind.conf.d/50-hibernate.conf`):
+   - Configures lid switch and power key behavior
+
+3. **Sudoers configuration** (`/etc/sudoers.d/99-i3wm-suspend-hibernate`):
+   - Allows `wheel` group to run `systemctl suspend` and `systemctl hibernate` without password
+   - Required for xidlehook to trigger suspend/hibernate
+
+4. **i3 config integration**:
+   - Adds xidlehook autostart with 30-minute timeout
+
+
+**Behavior**:
+- **With AC power**: System suspends (suspend to RAM)
+- **On battery**:
+  - If swap >= RAM: System hibernates (suspend to disk)
+  - If swap < RAM: System suspends (fallback)
+
+**Requirements**:
+- `xidlehook` from AUR (installed if AUR_HELPER != NONE)
+- `acpi` for power state detection
 
 ---
 
@@ -1033,6 +1226,84 @@ plymouth_config
 - Adds plymouth to mkinitcpio hooks
 - If LUKS: adds plymouth-encrypt
 - Regenerates initramfs
+
+---
+
+### configure_base_skel()
+```bash
+configure_base_skel
+```
+**Description**: Configures base skel directory with common configurations for all users.
+
+**Source**: `configs/base/etc/skel/`
+
+**Behavior**:
+- Copies all files from `configs/base/etc/skel/` to `/etc/skel/`
+- Preserves permissions with `cp -a`
+- Verifies copied files (.nanorc, nvim, .bashrc, .bash_profile)
+
+**Files Copied**:
+- `.nanorc` - Nano editor configuration
+- `.bashrc` - Bash shell configuration
+- `.bash_profile` - Bash login profile
+- `.config/nvim/init.lua` - Neovim configuration
+
+**Usage**: Called in Phase 1 before `add_user()` so new users receive these configs automatically.
+
+---
+
+### configure_pam_faillock()
+```bash
+configure_pam_faillock
+```
+**Description**: Configures PAM to allow 5 password attempts before account lockout.
+
+**Configuration File**: `/etc/security/faillock.conf`
+
+**Settings**:
+- `deny = 5` - Maximum failed attempts before lockout
+- `fail_interval = 900` - Time window (15 min) for counting failures
+- `unlock_time = 600` - Lockout duration (10 min)
+
+**Behavior**:
+- Creates `/etc/security/faillock.conf` if not exists
+- Updates existing file if already present
+- Removes duplicate `deny` entries to prevent conflicts
+
+**Note**: Arch Linux PAM configuration already references `pam_faillock`, so only the conf file needs to be configured.
+
+---
+
+### configure_pipewire()
+```bash
+configure_pipewire
+```
+**Description**: Configures PipeWire as the audio server and removes PulseAudio if present.
+
+**Condition**: Only runs for graphical installations (not SERVER)
+
+**Behavior**:
+1. Checks if PipeWire is installed
+2. Removes PulseAudio packages if installed (obsolete)
+3. Masks PulseAudio services to prevent conflicts
+4. Notes that PipeWire uses systemd/User socket activation
+
+**PulseAudio Packages Removed**:
+- `pulseaudio`
+- `pulseaudio-alsa`
+- `pulseaudio-bluetooth`
+- `pulseaudio-equalizer`
+- `pulseaudio-jack`
+
+**Verification Commands** (after login):
+```bash
+systemctl --user status pipewire pipewire-pulse wireplumber
+pactl info | grep 'Server Name'  # Should show 'PulseAudio (on PipeWire ...)'
+```
+
+**Configuration Paths**:
+- `/etc/wireplumber/` - System-wide
+- `~/.config/wireplumber/` - User-specific
 
 ---
 
