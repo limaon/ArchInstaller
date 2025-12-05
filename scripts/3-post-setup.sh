@@ -20,10 +20,19 @@ show_logo
 
 echo -ne "
   Final Setup and Configurations
-  GRUB EFI Bootloader Install & Check
+  GRUB Bootloader Install & Check
 "
 
-[[ -d "/sys/firmware/efi" ]] && grub-install --target=x86_64-efi --efi-directory=/boot "${DISK}" --bootloader-id='Arch Linux'
+# Install GRUB bootloader based on system type (UEFI or Legacy BIOS)
+if [[ -d "/sys/firmware/efi" ]]; then
+    # UEFI system: Install GRUB for EFI
+    echo "Installing GRUB for UEFI system..."
+    grub-install --target=x86_64-efi --efi-directory=/boot "${DISK}" --bootloader-id='Arch Linux'
+else
+    # Legacy BIOS system: Install GRUB to MBR
+    echo "Installing GRUB for Legacy BIOS system..."
+    grub-install --target=i386-pc "${DISK}"
+fi
 
 
 # Function to configure and theme the GRUB boot menu, including setting
