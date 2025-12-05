@@ -19,20 +19,27 @@ arch_install() {
 }
 
 
-# @description Install bootloader
+# @description Install bootloader prerequisites during Phase 0 (live ISO, before chroot)
+# For UEFI: Installs efibootmgr via pacstrap (required for GRUB EFI installation)
+# For Legacy BIOS: No additional packages needed at this stage
+# Note: Actual GRUB installation happens in Phase 3 (3-post-setup.sh)
 # @noargs
 bootloader_install() {
     echo -ne "
 -------------------------------------------------------------------------
-                    GRUB BIOS Bootloader Install & Check
+                    Bootloader Prerequisites Install
 -------------------------------------------------------------------------
 "
-    if [[ ! -d "/sys/firmware/efi" ]]; then
-        grub-install --target=x86_64-efi --efi-directory=/boot "${DISK}" --bootloader-id='Arch Linux'
-    else
+    if [[ -d "/sys/firmware/efi" ]]; then
+        # UEFI system: Install efibootmgr (required for GRUB EFI)
+        echo "UEFI system detected - Installing efibootmgr..."
         pacstrap /mnt efibootmgr --noconfirm --needed --color=always
+    else
+        # Legacy BIOS system: No additional packages needed at this stage
+        # GRUB will be installed directly to MBR in Phase 3
+        echo "Legacy BIOS system detected - No additional packages needed at this stage"
+        echo "GRUB will be installed to MBR in post-setup phase"
     fi
-
 }
 
 

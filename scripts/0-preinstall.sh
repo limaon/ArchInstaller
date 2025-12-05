@@ -29,9 +29,18 @@ format_disk
 # Make filesystems
 create_filesystems
 
-# mount target
-mkdir -p /mnt/boot/efi
-mount -t vfat -L EFIBOOT /mnt/boot/
+# mount target (boot partition only for UEFI systems)
+if [[ -d "/sys/firmware/efi" ]]; then
+    # UEFI system: Mount EFI partition to /mnt/boot
+    echo "UEFI system detected - Mounting EFI partition..."
+    mkdir -p /mnt/boot
+    mount -t vfat -L EFIBOOT /mnt/boot/
+else
+    # Legacy BIOS system: No separate boot partition to mount
+    # BIOS Boot partition (ef02) is not mounted - GRUB uses it directly
+    echo "Legacy BIOS system detected - No EFI partition to mount"
+    mkdir -p /mnt/boot
+fi
 mount_check
 
 
