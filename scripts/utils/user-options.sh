@@ -228,8 +228,9 @@ set_btrfs() {
     read -r -p "Press enter to use the default subvolumes: " -a ARR
 
     # If no subvolumes are provided, use the defaults as per the article
+    # Note: @swap is included for dedicated swap subvolume (required for btrfs snapshots compatibility)
     if [[ -z "${ARR[*]}" ]]; then
-        set_option "SUBVOLUMES" "(@ @docker @flatpak @home @opt @snapshots @var_cache @var_log @var_tmp)"
+        set_option "SUBVOLUMES" "(@ @docker @flatpak @home @opt @snapshots @swap @var_cache @var_log @var_tmp)"
     else
         NAMES=("@")
         for i in "${ARR[@]}"; do

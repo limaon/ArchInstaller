@@ -320,17 +320,18 @@ BIOS:
 
 **Btrfs Subvolumes**:
 ```
-@              → /           (root)
-@home          → /home       (user data)
-@snapshots     → /.snapshots (Snapper snapshots)
-@var_log       → /var/log    (logs, CoW disabled)
-@var_cache     → /var/cache  (cache, CoW disabled)
-@var_tmp       → /var/tmp    (temp, CoW disabled)
+@              → /              (root)
+@home          → /home          (user data)
+@snapshots     → /.snapshots    (Snapper snapshots)
+@swap          → /swap          (swap file, CoW disabled, excluded from snapshots)
+@var_log       → /var/log       (logs, CoW disabled)
+@var_cache     → /var/cache     (cache, CoW disabled)
+@var_tmp       → /var/tmp       (temp, CoW disabled)
 @docker        → /var/lib/docker
 @flatpak       → /var/lib/flatpak
 ```
 
-**Rationale**: Separate subvolumes allow selective snapshots and better management.
+**Rationale**: Separate subvolumes allow selective snapshots and better management. The `@swap` subvolume is dedicated for the swap file to avoid the "Text file busy" (errno:26) error when creating snapshots with Snapper.
 
 ---
 
@@ -558,20 +559,29 @@ IS_SSD=$([[ $(lsblk -n --output ROTA "${DISK}") == "0" ]] && echo 1 || echo 0)
 
 **Decision Table**:
 
-| RAM | SSD | HDD | Strategy |
-|-----|-----|-----|----------|
-| <4GB | ZRAM (2x) | ZRAM (2x) | ZRAM critical for low RAM |
-| 4-8GB | ZRAM (2x) | ZRAM + 2GB swap | ZRAM primary, file backup |
-| 8-16GB | ZRAM (1x) | 4GB swap file | Light swap needs |
-| 16-32GB | 2GB swap | 4GB swap | Hibernation support |
-| >32GB | 1GB swap | 2GB swap | Minimal swap |
+| RAM | Strategy | Swap Size (SSD) | Swap Size (HDD) |
+|-----|----------|-----------------|-----------------|
+| <4GB | ZRAM (2x) + Swapfile | 4GB | 4GB |
+| 4-8GB | ZRAM (2x) + Swapfile | 4GB | 6GB |
+| 8-16GB | ZRAM (1x) + Swapfile | 4GB | 8GB |
+| 16-32GB | ZRAM (1x) + Swapfile | 4GB | 8GB |
+| >32GB | ZRAM (1x) + Swapfile | 4GB | 4GB |
 
 **Special Cases**:
-- SERVER installations always get 4GB swap file
-- Swap file created with `mkswap --file` (handles btrfs nocow)
+- SERVER installations: Swap file only (4GB), no ZRAM
+- Insufficient disk space: Swap size reduced or skipped
+
+**Btrfs-specific Handling**:
+- Dedicated `@swap` subvolume to avoid snapshot conflicts (errno:26 "Text file busy")
+- Swap file at `/swap/swapfile` (inside `@swap` subvolume)
+- Created with `btrfs filesystem mkswapfile` (handles NOCOW automatically)
 - GRUB `resume=` parameter added automatically for hibernation
 
-**Rationale**: Adaptive configuration based on actual hardware provides optimal performance. ZRAM is preferred for SSDs (reduces wear), swap files for HDDs (ZRAM less beneficial).
+**ext4/Other Filesystems**:
+- Swap file at `/swapfile` (root filesystem)
+- Created with `mkswap --file`
+
+**Rationale**: All systems get both ZRAM (fast, compressed RAM swap) and a persistent swap file (for hibernation support). Btrfs uses a dedicated subvolume to prevent snapshot conflicts.
 
 ### 4. Btrfs Mount Options
 

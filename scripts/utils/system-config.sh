@@ -202,6 +202,9 @@ do_btrfs() {
             "@snapshots")
                 w=".snapshots"
                 ;;
+            "@swap")
+                w="swap"
+                ;;
             "@var_cache")
                 w="var/cache"
                 ;;
@@ -220,7 +223,8 @@ do_btrfs() {
         echo -e "\nMounting subvolume $z at /mnt/${w}"
         mount -o "$MOUNT_OPTION",subvol="${z}" "$2" "/mnt/${w}"
 
-        if [[ "$z" == "@var_cache" || "$z" == "@var_log" || "$z" == "@var_tmp" ]]; then
+        # Disable CoW for subvolumes that benefit from it (logs, cache, tmp, swap)
+        if [[ "$z" == "@var_cache" || "$z" == "@var_log" || "$z" == "@var_tmp" || "$z" == "@swap" ]]; then
             echo "Disabling copy-on-write on /mnt/${w}"
             chattr +C "/mnt/${w}"
         fi
@@ -230,6 +234,8 @@ do_btrfs() {
 
 # @description Intelligently configure swap based on system hardware
 # Analyzes RAM, storage type, disk space, and installation type to choose optimal swap strategy
+# For Btrfs: Uses dedicated @swap subvolume to avoid snapshot conflicts (errno:26 Text file busy)
+# Reference: https://wiki.archlinux.org/title/Btrfs#Swap_file
 # @noargs
 low_memory_config() {
     echo -ne "
@@ -242,24 +248,22 @@ low_memory_config() {
     TOTAL_MEM=$(grep -i 'memtotal' /proc/meminfo | grep -o '[[:digit:]]*')
     TOTAL_MEM_GB=$((TOTAL_MEM / 1024 / 1024))
 
-    # Detect storage type (SSD = 0, HDD = 1)
+    # Detect storage type (SSD = 1, HDD = 0)
     IS_SSD=0
     if [[ -n "${DISK:-}" ]]; then
         ROTA=$(lsblk -n --output TYPE,ROTA "${DISK}" 2>/dev/null | awk '$1=="disk"{print $2}')
         [[ "${ROTA:-1}" == "0" ]] && IS_SSD=1
     fi
 
-    # Detect installation type
+    # Detect installation type and filesystem
     INSTALL_TYPE="${INSTALL_TYPE:-FULL}"
+    FS_TYPE="${FS:-ext4}"
 
     # Calculate available disk space
-    # Check free space in mounted root partition (more accurate)
     AVAILABLE_SPACE_GB=0
     if mountpoint -q /mnt 2>/dev/null; then
-        # Get free space in mounted root partition (in GB)
         AVAILABLE_SPACE_GB=$(df -BG /mnt 2>/dev/null | awk 'NR==2 {gsub(/G/, "", $4); print int($4)}' || echo "0")
     elif [[ -n "${DISK:-}" ]] && [[ -b "${DISK}" ]]; then
-        # Fallback: calculate from unpartitioned space
         DISK_SIZE_BYTES=$(blockdev --getsize64 "${DISK}" 2>/dev/null || echo "0")
         DISK_SIZE_GB=$((DISK_SIZE_BYTES / 1024 / 1024 / 1024))
         DISK_PERCENT="${DISK_USAGE_PERCENT:-100}"
@@ -270,112 +274,111 @@ low_memory_config() {
     echo "System Analysis:"
     echo "  RAM: ${TOTAL_MEM_GB}GB"
     echo "  Storage: $([[ $IS_SSD -eq 1 ]] && echo "SSD" || echo "HDD")"
+    echo "  Filesystem: ${FS_TYPE}"
     echo "  Installation Type: ${INSTALL_TYPE}"
     echo "  Available Disk Space: ${AVAILABLE_SPACE_GB}GB"
     echo ""
 
-    # Decision logic based on RAM
+    # Decision logic based on RAM and storage type
     SWAP_STRATEGY=""
     SWAP_SIZE_GB=0
     USE_ZRAM=false
     USE_SWAPFILE=false
+    ZRAM_MULTIPLIER=1
+
+    # New simplified strategy:
+    # - All systems get ZRAM for fast swap (compressed RAM)
+    # - Swapfile is created for hibernation support (persistent storage required)
+    # - Btrfs uses dedicated @swap subvolume to avoid snapshot conflicts
 
     if [[ $TOTAL_MEM -lt 4194304 ]]; then
-        # <4GB RAM: ZRAM critical
-        SWAP_STRATEGY="ZRAM"
+        # <4GB RAM: ZRAM critical + small swapfile for hibernation
         USE_ZRAM=true
+        USE_SWAPFILE=true
         ZRAM_MULTIPLIER=2
-        echo "Strategy: ZRAM (2x RAM) - Critical for low RAM systems"
+        SWAP_SIZE_GB=4  # At least RAM size for hibernation
+        SWAP_STRATEGY="ZRAM+SWAPFILE"
+        echo "Strategy: ZRAM (2x RAM) + Swap File (4GB) - Low RAM system with hibernation support"
 
     elif [[ $TOTAL_MEM -lt 8388608 ]]; then
-        # 4-8GB RAM
+        # 4-8GB RAM: ZRAM + swapfile
+        USE_ZRAM=true
+        USE_SWAPFILE=true
+        ZRAM_MULTIPLIER=2
         if [[ $IS_SSD -eq 1 ]]; then
-            SWAP_STRATEGY="ZRAM"
-            USE_ZRAM=true
-            ZRAM_MULTIPLIER=2
-            echo "Strategy: ZRAM (2x RAM) - SSD-friendly, fast swap"
+            SWAP_SIZE_GB=4  # Smaller for SSD
         else
-            SWAP_STRATEGY="ZRAM+SWAPFILE"
-            USE_ZRAM=true
-            USE_SWAPFILE=true
-            ZRAM_MULTIPLIER=2
-            SWAP_SIZE_GB=2
-            echo "Strategy: ZRAM (2x RAM) + Swap File (2GB) - ZRAM primary, file backup"
+            SWAP_SIZE_GB=6  # Larger for HDD (more space available)
         fi
+        SWAP_STRATEGY="ZRAM+SWAPFILE"
+        echo "Strategy: ZRAM (2x RAM) + Swap File (${SWAP_SIZE_GB}GB) - Balanced performance"
 
     elif [[ $TOTAL_MEM -lt 16777216 ]]; then
-        # 8-16GB RAM
+        # 8-16GB RAM: ZRAM + moderate swapfile
+        USE_ZRAM=true
+        USE_SWAPFILE=true
+        ZRAM_MULTIPLIER=1
         if [[ $IS_SSD -eq 1 ]]; then
-            SWAP_STRATEGY="ZRAM"
-            USE_ZRAM=true
-            ZRAM_MULTIPLIER=1
-            echo "Strategy: ZRAM (1x RAM) - Light swap, SSD-friendly"
-        else
-            SWAP_STRATEGY="SWAPFILE"
-            USE_SWAPFILE=true
             SWAP_SIZE_GB=4
-            echo "Strategy: Swap File (4GB) - Moderate swap needs"
+        else
+            SWAP_SIZE_GB=8
         fi
+        SWAP_STRATEGY="ZRAM+SWAPFILE"
+        echo "Strategy: ZRAM (1x RAM) + Swap File (${SWAP_SIZE_GB}GB) - Good balance"
 
     elif [[ $TOTAL_MEM -lt 33554432 ]]; then
-        # 16-32GB RAM
-        SWAP_STRATEGY="SWAPFILE"
+        # 16-32GB RAM: Optional ZRAM + swapfile for hibernation
+        USE_ZRAM=true
         USE_SWAPFILE=true
+        ZRAM_MULTIPLIER=1
         if [[ $IS_SSD -eq 1 ]]; then
-            SWAP_SIZE_GB=2
-            echo "Strategy: Swap File (2GB) - Hibernation support only"
-        else
             SWAP_SIZE_GB=4
-            echo "Strategy: Swap File (4GB) - Moderate swap needs"
+        else
+            SWAP_SIZE_GB=8
         fi
+        SWAP_STRATEGY="ZRAM+SWAPFILE"
+        echo "Strategy: ZRAM (1x RAM) + Swap File (${SWAP_SIZE_GB}GB) - Hibernation support"
 
     else
-        # >32GB RAM
-        SWAP_STRATEGY="SWAPFILE"
+        # >32GB RAM: Light ZRAM + minimal swapfile
+        USE_ZRAM=true
         USE_SWAPFILE=true
-        if [[ $IS_SSD -eq 1 ]]; then
-            SWAP_SIZE_GB=1
-            echo "Strategy: Swap File (1GB) - Minimal swap for hibernation"
-        else
-            SWAP_SIZE_GB=2
-            echo "Strategy: Swap File (2GB) - Minimal swap needs"
-        fi
+        ZRAM_MULTIPLIER=1
+        SWAP_SIZE_GB=4  # Minimal for hibernation
+        SWAP_STRATEGY="ZRAM+SWAPFILE"
+        echo "Strategy: ZRAM (1x RAM) + Swap File (4GB) - High RAM system"
     fi
 
-    # Override for SERVER installations (always use swap file)
+    # Override for SERVER installations (swap file only, no ZRAM)
     if [[ "$INSTALL_TYPE" == "SERVER" ]]; then
-        if [[ "$SWAP_STRATEGY" != *"SWAPFILE"* ]]; then
-            SWAP_STRATEGY="SWAPFILE"
-            USE_ZRAM=false
-            USE_SWAPFILE=true
-            SWAP_SIZE_GB=4
-            echo "Override: Server installation - Using Swap File (4GB)"
-        fi
+        SWAP_STRATEGY="SWAPFILE"
+        USE_ZRAM=false
+        USE_SWAPFILE=true
+        SWAP_SIZE_GB=4
+        echo "Override: Server installation - Using Swap File only (4GB)"
     fi
 
-    # Check if we have enough disk space for swap file
-    # Need at least (SWAP_SIZE_GB + 2GB) free for safety
+    # Check disk space for swap file
     REQUIRED_SPACE=$((SWAP_SIZE_GB + 2))
     if [[ "$USE_SWAPFILE" == true ]] && [[ $AVAILABLE_SPACE_GB -lt $REQUIRED_SPACE ]]; then
-        if [[ $AVAILABLE_SPACE_GB -gt 0 ]]; then
-            echo "Warning: Insufficient disk space (${AVAILABLE_SPACE_GB}GB available, ${REQUIRED_SPACE}GB required)."
-            echo "Skipping swap file creation."
+        echo "Warning: Insufficient disk space (${AVAILABLE_SPACE_GB}GB available, ${REQUIRED_SPACE}GB required)."
+        if [[ $AVAILABLE_SPACE_GB -ge 3 ]]; then
+            SWAP_SIZE_GB=$((AVAILABLE_SPACE_GB - 2))
+            echo "Reducing swap file size to ${SWAP_SIZE_GB}GB"
         else
-            echo "Warning: No disk space available for swap file."
-        fi
-        USE_SWAPFILE=false
-        if [[ "$USE_ZRAM" == false ]]; then
-            echo "Note: Consider using ZRAM or freeing disk space for swap."
+            echo "Skipping swap file creation."
+            USE_SWAPFILE=false
         fi
     fi
 
+    # =========================================================================
     # Configure ZRAM
+    # =========================================================================
     if [[ "$USE_ZRAM" == true ]]; then
         echo ""
-        echo "Installing zram-generator..."
+        echo "Installing and configuring ZRAM..."
         arch-chroot /mnt pacman -S zram-generator --noconfirm --needed
 
-        echo "Configuring zram-generator..."
         mkdir -p /mnt/etc/systemd/
         cat <<EOF > /mnt/etc/systemd/zram-generator.conf
 [zram0]
@@ -384,100 +387,199 @@ swap-priority = 100
 compression-algorithm = zstd
 EOF
 
-        echo "Loading zram module..."
-        modprobe zram
+        # Load zram module in live environment
+        modprobe zram 2>/dev/null || true
 
-        echo "Regenerating initramfs..."
-        arch-chroot /mnt mkinitcpio -P
-
-        echo "Enabling systemd-zram-setup@zram0.service..."
         arch-chroot /mnt systemctl enable systemd-zram-setup@zram0.service
 
         echo "ZRAM configured: ${ZRAM_MULTIPLIER}x RAM (${TOTAL_MEM_GB}GB → $((TOTAL_MEM_GB * ZRAM_MULTIPLIER))GB compressed swap)"
     fi
 
+    # =========================================================================
     # Configure Swap File
+    # =========================================================================
     if [[ "$USE_SWAPFILE" == true ]] && [[ $SWAP_SIZE_GB -gt 0 ]]; then
         echo ""
         echo "Creating swap file (${SWAP_SIZE_GB}GB)..."
 
-        # Check filesystem type
-        FS_TYPE="${FS:-ext4}"
-
-        # For Btrfs, we need special handling (no CoW, no compression)
+        # Determine swap file path based on filesystem
+        # For Btrfs: use dedicated @swap subvolume to avoid snapshot conflicts
+        # For ext4/others: use /swapfile in root
         if [[ "$FS_TYPE" == "btrfs" ]] || [[ "$FS_TYPE" == "luks" ]]; then
-            echo "Detected Btrfs filesystem - using Btrfs-specific swap file method"
-
-            # Create swap file using mkswap --file (modern method per ArchWiki)
-            # For Btrfs, mkswap --file handles CoW and compression automatically
-            arch-chroot /mnt mkswap -U clear --size ${SWAP_SIZE_GB}G --file /swapfile
-
-            # Set permissions
-            arch-chroot /mnt chmod 600 /swapfile
-
-            # Disable CoW and compression on swap file (Btrfs specific)
-            arch-chroot /mnt chattr +C /swapfile || true
-            arch-chroot /mnt btrfs property set /swapfile compression none || true
+            _create_btrfs_swapfile
         else
-            # For ext4 and other filesystems, use standard method
-            echo "Using standard swap file creation method"
-
-            # Create swap file using mkswap --file (modern method per ArchWiki)
-            arch-chroot /mnt mkswap -U clear --size ${SWAP_SIZE_GB}G --file /swapfile
-
-            # Set permissions
-            arch-chroot /mnt chmod 600 /swapfile
+            _create_standard_swapfile
         fi
+    fi
 
-        # Verify swap file was created successfully
-        if arch-chroot /mnt test -f /swapfile; then
-            echo "Swap file created successfully"
-
-            # Activate swap file immediately
-            if arch-chroot /mnt swapon /swapfile; then
-                echo "Swap file activated successfully"
-            else
-                echo "Warning: Could not activate swap file immediately (may need reboot)"
-            fi
-
-            # Remove any existing systemd swap units that might conflict
-            arch-chroot /mnt systemctl stop swapfile.swap 2>/dev/null || true
-            arch-chroot /mnt systemctl disable swapfile.swap 2>/dev/null || true
-            arch-chroot /mnt rm -f /etc/systemd/system/swapfile.swap 2>/dev/null || true
-            arch-chroot /mnt systemctl daemon-reload 2>/dev/null || true
-
-            # Add to fstab (per ArchWiki: use file path, not UUID/LABEL)
-            # Remove any existing /swapfile entries first
-            arch-chroot /mnt sed -i '/\/swapfile/d' /etc/fstab
-
-            # Add correct entry
-            if [[ "$USE_ZRAM" == true ]]; then
-                # Set priority: lower than ZRAM (100) if ZRAM exists
-                echo "/swapfile none swap defaults,pri=50 0 0" >> /mnt/etc/fstab
-            else
-                echo "/swapfile none swap defaults 0 0" >> /mnt/etc/fstab
-            fi
-
-            echo "Swap file added to /etc/fstab"
-        else
-            echo "Error: Swap file was not created successfully"
-        fi
-
-        # Configure swappiness (lower priority than ZRAM if both exist)
-        mkdir -p /mnt/etc/sysctl.d
-        if [[ "$USE_ZRAM" == true ]]; then
-            # ZRAM has priority, swap file is backup
-            echo "vm.swappiness=10" >> /mnt/etc/sysctl.d/99-swap.conf
-        else
-            # Swap file only
-            echo "vm.swappiness=60" >> /mnt/etc/sysctl.d/99-swap.conf
-        fi
-
-        echo "Swap file configured: ${SWAP_SIZE_GB}GB at /swapfile"
+    # =========================================================================
+    # Configure swappiness
+    # =========================================================================
+    mkdir -p /mnt/etc/sysctl.d
+    if [[ "$USE_ZRAM" == true ]]; then
+        # ZRAM has priority, lower swappiness to prefer RAM
+        echo "vm.swappiness=10" > /mnt/etc/sysctl.d/99-swap.conf
+    else
+        # Swap file only, moderate swappiness
+        echo "vm.swappiness=60" > /mnt/etc/sysctl.d/99-swap.conf
     fi
 
     echo ""
     echo "Swap configuration complete: ${SWAP_STRATEGY}"
+}
+
+
+# @description Create swap file on Btrfs filesystem using dedicated @swap subvolume
+# This avoids the "Text file busy" (errno:26) error when creating snapshots
+# Reference: https://wiki.archlinux.org/title/Btrfs#Swap_file
+# @noargs
+_create_btrfs_swapfile() {
+    echo "Detected Btrfs filesystem - using dedicated @swap subvolume"
+    echo "This prevents snapshot conflicts (errno:26 Text file busy)"
+
+    local SWAP_PATH="/swap/swapfile"
+    local SWAP_MOUNT="/mnt/swap"
+
+    # Check if @swap subvolume is mounted
+    if ! mountpoint -q "$SWAP_MOUNT" 2>/dev/null; then
+        echo "Warning: @swap subvolume not mounted at $SWAP_MOUNT"
+        echo "Attempting to mount @swap subvolume..."
+
+        # Try to mount @swap subvolume
+        mkdir -p "$SWAP_MOUNT"
+
+        # Get the root device (could be /dev/sdXY or /dev/mapper/ROOT for LUKS)
+        local ROOT_DEV=""
+        if [[ "$FS_TYPE" == "luks" ]]; then
+            ROOT_DEV="/dev/mapper/ROOT"
+        else
+            # Get device from current mount
+            ROOT_DEV=$(findmnt -n -o SOURCE /mnt 2>/dev/null | head -1)
+        fi
+
+        if [[ -n "$ROOT_DEV" ]] && [[ -b "$ROOT_DEV" ]]; then
+            # Mount with same options but subvol=@swap and no compression
+            mount -o subvol=@swap,noatime,nodatacow "$ROOT_DEV" "$SWAP_MOUNT" 2>/dev/null || {
+                echo "Error: Could not mount @swap subvolume"
+                echo "Falling back to standard swap file location (may cause snapshot issues)"
+                _create_standard_swapfile
+                return
+            }
+        else
+            echo "Error: Could not determine root device"
+            _create_standard_swapfile
+            return
+        fi
+    fi
+
+    # Create swap file using btrfs-specific method (modern ArchWiki recommendation)
+    echo "Creating swap file at ${SWAP_PATH}..."
+
+    # Use btrfs filesystem mkswapfile (handles NOCOW and preallocation automatically)
+    if arch-chroot /mnt btrfs filesystem mkswapfile --size ${SWAP_SIZE_GB}G --uuid clear /swap/swapfile 2>/dev/null; then
+        echo "Swap file created using btrfs filesystem mkswapfile"
+    else
+        # Fallback to manual method if btrfs filesystem mkswapfile is not available
+        echo "Falling back to manual swap file creation..."
+
+        # Ensure NOCOW is set on the directory
+        arch-chroot /mnt chattr +C /swap 2>/dev/null || true
+
+        # Create swap file with truncate (creates sparse file, then mkswap fills it)
+        arch-chroot /mnt truncate -s 0 /swap/swapfile
+        arch-chroot /mnt chattr +C /swap/swapfile 2>/dev/null || true
+        arch-chroot /mnt btrfs property set /swap/swapfile compression none 2>/dev/null || true
+        arch-chroot /mnt fallocate -l ${SWAP_SIZE_GB}G /swap/swapfile
+        arch-chroot /mnt chmod 600 /swap/swapfile
+        arch-chroot /mnt mkswap -U clear /swap/swapfile
+    fi
+
+    # Verify swap file was created
+    if arch-chroot /mnt test -f /swap/swapfile; then
+        echo "Swap file created successfully at /swap/swapfile"
+
+        # Set correct permissions
+        arch-chroot /mnt chmod 600 /swap/swapfile
+
+        # Activate swap file
+        if arch-chroot /mnt swapon /swap/swapfile 2>/dev/null; then
+            echo "Swap file activated successfully"
+        else
+            echo "Note: Swap file will be activated on first boot"
+        fi
+
+        # Update fstab - remove old entries and add new ones
+        arch-chroot /mnt sed -i '/swapfile/d' /etc/fstab
+        arch-chroot /mnt sed -i '/\/swap.*swap/d' /etc/fstab
+
+        # Add swap file entry with correct priority
+        if [[ "$USE_ZRAM" == true ]]; then
+            echo "/swap/swapfile none swap defaults,pri=50 0 0" >> /mnt/etc/fstab
+        else
+            echo "/swap/swapfile none swap defaults 0 0" >> /mnt/etc/fstab
+        fi
+
+        echo "Swap file added to /etc/fstab"
+        echo "Swap file configured: ${SWAP_SIZE_GB}GB at /swap/swapfile (Btrfs @swap subvolume)"
+    else
+        echo "Error: Swap file was not created successfully"
+    fi
+}
+
+
+# @description Create swap file on ext4 or other standard filesystems
+# @noargs
+_create_standard_swapfile() {
+    echo "Using standard swap file creation method"
+
+    local SWAP_PATH="/swapfile"
+
+    # Create swap file using mkswap --file (modern method per ArchWiki)
+    if arch-chroot /mnt mkswap -U clear --size ${SWAP_SIZE_GB}G --file /swapfile 2>/dev/null; then
+        echo "Swap file created using mkswap --file"
+    else
+        # Fallback to traditional method
+        echo "Falling back to traditional swap file creation..."
+        arch-chroot /mnt fallocate -l ${SWAP_SIZE_GB}G /swapfile || \
+            arch-chroot /mnt dd if=/dev/zero of=/swapfile bs=1M count=$((SWAP_SIZE_GB * 1024)) status=progress
+        arch-chroot /mnt chmod 600 /swapfile
+        arch-chroot /mnt mkswap -U clear /swapfile
+    fi
+
+    # Verify swap file was created
+    if arch-chroot /mnt test -f /swapfile; then
+        echo "Swap file created successfully"
+
+        # Set correct permissions
+        arch-chroot /mnt chmod 600 /swapfile
+
+        # Activate swap file
+        if arch-chroot /mnt swapon /swapfile 2>/dev/null; then
+            echo "Swap file activated successfully"
+        else
+            echo "Note: Swap file will be activated on first boot"
+        fi
+
+        # Clean up any conflicting systemd units
+        arch-chroot /mnt systemctl stop swapfile.swap 2>/dev/null || true
+        arch-chroot /mnt systemctl disable swapfile.swap 2>/dev/null || true
+        arch-chroot /mnt rm -f /etc/systemd/system/swapfile.swap 2>/dev/null || true
+        arch-chroot /mnt systemctl daemon-reload 2>/dev/null || true
+
+        # Update fstab
+        arch-chroot /mnt sed -i '/\/swapfile/d' /etc/fstab
+
+        if [[ "$USE_ZRAM" == true ]]; then
+            echo "/swapfile none swap defaults,pri=50 0 0" >> /mnt/etc/fstab
+        else
+            echo "/swapfile none swap defaults 0 0" >> /mnt/etc/fstab
+        fi
+
+        echo "Swap file added to /etc/fstab"
+        echo "Swap file configured: ${SWAP_SIZE_GB}GB at /swapfile"
+    else
+        echo "Error: Swap file was not created successfully"
+    fi
 }
 
 
