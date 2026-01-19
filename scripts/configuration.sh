@@ -23,13 +23,15 @@ user_info
 clear
 show_logo
 install_type
-if [[ ! "$INSTALL_TYPE" == SERVER ]]; then
-  clear
-  show_logo
-  aur_helper
-  clear
-  show_logo
-  desktop_environment
+clear
+show_logo
+swap_type
+clear
+show_logo
+aur_helper
+clear
+show_logo
+desktop_environment
 fi
 clear
 show_logo

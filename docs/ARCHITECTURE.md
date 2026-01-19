@@ -549,15 +549,29 @@ rankmirrors -n 5 /etc/pacman.d/mirrorlist
 
 ### 3. Intelligent Swap Configuration
 
-The system intelligently configures swap based on hardware analysis:
+The system intelligently configures swap based on **hardware analysis and user preference**:
 
 ```bash
-# Decision logic based on RAM, storage type (SSD/HDD), and installation type
+# User selects swap type during configuration:
+# - "ZRAM Only": Fast swap in RAM (no hibernation, saves disk space)
+# - "ZRAM + Swapfile": ZRAM for daily use + swapfile for hibernation (default)
+# - "Swapfile Only": Only swapfile on disk (for systems with very limited RAM)
+
+# Decision logic based on RAM, storage type (SSD/HDD), and user preference
 TOTAL_MEM=$(grep -i 'memtotal' /proc/meminfo | grep -o '[[:digit:]]*')
 IS_SSD=$([[ $(lsblk -n --output ROTA "${DISK}") == "0" ]] && echo 1 || echo 0)
+SWAP_TYPE="${SWAP_TYPE:-ZRAM + Swapfile}"  # User preference
 ```
 
-**Decision Table**:
+**User Choice Options:**
+
+| Swap Type | ZRAM | Swapfile | Use Case |
+|-----------|-------|----------|----------|
+| **ZRAM Only** | ✅ Yes | ❌ No | Desktops with sufficient RAM, no need for hibernation |
+| **ZRAM + Swapfile** | ✅ Yes | ✅ Yes | Laptops/Systems needing hibernation (default) |
+| **Swapfile Only** | ❌ No | ✅ Yes | Systems with very limited RAM |
+
+**Decision Table (Auto-Detection for "ZRAM + Swapfile"):**
 
 | RAM | Strategy | Swap Size (SSD) | Swap Size (HDD) |
 |-----|----------|-----------------|-----------------|
@@ -567,21 +581,24 @@ IS_SSD=$([[ $(lsblk -n --output ROTA "${DISK}") == "0" ]] && echo 1 || echo 0)
 | 16-32GB | ZRAM (1x) + Swapfile | 4GB | 8GB |
 | >32GB | ZRAM (1x) + Swapfile | 4GB | 4GB |
 
-**Special Cases**:
-- SERVER installations: Swap file only (4GB), no ZRAM
+**Special Cases:**
+- SERVER installations: Always Swapfile only (4GB), no ZRAM
+- User preference overrides auto-detection
 - Insufficient disk space: Swap size reduced or skipped
 
-**Btrfs-specific Handling**:
+**Btrfs-specific Handling:**
 - Dedicated `@swap` subvolume to avoid snapshot conflicts (errno:26 "Text file busy")
 - Swap file at `/swap/swapfile` (inside `@swap` subvolume)
 - Created with `btrfs filesystem mkswapfile` (handles NOCOW automatically)
-- GRUB `resume=` parameter added automatically for hibernation
 
-**ext4/Other Filesystems**:
+**ext4/Other Filesystems:**
 - Swap file at `/swapfile` (root filesystem)
 - Created with `mkswap --file`
 
-**Rationale**: All systems get both ZRAM (fast, compressed RAM swap) and a persistent swap file (for hibernation support). Btrfs uses a dedicated subvolume to prevent snapshot conflicts.
+**Rationale**: All systems get ZRAM (fast, compressed RAM swap) by default. Users can choose:
+1. ZRAM only (saves disk space, no hibernation)
+2. ZRAM + Swapfile (balanced, supports hibernation) - **DEFAULT**
+3. Swapfile only (very limited RAM systems)
 
 ### 4. Btrfs Mount Options
 

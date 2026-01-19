@@ -255,9 +255,10 @@ low_memory_config() {
         [[ "${ROTA:-1}" == "0" ]] && IS_SSD=1
     fi
 
-    # Detect installation type and filesystem
+    # Detect installation type, filesystem, and swap preference
     INSTALL_TYPE="${INSTALL_TYPE:-FULL}"
     FS_TYPE="${FS:-ext4}"
+    SWAP_TYPE="${SWAP_TYPE:-ZRAM + Swapfile}"  # Default: ZRAM + Swapfile
 
     # Calculate available disk space
     AVAILABLE_SPACE_GB=0
@@ -277,85 +278,97 @@ low_memory_config() {
     echo "  Filesystem: ${FS_TYPE}"
     echo "  Installation Type: ${INSTALL_TYPE}"
     echo "  Available Disk Space: ${AVAILABLE_SPACE_GB}GB"
+    echo "  Swap Preference: $SWAP_TYPE"
     echo ""
 
-    # Decision logic based on RAM and storage type
+    # Decision logic based on RAM, storage type, and user preference
     SWAP_STRATEGY=""
     SWAP_SIZE_GB=0
     USE_ZRAM=false
     USE_SWAPFILE=false
     ZRAM_MULTIPLIER=1
 
-    # New simplified strategy:
-    # - All systems get ZRAM for fast swap (compressed RAM)
-    # - Swapfile is created for hibernation support (persistent storage required)
-    # - Btrfs uses dedicated @swap subvolume to avoid snapshot conflicts
+    echo "Applying user swap preference: $SWAP_TYPE"
+    echo ""
 
-    if [[ $TOTAL_MEM -lt 4194304 ]]; then
-        # <4GB RAM: ZRAM critical + small swapfile for hibernation
-        USE_ZRAM=true
-        USE_SWAPFILE=true
-        ZRAM_MULTIPLIER=2
-        SWAP_SIZE_GB=4  # At least RAM size for hibernation
-        SWAP_STRATEGY="ZRAM+SWAPFILE"
-        echo "Strategy: ZRAM (2x RAM) + Swap File (4GB) - Low RAM system with hibernation support"
+    # User preference override: respect user's choice
+    case "$SWAP_TYPE" in
+        "ZRAM Only")
+            echo "ZRAM Only selected: Fast swap in RAM (no hibernation support)"
+            USE_ZRAM=true
+            USE_SWAPFILE=false
+            ZRAM_MULTIPLIER=2
+            SWAP_STRATEGY="ZRAM"
+            ;;
 
-    elif [[ $TOTAL_MEM -lt 8388608 ]]; then
-        # 4-8GB RAM: ZRAM + swapfile
-        USE_ZRAM=true
-        USE_SWAPFILE=true
-        ZRAM_MULTIPLIER=2
-        if [[ $IS_SSD -eq 1 ]]; then
-            SWAP_SIZE_GB=4  # Smaller for SSD
-        else
-            SWAP_SIZE_GB=6  # Larger for HDD (more space available)
-        fi
-        SWAP_STRATEGY="ZRAM+SWAPFILE"
-        echo "Strategy: ZRAM (2x RAM) + Swap File (${SWAP_SIZE_GB}GB) - Balanced performance"
+        "Swapfile Only")
+            echo "Swapfile Only selected: Persistent swap on disk (for systems with very limited RAM)"
+            USE_ZRAM=false
+            USE_SWAPFILE=true
+            SWAP_SIZE_GB=4  # Minimal for systems with very limited RAM
+            SWAP_STRATEGY="SWAPFILE"
+            ;;
 
-    elif [[ $TOTAL_MEM -lt 16777216 ]]; then
-        # 8-16GB RAM: ZRAM + moderate swapfile
-        USE_ZRAM=true
-        USE_SWAPFILE=true
-        ZRAM_MULTIPLIER=1
-        if [[ $IS_SSD -eq 1 ]]; then
-            SWAP_SIZE_GB=4
-        else
-            SWAP_SIZE_GB=8
-        fi
-        SWAP_STRATEGY="ZRAM+SWAPFILE"
-        echo "Strategy: ZRAM (1x RAM) + Swap File (${SWAP_SIZE_GB}GB) - Good balance"
+        "ZRAM + Swapfile"|"ZRAM+Swapfile"|*)  # Default or any other value
+            # Use intelligent auto-detection
+            echo "ZRAM + Swapfile selected: Intelligent auto-detection based on hardware"
+            USE_ZRAM=true
+            USE_SWAPFILE=true
 
-    elif [[ $TOTAL_MEM -lt 33554432 ]]; then
-        # 16-32GB RAM: Optional ZRAM + swapfile for hibernation
-        USE_ZRAM=true
-        USE_SWAPFILE=true
-        ZRAM_MULTIPLIER=1
-        if [[ $IS_SSD -eq 1 ]]; then
-            SWAP_SIZE_GB=4
-        else
-            SWAP_SIZE_GB=8
-        fi
-        SWAP_STRATEGY="ZRAM+SWAPFILE"
-        echo "Strategy: ZRAM (1x RAM) + Swap File (${SWAP_SIZE_GB}GB) - Hibernation support"
+            # Intelligent auto-detection logic
+            if [[ $TOTAL_MEM -lt 4194304 ]]; then
+                # <4GB RAM: ZRAM critical + swapfile for hibernation
+                ZRAM_MULTIPLIER=2
+                SWAP_SIZE_GB=4
+                SWAP_STRATEGY="ZRAM+SWAPFILE"
+                echo "Strategy: ZRAM (2x RAM) + Swap File (4GB) - Low RAM with hibernation"
 
-    else
-        # >32GB RAM: Light ZRAM + minimal swapfile
-        USE_ZRAM=true
-        USE_SWAPFILE=true
-        ZRAM_MULTIPLIER=1
-        SWAP_SIZE_GB=4  # Minimal for hibernation
-        SWAP_STRATEGY="ZRAM+SWAPFILE"
-        echo "Strategy: ZRAM (1x RAM) + Swap File (4GB) - High RAM system"
-    fi
+            elif [[ $TOTAL_MEM -lt 8388608 ]]; then
+                # 4-8GB RAM
+                ZRAM_MULTIPLIER=2
+                if [[ $IS_SSD -eq 1 ]]; then
+                    SWAP_SIZE_GB=4  # Smaller for SSD
+                else
+                    SWAP_SIZE_GB=6  # Larger for HDD
+                fi
+                SWAP_STRATEGY="ZRAM+SWAPFILE"
+                echo "Strategy: ZRAM (2x RAM) + Swap File (${SWAP_SIZE_GB}GB) - Balanced performance"
 
-    # Override for SERVER installations (swap file only, no ZRAM)
+            elif [[ $TOTAL_MEM -lt 16777216 ]]; then
+                # 8-16GB RAM
+                ZRAM_MULTIPLIER=1
+                if [[ $IS_SSD -eq 1 ]]; then
+                    SWAP_SIZE_GB=4
+                else
+                    SWAP_SIZE_GB=8
+                fi
+                SWAP_STRATEGY="ZRAM+SWAPFILE"
+                echo "Strategy: ZRAM (1x RAM) + Swap File (${SWAP_SIZE_GB}GB) - Good balance"
+
+            elif [[ $TOTAL_MEM -lt 33554432 ]]; then
+                # 16-32GB RAM
+                ZRAM_MULTIPLIER=1
+                SWAP_SIZE_GB=4
+                SWAP_STRATEGY="ZRAM+SWAPFILE"
+                echo "Strategy: ZRAM (1x RAM) + Swap File (4GB) - High RAM system"
+
+            else
+                # >32GB RAM
+                ZRAM_MULTIPLIER=1
+                SWAP_SIZE_GB=4
+                SWAP_STRATEGY="ZRAM+SWAPFILE"
+                echo "Strategy: ZRAM (1x RAM) + Swap File (4GB) - Very high RAM system"
+            fi
+            ;;
+    esac
+
+    # Override for SERVER installations (always use swap file only)
     if [[ "$INSTALL_TYPE" == "SERVER" ]]; then
+        echo "Override: Server installation - Using Swap File only (4GB) as per server best practices"
         SWAP_STRATEGY="SWAPFILE"
         USE_ZRAM=false
         USE_SWAPFILE=true
         SWAP_SIZE_GB=4
-        echo "Override: Server installation - Using Swap File only (4GB)"
     fi
 
     # Check disk space for swap file
