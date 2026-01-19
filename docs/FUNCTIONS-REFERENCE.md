@@ -290,16 +290,24 @@ background_checks
 
 ### set_password()
 ```bash
-set_password "PASSWORD"
+set_password "VARIABLE_NAME"
 ```
-**Description**: Collects password with confirmation.
+**Description**: Collects password with confirmation and saves to setup.conf.
 
-**Parameters**: `$1` - Variable name in setup.conf
+**Parameters**: `$1` - Variable name in setup.conf where password will be stored
 
 **Behavior**:
-- Asks for password (hidden)
-- Asks for confirmation
-- Recursive if don't match
+- Prompts for password (hidden input)
+- Prompts for password confirmation
+- If passwords match, saves to setup.conf using `set_option "$1" "$PASSWORD1"`
+- If passwords don't match, shows error and recurs until matching
+- Clears temporary entries from setup.conf if validation fails
+
+**Example**:
+```bash
+set_password "LUKS_PASSWORD"  # Saves as LUKS_PASSWORD=value in setup.conf
+set_password "PASSWORD"         # Saves as PASSWORD=value in setup.conf
+```
 
 ---
 
@@ -440,25 +448,42 @@ set_btrfs
 ```bash
 timezone
 ```
-**Description**: Interactive timezone selection with automatic detection and search functionality.
+**Description**: Interactive timezone selection with automatic detection via web API and comprehensive fallback mechanisms.
 
 **Behavior**:
-1. **Automatic Detection**: Attempts to detect timezone via `curl https://ipapi.co/timezone`
-2. **User Choice**: Offers to use detected timezone or select from list
+1. **Web API Detection**: Attempts to detect timezone via `curl --fail --max-time 3 https://ipapi.co/timezone`
+2. **User Choice**: Offers options to use detected timezone or select from list
 3. **Interactive Selection**: If "Select from list" is chosen:
-   - Displays all available timezones from `/usr/share/zoneinfo`
-   - Uses `select_option_with_search()` for searchable menu
-   - Shows up to 10 items at a time (paginated)
-   - Press `/` to search, arrow keys to navigate
-4. **Validation**: Verifies timezone file exists before saving
+   - Scans `/usr/share/zoneinfo` recursively to build complete timezone list
+   - Uses `select_option_with_search()` for searchable menu (3 columns)
+   - Real-time search filtering when `/` is pressed
+   - Case-insensitive search functionality
+4. **File Validation**: Verifies timezone file exists at `/usr/share/zoneinfo/$timezone`
+5. **Error Handling**: 
+   - 3-second timeout for API call to prevent hanging
+   - Fallback to manual entry if API fails
+   - Warning if timezone file not found but continues anyway
 
-**Features**:
-- Automatic detection with fallback to manual selection
-- Search functionality (press `/` to filter)
-- Paginated display (10 items max)
-- Case-insensitive search
+**Fallback Mechanisms**:
+- API failure → Manual selection list
+- Missing timezone files → Manual text input
+- Invalid file path → Warning but continues
 
-**Saves**: `TIMEZONE` to setup.conf (format: `Region/City`, e.g., `America/Sao_Paulo`)
+**Saves**: `TIMEZONE` to setup.conf (format: `Region/City`, e.g., `America/New_York`)
+
+**Implementation Details**:
+```bash
+# Web API with timeout and error handling
+detected_tz="$(curl --fail --max-time 3 https://ipapi.co/timezone 2>/dev/null || echo "")"
+
+# Recursive timezone building
+find /usr/share/zoneinfo -type f -printf "%P\n" | sort
+
+# File validation before saving
+if [[ ! -f "/usr/share/zoneinfo/$full_timezone" ]]; then
+    echo "Warning: Timezone file not found"
+fi
+```
 
 ---
 
@@ -1346,4 +1371,227 @@ my_hardware_install() {
 
 ---
 
-Consult source code for implementation details!
+## Additional Functions (Not Previously Documented)
+
+### detect_vm()
+```bash
+detect_vm
+```
+**Description**: Detects if the system is running inside a virtual machine using DMI and PCI analysis.
+
+**Detection Methods**:
+1. **DMI Product Name**: Reads `/sys/class/dmi/id/product_name` for VM signatures
+2. **PCI Devices**: Checks `/sys/bus/pci/devices` for virtual graphics adapters
+
+**Detected VMs**:
+- VirtualBox
+- VMware
+- QEMU/KVM
+- Bochs
+
+**Return**: Exit code 0 if VM detected, 1 if bare metal
+
+**Usage Example**:
+```bash
+if detect_vm; then
+    echo "Installing VM-specific packages..."
+    install_gpu_from_json "vm"
+fi
+```
+
+### detect_hybrid_graphics()
+```bash
+detect_hybrid_graphics
+```
+**Description**: Detects hybrid graphics systems (NVIDIA + Intel combination) for Optimus laptops.
+
+**Detection**: Parses `lspci` output for both NVIDIA and Intel graphics controllers simultaneously.
+
+**Return**: Exit code 0 if hybrid graphics detected, 1 otherwise
+
+**Use Case**: Enables special handling for laptops with switchable graphics (Optimus technology).
+
+### nvidia_supports_open_dkms()
+```bash
+nvidia_supports_open_dkms
+```
+**Description**: Checks if NVIDIA GPU supports the open-source kernel module (nvidia-open-dkms).
+
+**Supported GPUs** (Turing architecture and newer):
+- RTX 20xx series (Turing)
+- RTX 30xx series (Ampere)  
+- RTX 40xx series (Ada Lovelace)
+- GTX 16xx series (Turing)
+
+**Detection**: Checks GPU model patterns in `lspci` output against supported series.
+
+**Return**: Exit code 0 if supports open-dkms, 1 otherwise
+
+### get_nvidia_driver_choice()
+```bash
+get_nvidia_driver_choice
+```
+**Description**: Interactive menu for selecting NVIDIA driver type based on GPU capabilities.
+
+**Options** (if GPU supports open-dkms):
+1. **Proprietary** (nvidia-dkms) - Best performance, closed-source
+2. **Open Kernel** (nvidia-open-dkms) - Open kernel module, good performance  
+3. **Open-source** (nouveau) - Free software, limited performance
+
+**Options** (older GPUs):
+1. **Proprietary** (nvidia-dkms)
+2. **Open-source** (nouveau)
+
+**Return**: Outputs driver type string to stdout
+
+### install_package_intelligent()
+```bash
+install_package_intelligent PACKAGE_NAME
+```
+**Description**: Intelligently installs a package with existence verification and duplicate checking.
+
+**Parameters**:
+- `$1` - Package name to install
+
+**Behavior**:
+1. **Check if installed**: Uses `pacman -Qi "$package"` - skips if already installed
+2. **Check if exists**: Uses `pacman -Si "$package"` - verifies package exists in repositories
+3. **Install**: Uses `pacman -S "$package" --noconfirm --needed`
+
+**Return**: Exit code 0 on success, 1 on failure
+
+**Benefits**:
+- Prevents unnecessary reinstallations
+- Fails gracefully if package doesn't exist
+- Provides clear error messages
+
+### install_fonts()
+```bash
+install_fonts
+```
+**Description**: Installs system fonts from JSON configuration.
+
+**Source**: `packages/optional/fonts.json`
+
+**Condition**: Only runs if `INSTALL_TYPE != SERVER`
+
+**Packages**: Various font families for desktop environments including:
+- Noto fonts (comprehensive Unicode coverage)
+- Liberation fonts (Microsoft-compatible)
+- DejaVu fonts (popular web fonts)
+
+---
+
+## Functions by Use Case
+
+### Adding New Desktop Environment
+
+1. Create `packages/desktop-environments/my-de.json` with package structure:
+```json
+{
+  "minimal": {
+    "pacman": [
+      {"package": "my-de-core"},
+      {"package": "display-manager"}
+    ],
+    "aur": []
+  },
+  "full": {
+    "pacman": [
+      {"package": "my-de-full"}
+    ],
+    "aur": [
+      {"package": "my-de-themes"}
+    ]
+  }
+}
+```
+
+2. The `desktop_environment()` function will detect and offer it automatically
+3. Optionally add theming in `user_theming()` function
+4. Configure display manager in `display_manager()` function
+
+### Adding Hardware Detection
+
+In `software-install.sh`, follow the pattern:
+
+```bash
+my_hardware_detection() {
+    local detection=$(detection_command)
+    if grep -E "pattern" <<<"$detection"; then
+        echo "Hardware detected: $detection"
+        install_gpu_from_json "my-hardware-type" "variant"
+        return 0
+    fi
+    return 1
+}
+```
+
+Then call in `graphics_install()` or appropriate installation phase.
+
+### Adding Custom Validation
+
+In `user-options.sh`, use the established pattern:
+
+```bash
+my_option() {
+    while true; do
+        read -rp "Enter value: " answer
+        
+        # Validation logic here
+        if [[ "$answer" =~ validation_regex ]]; then
+            set_option MY_OPTION "$answer"
+            break
+        else
+            echo "Invalid input. Please try again."
+        fi
+    done
+}
+```
+
+Add to `show_configurations()` menu to allow reconfiguration.
+
+### Adding New Package Categories
+
+1. Create JSON file in appropriate `packages/` directory
+2. Follow the established structure with `pacman` and `aur` arrays
+3. Use `install_package_intelligent()` for each package
+4. Add installation function following the naming pattern: `category_install()`
+
+---
+
+## Implementation Notes
+
+### Error Handling Pattern
+
+Most functions use this consistent error handling pattern:
+
+```bash
+command_that_might_fail
+exit_on_error $? "Descriptive error message"
+```
+
+### Configuration Access Pattern
+
+All functions access configuration using:
+
+```bash
+source "$HOME"/archinstaller/configs/setup.conf
+# Then use variables directly: $USERNAME, $DESKTOP_ENV, etc.
+```
+
+### Package Installation Pattern
+
+The intelligent package installation pattern ensures reliability:
+
+```bash
+install_package_intelligent "package-name"
+# Handles:
+# - Already installed (skips)
+# - Package doesn't exist (errors)
+# - Permission issues (uses appropriate method)
+```
+
+---
+
+Consult source code for complete implementation details and additional helper functions!

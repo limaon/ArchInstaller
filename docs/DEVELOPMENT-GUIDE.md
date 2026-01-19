@@ -487,49 +487,715 @@ microcode_install() {
 
 ## Git Workflow
 
-### Branches
+### Recommended Branching Strategy
 
-- `main`: Stable code
-- `develop`: Active development
-- `feature/name`: New feature
-- `fix/name`: Bug fix
+For the ArchInstaller project, we recommend a hybrid approach based on **GitHub Flow** with elements of **GitFlow**, optimized for our installation tool project context:
 
-### Commits
+#### Main Branches
 
 ```bash
-# Descriptive messages
-git commit -m "Add support for XFS filesystem"
-git commit -m "Fix touchpad detection on laptops"
-git commit -m "Update KDE packages to latest"
+main          # Main branch - stable code ready for release
+develop       # Development branch - continuous integration
+feature/*     # Feature branches for new functionality
+bugfix/*      # Bug fix branches for corrections
+hotfix/*      # Emergency fixes for production
+release/*     # Release preparation (optional)
 ```
 
-### Pull Requests
+#### Workflow
 
-1. Fork repository
-2. Create feature branch
-3. Make small, focused commits
-4. Test thoroughly
-5. Open PR with detailed description
+```bash
+# 1. Start new feature
+git checkout develop
+git pull origin develop
+git checkout -b feature/feature-name
 
-**PR Template**:
+# 2. Development with semantic commits
+git add .
+git commit -m "feat(installer): add support for XFS filesystem"
+
+# 3. Push and Pull Request
+git push origin feature/feature-name
+# Create PR: feature/feature-name → develop
+
+# 4. After merge, sync develop
+git checkout develop
+git pull origin develop
+
+# 5. For release
+git checkout main
+git pull origin main
+git merge develop
+git tag v1.2.0
+git push origin main --tags
+```
+
+### Semantic Commits (Conventional Commits)
+
+We adopt the **Conventional Commits** specification for standardized and machine-readable commit messages.
+
+#### Basic Format
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+#### Commit Types
+
+| Type | Description | Example |
+|------|-------------|---------|
+| `feat` | New feature | `feat(installer): add ZFS filesystem support` |
+| `fix` | Bug fix | `fix(disk): resolve partition detection on NVMe` |
+| `docs` | Documentation changes | `docs(readme): update installation requirements` |
+| `style` | Formatting, style (no logic) | `style(utils): fix indentation in helper functions` |
+| `refactor` | Code refactoring | `refactor(config): simplify user input validation` |
+| `perf` | Performance improvements | `perf(bootstrap): reduce package download time` |
+| `test` | Add/fix tests | `test(installer): add unit tests for filesystem detection` |
+| `build` | Build/dependencies changes | `build(deps): update jq to latest version` |
+| `ci` | CI/CD changes | `ci(github): add automated testing workflow` |
+| `chore` | Maintenance tasks | `chore(deps): clean up unused dependencies` |
+| `revert` | Revert previous commit | `revert: feat(installer): remove experimental feature` |
+
+#### Common Scopes for ArchInstaller
+
+- `installer`: Main installer functionality
+- `disk`: Disk/partitioning operations
+- `config`: User configurations and options
+- `deps`: Dependency/package management
+- `ui`: User interface
+- `utils`: Utility functions
+- `docs`: Documentation
+- `ci`: Continuous integration
+
+#### Semantic Commit Examples
+
+```bash
+# Simple new feature
+git commit -m "feat(disk): add support for BTRFS filesystem"
+
+# With explanatory body
+git commit -m "feat(config): implement automatic hardware detection
+
+Add comprehensive hardware detection for graphics cards, network cards,
+and input devices. This eliminates manual configuration for most
+common hardware setups.
+
+Fixes #123"
+```
+
+```bash
+# Breaking Change
+git commit -m "feat!: change configuration file format to YAML
+
+BREAKING CHANGE: Configuration files now use YAML format instead of
+bash variables. Existing config files need to be migrated."
+```
+
+```bash
+# With scope and body
+git commit -m "fix(installer): resolve memory allocation on low-resource systems
+
+Previously the installer would crash on systems with less than 512MB RAM.
+Now implements memory-safe operations and graceful degradation.
+
+Closes #456"
+```
+
+### Branch Naming
+
+#### Recommended Pattern
+
+```bash
+# Feature branches
+feature/install-zfs-support
+feature/gui-wizard
+feature/auto-partition
+
+# Bugfix branches
+bugfix/fix-nvme-detection
+bugfix/resolve-memory-leak
+bugfix/111-troubleshoot
+
+# Hotfix branches (emergency)
+hotfix/urgent-security-patch
+hotfix/critical-installer-crash
+
+# Release branches
+release/v2.1.0
+release/v2.1.1-rc1
+```
+
+#### Conventions
+
+- Use **kebab-case** (hyphens, not underscores)
+- Include **issue number** when applicable: `bugfix/456-fix-network-detection`
+- Be **descriptive** but **concise**
+- Avoid generic names like `feature/new-feature` or `fix/bug`
+
+### Pull Requests (PRs)
+
+#### Pull Request Structure
 
 ```markdown
 ## Description
-Brief description of change.
+Brief description of the implemented change.
 
 ## Type of Change
 - [ ] Bug fix
 - [ ] New feature
 - [ ] Breaking change
 - [ ] Documentation
+- [ ] Style/Refactoring
+- [ ] Performance
+- [ ] Tests
 
-## Checklist
-- [ ] Tested in VM (UEFI)
-- [ ] Tested MINIMAL and FULL
-- [ ] Updated documentation
+## Related Issue
+Closes #123 (if applicable)
+
+## Implemented Changes
+- Detailed list of changes
+- Include screenshots if visual change
+- Explain important technical decisions
+
+## Testing Checklist
+- [ ] Tested in VM UEFI
+- [ ] Tested in VM BIOS (if applicable)
+- [ ] Tested MINIMAL installation
+- [ ] Tested FULL installation
+- [ ] Tested SERVER installation
+- [ ] Tested with different filesystems (ext4, btrfs, xfs)
+- [ ] Tested different DEs (KDE, GNOME, etc.)
+
+## Quality Checklist
 - [ ] Code follows style guide
+- [ ] Commits follow Conventional Commits
+- [ ] Documentation updated
+- [ ] No hardcoded sensitive values
+- [ ] Appropriate logs added
+- [ ] Automated tests pass
 
-## Screenshots (if applicable)
+## Release Notes (if applicable)
+- Feature: X new functionality
+- Fix: Y bug fixed
+- Breaking: Z breaking change
+```
+
+#### Code Review
+
+**For Reviewers:**
+- [ ] Code follows conventions
+- [ ] Functions have clear purpose
+- [ ] No hardcoded values (use variables)
+- [ ] Adequate error handling
+- [ ] Logs added where necessary
+- [ ] No duplicated code
+- [ ] Documentation updated
+- [ ] Tests mentioned/executed
+
+**For Authors:**
+- Respond to all comments
+- Make requested corrections
+- Keep PR updated with main
+- Be respectful and constructive
+
+### Continuous Integration
+
+#### GitHub Actions (Recommended)
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck jq
+
+      - name: Lint Bash Scripts
+        run: |
+          find . -name "*.sh" -exec shellcheck {} \;
+
+      - name: Check Commit Messages
+        uses: commitizen-tools/commitizen@v0.21
+        with:
+          args: check
+
+      - name: Validate JSON Files
+        run: |
+          find packages/ -name "*.json" -exec jq . {} \;
+```
+
+### Versioning
+
+#### Semantic Versioning (SemVer)
+
+```bash
+# Format: MAJOR.MINOR.PATCH
+
+MAJOR: Breaking changes
+  ex: 1.2.3 → 2.0.0
+
+MINOR: New features (backward compatible)
+  ex: 1.2.3 → 1.3.0
+
+PATCH: Bug fixes (backward compatible)
+  ex: 1.2.3 → 1.2.4
+```
+
+#### Commit-based Auto-versioning
+
+```bash
+# Example script for version calculation
+#!/bin/bash
+# version.sh
+
+LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+COMMITS_SINCE_TAG=$(git rev-list --count $LAST_TAG..HEAD)
+
+# Count commit types since last tag
+FIXES=$(git log $LAST_TAG..HEAD --oneline | grep -c "^feat")
+FEATURES=$(git log $LAST_TAG..HEAD --oneline | grep -c "^fix")
+BREAKING=$(git log $LAST_TAG..HEAD --oneline | grep -c "BREAKING CHANGE")
+
+BASE_VERSION=$(echo $LAST_TAG | sed 's/^v//')
+
+if [ $BREAKING -gt 0 ]; then
+    # Increment major
+    MAJOR=$(echo $BASE_VERSION | cut -d. -f1)
+    NEW_VERSION="$((MAJOR + 1)).0.0"
+elif [ $FEATURES -gt 0 ]; then
+    # Increment minor
+    MAJOR=$(echo $BASE_VERSION | cut -d. -f1)
+    MINOR=$(echo $BASE_VERSION | cut -d. -f2)
+    NEW_VERSION="$MAJOR.$((MINOR + 1)).0"
+elif [ $FIXES -gt 0 ]; then
+    # Increment patch
+    MAJOR=$(echo $BASE_VERSION | cut -d. -f1)
+    MINOR=$(echo $BASE_VERSION | cut -d. -f2)
+    PATCH=$(echo $BASE_VERSION | cut -d. -f3)
+    NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+else
+    NEW_VERSION="$BASE_VERSION-$COMMITS_SINCE_TAG"
+fi
+
+echo $NEW_VERSION
+```
+
+### Additional Best Practices
+
+#### Commit Hygiene
+
+```bash
+# Before committing
+git add .
+git status  # Check what will be committed
+git diff --staged  # Review changes
+
+# Atomic commits (one idea per commit)
+# BAD: Multiple unrelated changes
+git commit -m "feat: add ZFS support and fix disk detection and update docs"
+
+# GOOD: Separate commits by purpose
+git commit -m "feat(disk): add ZFS filesystem support"
+git commit -m "fix(disk): resolve NVMe detection issue"
+git commit -m "docs(readme): update installation instructions"
+```
+
+#### Branch Management
+
+```bash
+# Keep branches updated
+git checkout feature/my-feature
+git fetch origin
+git rebase origin/develop
+
+# Clean up local merged branches
+git branch --merged | grep -v "main\|develop" | xargs git branch -d
+
+# Branch protection on GitHub (recommended)
+- Protect main branch
+- Require PR review
+- Require CI/CD status checks
+- Disallow force pushes
+```
+
+#### Common Troubleshooting
+
+```bash
+# Resolve merge conflicts
+git checkout develop
+git pull origin develop
+git checkout feature/my-feature
+git merge develop
+# Resolve conflicts manually
+git add .
+git commit -m "resolve: merge conflicts from develop"
+
+# Revert wrong commit
+git revert HEAD  # Creates new commit reverting the last one
+# OR (if not yet pushed)
+git reset --hard HEAD~1
+
+# Squash commits before PR
+git rebase -i HEAD~5  # Select "squash" for related commits
+```
+
+#### Fluxo de Trabalho
+
+```bash
+# 1. Iniciar nova funcionalidade
+git checkout develop
+git pull origin develop
+git checkout -b feature/nome-da-funcionalidade
+
+# 2. Desenvolvimento com commits semânticos
+git add .
+git commit -m "feat(installer): add support for XFS filesystem"
+
+# 3. Push e Pull Request
+git push origin feature/nome-da-funcionalidade
+# Criar PR: feature/nome-da-funcionalidade → develop
+
+# 4. Após merge, sincronizar develop
+git checkout develop
+git pull origin develop
+
+# 5. Para release
+git checkout main
+git pull origin main
+git merge develop
+git tag v1.2.0
+git push origin main --tags
+```
+
+### Commits Semânticos (Conventional Commits)
+
+Adotamos a especificação **Conventional Commits** para mensagens de commit padronizadas e legíveis por máquina.
+
+#### Formato Básico
+
+```
+<type>[optional scope]: <description>
+
+[optional body]
+
+[optional footer(s)]
+```
+
+#### Tipos de Commit
+
+| Tipo | Descrição | Exemplo |
+|------|----------|---------|
+| `feat` | Nova funcionalidade | `feat(installer): add ZFS filesystem support` |
+| `fix` | Correção de bug | `fix(disk): resolve partition detection on NVMe` |
+| `docs` | Mudanças na documentação | `docs(readme): update installation requirements` |
+| `style` | Formatação, estilo (sem lógica) | `style(utils): fix indentation in helper functions` |
+| `refactor` | Refatoração de código | `refactor(config): simplify user input validation` |
+| `perf` | Melhorias de performance | `perf(bootstrap): reduce package download time` |
+| `test` | Adicionar/corrigir testes | `test(installer): add unit tests for filesystem detection` |
+| `build` | Mudanças no build/dependencies | `build(deps): update jq to latest version` |
+| `ci` | Mudanças na CI/CD | `ci(github): add automated testing workflow` |
+| `chore` | Tarefas de manutenção | `chore(deps): clean up unused dependencies` |
+| `revert` | Reverter commit anterior | `revert: feat(installer): remove experimental feature` |
+
+#### Escopos (Scopes) Comuns para ArchInstaller
+
+- `installer`: Funcionalidades principais do instalador
+- `disk`: Operações de disco/particionamento
+- `config`: Configurações e opções do usuário
+- `deps`: Gerenciamento de dependências/pacotes
+- `ui`: Interface com o usuário
+- `utils`: Funções utilitárias
+- `docs`: Documentação
+- `ci`: Integração contínua
+
+#### Exemplos de Commits Semânticos
+
+```bash
+# Nova funcionalidade simples
+git commit -m "feat(disk): add support for BTRFS filesystem"
+
+# Com corpo explicativo
+git commit -m "feat(config): implement automatic hardware detection
+
+Add comprehensive hardware detection for graphics cards, network cards,
+and input devices. This eliminates manual configuration for most
+common hardware setups.
+
+Fixes #123"
+```
+
+```bash
+# Breaking Change
+git commit -m "feat!: change configuration file format to YAML
+
+BREAKING CHANGE: Configuration files now use YAML format instead of
+bash variables. Existing config files need to be migrated."
+```
+
+```bash
+# Com escopo e corpo
+git commit -m "fix(installer): resolve memory allocation on low-resource systems
+
+Previously the installer would crash on systems with less than 512MB RAM.
+Now implements memory-safe operations and graceful degradation.
+
+Closes #456"
+```
+
+### Nomenclatura de Branches
+
+#### Padrão Recomendado
+
+```bash
+# Feature branches
+feature/install-zfs-support
+feature/gui-wizard
+feature/auto-partition
+
+# Bugfix branches
+bugfix/fix-nvme-detection
+bugfix/resolve-memory-leak
+bugfix/111-troubleshoot
+
+# Hotfix branches (emergenciais)
+hotfix/urgent-security-patch
+hotfix/critical-installer-crash
+
+# Release branches
+release/v2.1.0
+release/v2.1.1-rc1
+```
+
+#### Convenções
+
+- Use **kebab-case** (hífens, não underscores)
+- Inclua **issue number** quando aplicável: `bugfix/456-fix-network-detection`
+- Seja **descritivo** mas **conciso**
+- Evite nomes genéricos como `feature/new-feature` ou `fix/bug`
+
+### Pull Requests (PRs)
+
+#### Estrutura de Pull Request
+
+```markdown
+## Descrição
+Breve descrição da mudança implementada.
+
+## Tipo de Mudança
+- [ ] Bug fix
+- [ ] Nova feature
+- [ ] Breaking change
+- [ ] Documentação
+- [ ] Estilo/Refatoração
+- [ ] Performance
+- [ ] Testes
+
+## Issue Relacionada
+Closes #123 (se aplicável)
+
+## Mudanças Implementadas
+- Lista detalhada das mudanças
+- Incluir screenshots se for mudança visual
+- Explicar decisões técnicas importantes
+
+## Checklist de Testes
+- [ ] Testado em VM UEFI
+- [ ] Testado em VM BIOS (se aplicável)
+- [ ] Testado instalação MINIMAL
+- [ ] Testado instalação FULL
+- [ ] Testado instalação SERVER
+- [ ] Testado com diferentes filesystems (ext4, btrfs, xfs)
+- [ ] Testado diferentes DEs (KDE, GNOME, etc.)
+
+## Checklist de Qualidade
+- [ ] Código segue o style guide
+- [ ] Commits seguem Conventional Commits
+- [ ] Documentação atualizada
+- [ ] Sem hardcode de valores sensíveis
+- [ ] Logs apropriados adicionados
+- [ ] Testes automatizados passam
+
+## Notas de Release (se aplicável)
+- Feature: X nova funcionalidade
+- Fix: Y bug corrigido
+- Breaking: Z mudança quebradora
+```
+
+#### Revisão de Código
+
+**Para Revisores:**
+- [ ] Código segue as convenções
+- [ ] Funções têm propósito claro
+- [ ] Sem valores hardcoded (use variáveis)
+- [ ] Tratamento adequado de erros
+- [ ] Logs adicionados onde necessário
+- [ ] Sem código duplicado
+- [ ] Documentação atualizada
+- [ ] Testes mencionados/executados
+
+**Para Autores:**
+- Responda a todos os comentários
+- Faça as correções solicitadas
+- Mantenha o PR atualizado com o main
+- Seja educado e construtivo
+
+### Integração Contínua
+
+#### GitHub Actions (Recomendado)
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck jq
+
+      - name: Lint Bash Scripts
+        run: |
+          find . -name "*.sh" -exec shellcheck {} \;
+
+      - name: Check Commit Messages
+        uses: commitizen-tools/commitizen@v0.21
+        with:
+          args: check
+
+      - name: Validate JSON Files
+        run: |
+          find packages/ -name "*.json" -exec jq . {} \;
+```
+
+### Versionamento
+
+#### Semantic Versioning (SemVer)
+
+```bash
+# Formato: MAJOR.MINOR.PATCH
+
+MAIOR: Mudanças quebradoras (breaking changes)
+  ex: 1.2.3 → 2.0.0
+
+MENOR: Novas funcionalidades (backward compatible)
+  ex: 1.2.3 → 1.3.0
+
+PATCH: Correções de bugs (backward compatible)
+  ex: 1.2.3 → 1.2.4
+```
+
+#### Auto-versionamento baseado em Commits
+
+```bash
+# Exemplo de script para calcular versão
+#!/bin/bash
+# version.sh
+
+LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+COMMITS_SINCE_TAG=$(git rev-list --count $LAST_TAG..HEAD)
+
+# Contar tipos de commits desde o último tag
+FIXES=$(git log $LAST_TAG..HEAD --oneline | grep -c "^feat")
+FEATURES=$(git log $LAST_TAG..HEAD --oneline | grep -c "^fix")
+BREAKING=$(git log $LAST_TAG..HEAD --oneline | grep -c "BREAKING CHANGE")
+
+BASE_VERSION=$(echo $LAST_TAG | sed 's/^v//')
+
+if [ $BREAKING -gt 0 ]; then
+    # Incrementar major
+    MAJOR=$(echo $BASE_VERSION | cut -d. -f1)
+    NEW_VERSION="$((MAJOR + 1)).0.0"
+elif [ $FEATURES -gt 0 ]; then
+    # Incrementar minor
+    MAJOR=$(echo $BASE_VERSION | cut -d. -f1)
+    MINOR=$(echo $BASE_VERSION | cut -d. -f2)
+    NEW_VERSION="$MAJOR.$((MINOR + 1)).0"
+elif [ $FIXES -gt 0 ]; then
+    # Incrementar patch
+    MAJOR=$(echo $BASE_VERSION | cut -d. -f1)
+    MINOR=$(echo $BASE_VERSION | cut -d. -f2)
+    PATCH=$(echo $BASE_VERSION | cut -d. -f3)
+    NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+else
+    NEW_VERSION="$BASE_VERSION-$COMMITS_SINCE_TAG"
+fi
+
+echo $NEW_VERSION
+```
+
+### Boas Práticas Adicionais
+
+#### Commit Hygiene
+
+```bash
+# Antes de commitar
+git add .
+git status  # Verificar o que será commitado
+git diff --staged  # Revisar mudanças
+
+# Commits atômicos (uma ideia por commit)
+# RUIM: Múltiplas mudanças não relacionadas
+git commit -m "feat: add ZFS support and fix disk detection and update docs"
+
+# BOM: Commits separados por propósito
+git commit -m "feat(disk): add ZFS filesystem support"
+git commit -m "fix(disk): resolve NVMe detection issue"
+git commit -m "docs(readme): update installation instructions"
+```
+
+#### Branch Management
+
+```bash
+# Manter branches atualizados
+git checkout feature/minha-feature
+git fetch origin
+git rebase origin/develop
+
+# Limpar branches locais já merged
+git branch --merged | grep -v "main\|develop" | xargs git branch -d
+
+# Branch protection no GitHub (recomendado)
+- Proteger branch main
+- Exigir PR review
+- Exigir CI/CD status checks
+- Proibir force pushes
+```
+
+#### Troubleshooting Comum
+
+```bash
+# Resolver merge conflicts
+git checkout develop
+git pull origin develop
+git checkout feature/minha-feature
+git merge develop
+# Resolver conflitos manualmente
+git add .
+git commit -m "resolve: merge conflicts from develop"
+
+# Reverter commit errado
+git revert HEAD  # Cria novo commit revertendo o último
+# OU (se ainda não foi pushado)
+git reset --hard HEAD~1
+
+# Squash commits antes do PR
+git rebase -i HEAD~5  # Selecionar "squash" para commits relacionados
 ```
 
 ---

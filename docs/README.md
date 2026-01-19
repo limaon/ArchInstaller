@@ -2,12 +2,11 @@
 
 ## Documentation Index
 
-1. **[README.md](README.md)** - This file (overview)
-2. **[ARCHITECTURE.md](ARCHITECTURE.md)** - Complete system architecture
-3. **[USER-GUIDE.md](USER-GUIDE.md)** - Installation and usage guide
-4. **[FUNCTIONS-REFERENCE.md](FUNCTIONS-REFERENCE.md)** - Complete function reference
-5. **[PACKAGE-SYSTEM.md](PACKAGE-SYSTEM.md)** - JSON package system
-6. **[DEVELOPMENT-GUIDE.md](DEVELOPMENT-GUIDE.md)** - Developer guide
+1. **[ARCHITECTURE.md](ARCHITECTURE.md)** - Complete system architecture
+2. **[USER-GUIDE.md](USER-GUIDE.md)** - Installation and usage guide
+3. **[FUNCTIONS-REFERENCE.md](FUNCTIONS-REFERENCE.md)** - Complete function reference
+4. **[PACKAGE-SYSTEM.md](PACKAGE-SYSTEM.md)** - JSON package system
+5. **[DEVELOPMENT-GUIDE.md](DEVELOPMENT-GUIDE.md)** - Developer guide
 
 ---
 
