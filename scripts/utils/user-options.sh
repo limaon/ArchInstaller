@@ -177,8 +177,8 @@ disk_select() {
 
                 # Calculate and show preview
                 disk_size=$(lsblk -n -b -o SIZE "${disk}" | head -n1)
-                disk_size_gb=$(( (disk_size / 1024 / 1024 / 1024) ))
-                used_size_gb=$(( (disk_size * disk_percent) / 100 / 1024 / 1024 / 1024 ))
+                disk_size_gb=$((disk_size / 1024 / 1024 / 1024))
+                used_size_gb=$((disk_size * disk_percent / 100 / 1024 / 1024 / 1024))
 
                 echo -e "\n${BOLD}Preview:${RESET}"
                 echo -e "Total disk size: ${disk_size_gb}GB"
@@ -379,6 +379,8 @@ Please select keyboard layout from this list:
 # @noargs
 show_configurations() {
     # Load INSTALL_TYPE from config if not already set
+    # shellcheck disable=SC1090
+    # Reason: CONFIG_FILE path is dynamically set, ShellCheck can't follow it
     if [[ -f "$CONFIG_FILE" ]] && grep -q "^INSTALL_TYPE=" "$CONFIG_FILE"; then
         source "$CONFIG_FILE"
     fi
@@ -425,6 +427,8 @@ Do you want to redo any step? Select an option below, or press Enter to proceed:
         fi
 
         # Reload INSTALL_TYPE in case it was changed
+        # shellcheck disable=SC1090
+        # Reason: CONFIG_FILE path is dynamically set, ShellCheck can't follow it
         if [[ -f "$CONFIG_FILE" ]] && grep -q "^INSTALL_TYPE=" "$CONFIG_FILE"; then
             source "$CONFIG_FILE"
         fi

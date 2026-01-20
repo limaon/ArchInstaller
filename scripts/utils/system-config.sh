@@ -20,19 +20,10 @@ mirrorlist_update() {
 -------------------------------------------------------------------------
 "
         reflector -a 48 -c "$iso" -f 5 -l 20 --sort rate --save /etc/pacman.d/mirrorlist
-    else
-        echo -ne "
--------------------------------------------------------------------------
-                    Reflector not found or get a error, using rankmirrors
--------------------------------------------------------------------------
-"
-        pacman -S --noconfirm --needed --color=always curl
-        cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
-        curl -s "https://archlinux.org/mirrorlist/?country=$iso&protocol=https&use_mirror_status=on" \
-            | sed 's/^#Server/Server/' > /etc/pacman.d/mirrorlist
-        rankmirrors -n 5 /etc/pacman.d/mirrorlist > /etc/pacman.d/mirrorlist.temp
-        mv /etc/pacman.d/mirrorlist.temp /etc/pacman.d/mirrorlist
     fi
+
+    # shellcheck disable=SC2154
+    # Note: iso variable is expected from external context (locale/country code)
 }
 
 
