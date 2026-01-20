@@ -8,8 +8,16 @@
 
 show_logo
 
-iso=$(curl -4 ifconfig.co/country-iso)
-export iso
+# Get country code for mirror selection
+echo -e "\nDetecting country code for mirror configuration..."
+if iso=$(curl -4 -s --max-time 5 ifconfig.co/country-iso); then
+    export iso
+    echo "Detected country code: $iso"
+else
+    # Fallback to US if curl fails
+    export iso="US"
+    echo "Warning: Could not detect country code, using US as default"
+fi
 timedatectl set-ntp true
 pacman -Sy --noconfirm --color=always archlinux-keyring # update keyrings to latest to prevent packages failing to install
 pacman -Sy --noconfirm --needed --color=always pacman-contrib reflector rsync grub

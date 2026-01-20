@@ -24,12 +24,16 @@ mirrorlist_update() {
 "
         # Set default country if iso variable is empty
         local country="${iso:-US}"
+        echo "Using country code: $country"
 
         # Try to use reflector with error handling
-        if reflector -a 48 -c "$country" -f 5 -l 20 --sort rate --save /etc/pacman.d/mirrorlist 2>/dev/null; then
+        # Capture stderr to see actual error messages
+        if reflector_error=$(reflector -a 48 -c "$country" -f 5 -l 20 --sort rate --save /etc/pacman.d/mirrorlist 2>&1); then
             echo "Mirror list updated successfully using reflector"
         else
-            echo "Warning: reflector failed, falling back to rankmirrors"
+            echo "Warning: reflector failed with error:"
+            echo "$reflector_error"
+            echo "Falling back to rankmirrors"
             mirrorlist_rankmirrors_fallback
         fi
     else
