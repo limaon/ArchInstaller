@@ -202,68 +202,6 @@ create_filesystems() {
 
 # @description Perform the btrfs filesystem configuration
 # @noargs
-do_btrfs() {
-    echo -ne "
--------------------------------------------------------------------------
-                    Creating btrfs filesystem and subvolumes
--------------------------------------------------------------------------
-"
-    echo -e "Creating btrfs device $1 on $2 \n"
-    mkfs.btrfs -L "$1" "$2" -f
-
-    echo -e "Mounting $2 on $MOUNTPOINT \n"
-    mount -t btrfs "$2" "$MOUNTPOINT"
-
-    echo "Creating subvolumes and directories"
-    for x in "${SUBVOLUMES[@]}"; do
-        btrfs subvolume create "$MOUNTPOINT"/"${x}"
-    done
-
-    umount "$MOUNTPOINT"
-
-    # Mount the root subvolume (@) to the mountpoint
-    mount -o "$MOUNT_OPTION",subvol=@ "$2" "$MOUNTPOINT"
-
-    # Mount the remaining subvolumes in their respective directories
-    for z in "${SUBVOLUMES[@]:1}"; do
-        case "$z" in
-            "@docker")
-                w="var/lib/docker"
-                ;;
-            "@flatpak")
-                w="var/lib/flatpak"
-                ;;
-            "@snapshots")
-                w=".snapshots"
-                ;;
-            "@swap")
-                w="swap"
-                ;;
-            "@var_cache")
-                w="var/cache"
-                ;;
-            "@var_log")
-                w="var/log"
-                ;;
-            "@var_tmp")
-                w="var/tmp"
-                ;;
-            *)
-                w="${z//@/}"
-                ;;
-        esac
-
-        mkdir -p /mnt/"${w}"
-        echo -e "\nMounting subvolume $z at /mnt/${w}"
-        mount -o "$MOUNT_OPTION",subvol="${z}" "$2" "/mnt/${w}"
-
-        # Disable CoW for subvolumes that benefit from it (logs, cache, tmp, swap)
-        if [[ "$z" == "@var_cache" || "$z" == "@var_log" || "$z" == "@var_tmp" || "$z" == "@swap" ]]; then
-            echo "Disabling copy-on-write on /mnt/${w}"
-            chattr +C "/mnt/${w}"
-        fi
-    done
-}
 
 
 # @description Intelligently configure swap based on system hardware
@@ -1440,3 +1378,107 @@ configure_pipewire() {
     echo "  /etc/wireplumber/  (system-wide)"
     echo "  ~/.config/wireplumber/  (user-specific)"
 }
+# @description Perform btrfs filesystem configuration
+# @noargs
+do_btrfs() {
+    echo -ne "
+-------------------------------------------------------------------------
+                    Creating btrfs filesystem and subvolumes
+-------------------------------------------------------------------------
+"
+
+    # Set default subvolumes if not defined (setup.conf not yet sourced)
+    if [[ -z "${SUBVOLUMES+x}" ]] || ! declare -p SUBVOLUMES 2>/dev/null | grep -q "declare -a"; then
+        echo "WARNING: SUBVOLUMES not set, using default subvolumes"
+        SUBVOLUMES=(@ @docker @flatpak @home @opt @snapshots @swap @var_cache @var_log @var_tmp)
+    fi
+
+    echo -e "Creating btrfs device $1 on $2 \\n"
+
+    # Clear existing filesystem signatures to avoid "superblock magic doesn't match" error
+    echo "Wiping existing filesystem signatures from $2..."
+    wipefs -a "$2" 2>/dev/null || true
+
+    mkfs.btrfs -L "$1" "$2" -f
+
+    if [[ $? -ne 0 ]]; then
+        echo "ERROR: Failed to create btrfs filesystem on $2"
+        exit 1
+    fi
+
+    echo -e "Mounting $2 on $MOUNTPOINT \\n"
+    mount -t btrfs "$2" "$MOUNTPOINT"
+
+    if [[ $? -ne 0 ]]; then
+        echo "ERROR: Failed to mount $2 on $MOUNTPOINT"
+        exit 1
+    fi
+
+    echo "Creating subvolumes and directories"
+
+    # Validate SUBVOLUMES is an array before iterating
+    if ! declare -p SUBVOLUMES 2>/dev/null | grep -q "declare -a"; then
+        echo "ERROR: SUBVOLUMES is not an array"
+        exit 1
+    fi
+
+    for x in "${SUBVOLUMES[@]}"; do
+        echo "Creating subvolume: $x"
+        if ! btrfs subvolume create "$MOUNTPOINT"/"${x}" 2>/dev/null; then
+            echo "ERROR: Failed to create subvolume $x"
+            umount "$MOUNTPOINT"
+            exit 1
+        fi
+    done
+
+    umount "$MOUNTPOINT"
+
+    # Mount root subvolume (@) to mountpoint
+    echo "Mounting root subvolume (@)..."
+    mount -o "$MOUNT_OPTION",subvol=@ "$2" "$MOUNTPOINT"
+
+    if [[ $? -ne 0 ]]; then
+        echo "ERROR: Failed to mount root subvolume"
+        exit 1
+    fi
+
+    # Mount remaining subvolumes in their respective directories
+    for z in "${SUBVOLUMES[@]:1}"; do
+        case "$z" in
+            "@docker")
+                w="var/lib/docker"
+                ;;
+            "@flatpak")
+                w="var/lib/flatpak"
+                ;;
+            "@snapshots")
+                w=".snapshots"
+                ;;
+            "@swap")
+                w="swap"
+                ;;
+            "@var_cache")
+                w="var/cache"
+                ;;
+            "@var_log")
+                w="var/log"
+                ;;
+            "@var_tmp")
+                w="var/tmp"
+                ;;
+            *)
+                w="${z//@/}"
+                ;;
+        esac
+
+        mkdir -p /mnt/"${w}"
+        echo -e "\\nMounting subvolume $z at /mnt/${w}"
+        mount -o "$MOUNT_OPTION",subvol="${z}" "$2" "/mnt/${w}"
+
+        # Disable CoW for subvolumes that benefit from it (logs, cache, tmp, swap)
+        if [[ "$z" == "@var_cache" || "$z" == "@var_log" || "$z" == "@var_tmp" || "$z" == "@swap" ]]; then
+            echo "Disabling copy-on-write on /mnt/${w}"
+            chattr +C "/mnt/${w}"
+        fi
+    done
+ }
