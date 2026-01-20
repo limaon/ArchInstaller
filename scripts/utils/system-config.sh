@@ -58,7 +58,8 @@ mirrorlist_rankmirrors_fallback() {
     sed -i 's/^#Server/Server/' /tmp/mirrorlist.new
 
     if command -v rankmirrors &> /dev/null; then
-        rankmirrors -n 10 /tmp/mirrorlist.new > /etc/pacman.d/mirrorlist
+        echo "Testing mirrors and ranking by speed..."
+        rankmirrors -n 20 -m 5 -v /tmp/mirrorlist.new > /etc/pacman.d/mirrorlist
     else
         # If rankmirrors is also not available, just use the new list
         mv /tmp/mirrorlist.new /etc/pacman.d/mirrorlist
