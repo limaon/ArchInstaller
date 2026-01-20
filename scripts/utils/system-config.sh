@@ -10,24 +10,58 @@
 # @description Update mirrorlist to improve download speeds using rankmirrors if reflector is unavailable
 # @noargs
 mirrorlist_update() {
-    # shellcheck disable=SC1009
-    # Note: False positive for syntax error in function (code is valid)
+    # shellcheck disable=SC1009,SC1073
+    # Note: ShellCheck warnings are false positives (code is valid)
 
-    # Verifica se o reflector está instalado
+    cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
+
+    # Use reflector if available and working, otherwise fall back to rankmirrors
     if command -v reflector &> /dev/null; then
-        pacman -S --noconfirm --needed --color=always reflector
-        cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
         echo -ne "
 -------------------------------------------------------------------------
                     Setting up mirrors for faster downloads (reflector)
 -------------------------------------------------------------------------
 "
-        reflector -a 48 -c "$iso" -f 5 -l 20 --sort rate --save /etc/pacman.d/mirrorlist
+        # Set default country if iso variable is empty
+        local country="${iso:-US}"
+
+        # Try to use reflector with error handling
+        if reflector -a 48 -c "$country" -f 5 -l 20 --sort rate --save /etc/pacman.d/mirrorlist 2>/dev/null; then
+            echo "Mirror list updated successfully using reflector"
+        else
+            echo "Warning: reflector failed, falling back to rankmirrors"
+            mirrorlist_rankmirrors_fallback
+        fi
+    else
+        echo "Warning: reflector not found, using rankmirrors"
+        mirrorlist_rankmirrors_fallback
+    fi
+}
+
+
+# @description Fallback method using rankmirrors when reflector is unavailable
+# @noargs
+mirrorlist_rankmirrors_fallback() {
+    echo -ne "
+-------------------------------------------------------------------------
+                    Setting up mirrors using rankmirrors
+-------------------------------------------------------------------------
+"
+    # Get mirror list and rank by speed
+    curl -s 'https://archlinux.org/mirrorlist/?country=US&country=BR&country=DE&protocol=https&ip_version=4&ip_version=6' > /tmp/mirrorlist.new
+
+    # Uncomment servers and rank them
+    sed -i 's/^#Server/Server/' /tmp/mirrorlist.new
+
+    if command -v rankmirrors &> /dev/null; then
+        rankmirrors -n 10 /tmp/mirrorlist.new > /etc/pacman.d/mirrorlist
+    else
+        # If rankmirrors is also not available, just use the new list
+        mv /tmp/mirrorlist.new /etc/pacman.d/mirrorlist
     fi
 
-    # shellcheck disable=SC1073
-    # Note: ShellCheck warning about brace group is a false positive
-    # The if-then-else-fi structure is correct and properly closed
+    rm -f /tmp/mirrorlist.new
+    echo "Mirror list updated using rankmirrors"
 }
 
 
