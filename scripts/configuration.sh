@@ -24,29 +24,13 @@ install_type
 clear
 show_logo
 swap_type
-clear
-show_logo
-aur_helper
-clear
-show_logo
-desktop_environment
-fi
-clear
-show_logo
-disk_select
-clear
-show_logo
-filesystem
-clear
-show_logo
-timezone
-clear
-show_logo
-locale_selection
-clear
-show_logo
-keymap
-clear
+if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+  clear
+  show_logo
+  aur_helper
+  clear
+  show_logo
+  desktop_environment
 fi
 clear
 show_logo

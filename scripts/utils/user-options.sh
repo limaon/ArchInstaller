@@ -13,7 +13,6 @@ set_password() {
     read -rs -p "Please enter password: " PASSWORD1
     echo -ne "\n"
     read -rs -p "Please re-enter password: " PASSWORD2
-    echo -ne "\n"
     if [[ "$PASSWORD1" == "$PASSWORD2" ]]; then
         set_option "$1" "$PASSWORD1"
     else
@@ -22,6 +21,7 @@ set_password() {
 		set_password "$1"
     fi
 }
+
 
 # @description Gather username, real name, and password to be used for installation.
 # @noargs
@@ -438,6 +438,8 @@ Do you want to redo any step? Select an option below, or press Enter to proceed:
             2)
                 install_type
                 # Reload INSTALL_TYPE after change
+                # shellcheck disable=SC1090
+                # Reason: CONFIG_FILE path is dynamically set, ShellCheck can't follow it
                 if [[ -f "$CONFIG_FILE" ]] && grep -q "^INSTALL_TYPE=" "$CONFIG_FILE"; then
                     source "$CONFIG_FILE"
                 fi
