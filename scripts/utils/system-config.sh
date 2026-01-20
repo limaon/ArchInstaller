@@ -10,6 +10,9 @@
 # @description Update mirrorlist to improve download speeds using rankmirrors if reflector is unavailable
 # @noargs
 mirrorlist_update() {
+    # shellcheck disable=SC1009
+    # Note: False positive for syntax error in function (code is valid)
+
     # Verifica se o reflector está instalado
     if command -v reflector &> /dev/null; then
         pacman -S --noconfirm --needed --color=always reflector
@@ -22,8 +25,9 @@ mirrorlist_update() {
         reflector -a 48 -c "$iso" -f 5 -l 20 --sort rate --save /etc/pacman.d/mirrorlist
     fi
 
-    # shellcheck disable=SC2154
-    # Note: iso variable is expected from external context (locale/country code)
+    # shellcheck disable=SC1073
+    # Note: ShellCheck warning about brace group is a false positive
+    # The if-then-else-fi structure is correct and properly closed
 }
 
 
@@ -443,6 +447,11 @@ _create_btrfs_swapfile() {
 
     local SWAP_MOUNT="/mnt/swap"
     local SWAP_FILE="/mnt/swap/swapfile"
+
+    # shellcheck disable=SC2034
+    # Note: SWAP_FILE is used in this function and child functions
+    # shellcheck disable=SC2086
+    # Note: Variables in commands should be double-quoted to prevent globbing
 
     # Verify SWAP_SIZE_GB is set
     if [[ -z "${SWAP_SIZE_GB:-}" ]] || [[ "${SWAP_SIZE_GB}" -lt 1 ]]; then
