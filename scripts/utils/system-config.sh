@@ -59,7 +59,7 @@ mirrorlist_rankmirrors_fallback() {
 
     if command -v rankmirrors &> /dev/null; then
         echo "Testing mirrors and ranking by speed..."
-        rankmirrors -n 20 -m 5 -v /tmp/mirrorlist.new > /etc/pacman.d/mirrorlist
+        rankmirrors -n 10 -m 5 -v -w /tmp/mirrorlist.new > /etc/pacman.d/mirrorlist
     else
         # If rankmirrors is also not available, just use the new list
         mv /tmp/mirrorlist.new /etc/pacman.d/mirrorlist
@@ -419,6 +419,10 @@ EOF
 # Reference: https://wiki.archlinux.org/title/Btrfs#Swap_file
 # @noargs
 _create_btrfs_swapfile() {
+    log_swap "=== Starting Btrfs Swapfile Creation ==="
+    log_swap "Detected Btrfs filesystem - using dedicated @swap subvolume"
+    log_swap "This prevents snapshot conflicts (errno:26 Text file busy)"
+
     echo "Detected Btrfs filesystem - using dedicated @swap subvolume"
     echo "This prevents snapshot conflicts (errno:26 Text file busy)"
 
@@ -432,15 +436,20 @@ _create_btrfs_swapfile() {
 
     # Verify SWAP_SIZE_GB is set
     if [[ -z "${SWAP_SIZE_GB:-}" ]] || [[ "${SWAP_SIZE_GB}" -lt 1 ]]; then
+        log_swap "ERROR: SWAP_SIZE_GB not set or invalid (value: ${SWAP_SIZE_GB:-unset})"
+        log_swap "Defaulting to 4GB"
         echo "Error: SWAP_SIZE_GB not set or invalid (value: ${SWAP_SIZE_GB:-unset})"
         echo "Defaulting to 4GB"
         SWAP_SIZE_GB=4
     fi
 
+    log_swap "Swap size: ${SWAP_SIZE_GB}GB"
     echo "Swap size: ${SWAP_SIZE_GB}GB"
 
     # Check if @swap subvolume directory exists
     if [[ ! -d "$SWAP_MOUNT" ]]; then
+        log_swap "WARNING: @swap mount point $SWAP_MOUNT does not exist"
+        log_swap "Creating directory and attempting to mount @swap subvolume..."
         echo "Warning: @swap mount point $SWAP_MOUNT does not exist"
         echo "Creating directory and attempting to mount @swap subvolume..."
         mkdir -p "$SWAP_MOUNT"
@@ -450,8 +459,10 @@ _create_btrfs_swapfile() {
     local SWAP_MOUNTED=false
     if mountpoint -q "$SWAP_MOUNT" 2>/dev/null; then
         SWAP_MOUNTED=true
+        log_swap "SUCCESS: @swap subvolume is mounted at $SWAP_MOUNT"
         echo "@swap subvolume is mounted at $SWAP_MOUNT"
     else
+        log_swap "INFO: @swap subvolume not mounted, attempting to mount..."
         echo "@swap subvolume not mounted, attempting to mount..."
 
         # Get the root device
@@ -462,63 +473,94 @@ _create_btrfs_swapfile() {
             ROOT_DEV=$(findmnt -n -o SOURCE /mnt 2>/dev/null | head -1)
         fi
 
+        log_swap "Root device: ${ROOT_DEV:-not found}"
         echo "Root device: ${ROOT_DEV:-not found}"
 
         if [[ -n "$ROOT_DEV" ]] && [[ -b "$ROOT_DEV" ]]; then
             # Mount @swap subvolume with nodatacow (required for swap)
+            log_swap "Executing: mount -o subvol=@swap,noatime,nodatacow $ROOT_DEV $SWAP_MOUNT"
             if mount -o subvol=@swap,noatime,nodatacow "$ROOT_DEV" "$SWAP_MOUNT"; then
                 SWAP_MOUNTED=true
+                log_swap "SUCCESS: @swap subvolume mounted successfully"
                 echo "@swap subvolume mounted successfully"
             else
+                log_swap "ERROR: Could not mount @swap subvolume"
+                log_swap "Mount command: mount -o subvol=@swap,noatime,nodatacow $ROOT_DEV $SWAP_MOUNT"
                 echo "Error: Could not mount @swap subvolume"
                 echo "Mount command: mount -o subvol=@swap,noatime,nodatacow $ROOT_DEV $SWAP_MOUNT"
             fi
         else
+            log_swap "ERROR: Could not determine root device for mounting @swap"
             echo "Error: Could not determine root device for mounting @swap"
         fi
     fi
 
     # If @swap is not mounted, fall back to standard method
     if [[ "$SWAP_MOUNTED" != true ]]; then
+        log_swap "WARNING: @swap is not mounted, falling back to standard method"
+        log_swap "This may cause snapshot issues with Snapper"
         echo "Falling back to standard swap file location (may cause snapshot issues with Snapper)"
         _create_standard_swapfile
         return
     fi
 
     # Create swap file using btrfs-specific method
+    log_swap "Creating swap file at /swap/swapfile (${SWAP_SIZE_GB}GB)..."
     echo "Creating swap file at /swap/swapfile (${SWAP_SIZE_GB}GB)..."
 
     # Method 1: Use btrfs filesystem mkswapfile (btrfs-progs >= 6.1)
-    # This is the modern ArchWiki recommended method
+    # This is modern ArchWiki recommended method
+    log_swap "Trying btrfs filesystem mkswapfile (modern method)..."
     echo "Trying btrfs filesystem mkswapfile..."
+
     if arch-chroot /mnt btrfs filesystem mkswapfile --size ${SWAP_SIZE_GB}G --uuid clear /swap/swapfile; then
+        log_swap "SUCCESS: Swap file created using btrfs filesystem mkswapfile"
         echo "Swap file created using btrfs filesystem mkswapfile"
     else
+        log_swap "WARNING: btrfs filesystem mkswapfile failed, trying fallback method..."
+        log_swap "This may indicate old btrfs-progs version (< 6.1)"
         echo "btrfs filesystem mkswapfile failed, trying fallback method..."
 
         # Method 2: Manual creation (for older btrfs-progs)
+        log_swap "Using manual swap file creation method..."
         echo "Using manual swap file creation method..."
 
         # Ensure NOCOW attribute on directory
-        arch-chroot /mnt chattr +C /swap || echo "Warning: Could not set NOCOW on /swap"
+        log_swap "Setting NOCOW on /swap directory..."
+        arch-chroot /mnt chattr +C /swap || {
+            log_swap "WARNING: Could not set NOCOW on /swap"
+            echo "Warning: Could not set NOCOW on /swap"
+        }
 
         # Create empty file first
+        log_swap "Creating empty file /swap/swapfile..."
         arch-chroot /mnt truncate -s 0 /swap/swapfile || {
+            log_swap "ERROR: Could not create /swap/swapfile with truncate"
             echo "Error: Could not create /swap/swapfile"
             _create_standard_swapfile
             return
         }
 
         # Set NOCOW on the file
-        arch-chroot /mnt chattr +C /swap/swapfile || echo "Warning: Could not set NOCOW on swapfile"
+        log_swap "Setting NOCOW on /swap/swapfile..."
+        arch-chroot /mnt chattr +C /swap/swapfile || {
+            log_swap "WARNING: Could not set NOCOW on swapfile"
+            echo "Warning: Could not set NOCOW on swapfile"
+        }
 
         # Disable compression
-        arch-chroot /mnt btrfs property set /swap/swapfile compression none 2>/dev/null || true
+        log_swap "Disabling compression on /swap/swapfile..."
+        arch-chroot /mnt btrfs property set /swap/swapfile compression none 2>/dev/null || {
+            log_swap "WARNING: Could not disable compression on swapfile"
+        }
 
         # Allocate space (fallocate is preferred, dd as fallback)
+        log_swap "Allocating ${SWAP_SIZE_GB}G space with fallocate..."
         if ! arch-chroot /mnt fallocate -l ${SWAP_SIZE_GB}G /swap/swapfile; then
+            log_swap "WARNING: fallocate failed, using dd (this may take a while)..."
             echo "fallocate failed, using dd (this may take a while)..."
             arch-chroot /mnt dd if=/dev/zero of=/swap/swapfile bs=1M count=$((SWAP_SIZE_GB * 1024)) status=progress || {
+                log_swap "ERROR: Could not allocate space for swap file with dd"
                 echo "Error: Could not allocate space for swap file"
                 arch-chroot /mnt rm -f /swap/swapfile
                 _create_standard_swapfile
@@ -527,59 +569,111 @@ _create_btrfs_swapfile() {
         fi
 
         # Set permissions
+        log_swap "Setting permissions 600 on /swap/swapfile..."
         arch-chroot /mnt chmod 600 /swap/swapfile
 
         # Format as swap
+        log_swap "Formatting /swap/swapfile as swap..."
         arch-chroot /mnt mkswap -U clear /swap/swapfile || {
+            log_swap "ERROR: mkswap failed"
             echo "Error: mkswap failed"
             arch-chroot /mnt rm -f /swap/swapfile
             _create_standard_swapfile
             return
         }
 
+        log_swap "SUCCESS: Swap file created using manual method"
         echo "Swap file created using manual method"
     fi
 
     # Verify swap file was created and has correct size
+    log_swap "Verifying swap file creation..."
     if arch-chroot /mnt test -f /swap/swapfile; then
         local SWAP_ACTUAL_SIZE=$(arch-chroot /mnt stat -c%s /swap/swapfile 2>/dev/null || echo "0")
         local SWAP_EXPECTED_SIZE=$((SWAP_SIZE_GB * 1024 * 1024 * 1024))
 
+        log_swap "Swap file created: $(arch-chroot /mnt ls -lh /swap/swapfile | awk '{print $5}')"
+        log_swap "Actual size: $SWAP_ACTUAL_SIZE bytes, Expected: $SWAP_EXPECTED_SIZE bytes"
         echo "Swap file created: $(arch-chroot /mnt ls -lh /swap/swapfile | awk '{print $5}')"
 
         # Verify size is at least 90% of expected (some overhead is normal)
         if [[ "$SWAP_ACTUAL_SIZE" -lt $((SWAP_EXPECTED_SIZE * 9 / 10)) ]]; then
+            log_swap "WARNING: Swap file size ($SWAP_ACTUAL_SIZE bytes) is smaller than expected ($SWAP_EXPECTED_SIZE bytes)"
             echo "Warning: Swap file size ($SWAP_ACTUAL_SIZE bytes) is smaller than expected ($SWAP_EXPECTED_SIZE bytes)"
         fi
 
         # Set correct permissions (ensure 600)
+        log_swap "Ensuring permissions 600 on /swap/swapfile..."
         arch-chroot /mnt chmod 600 /swap/swapfile
 
         # Try to activate swap file
+        log_swap "Attempting to activate swap file..."
         if arch-chroot /mnt swapon /swap/swapfile; then
+            log_swap "SUCCESS: Swap file activated successfully"
             echo "Swap file activated successfully"
         else
+            log_swap "WARNING: Could not activate swap file, will activate on first boot"
+            log_swap "This is normal, swap will be activated from /etc/fstab on boot"
             echo "Note: Swap file will be activated on first boot"
         fi
 
         # Update fstab - remove any old swap entries first
+        log_swap "Updating /etc/fstab..."
+        log_swap "Removing old swap entries from /etc/fstab..."
         arch-chroot /mnt sed -i '/swapfile/d' /etc/fstab
         arch-chroot /mnt sed -i '/\/swap.*swap/d' /etc/fstab
 
+        # Add @swap subvolume entry to fstab (required for swapfile to be accessible on boot)
+        log_swap "Adding @swap subvolume entry to /etc/fstab..."
+
+        # Get the root filesystem UUID and mount options from existing fstab
+        # Using grep and awk for robust parsing (handles tabs and extra spaces)
+        local ROOT_LINE=$(grep $'\t/' /mnt/etc/fstab | grep -v $'\t/var' | grep -v $'\t/home' | grep -v $'\t/opt' | head -1)
+        local ROOT_UUID=$(echo "$ROOT_LINE" | awk -F'\t' '{print $1}' | grep -oP 'UUID=\K[0-9a-f-]+')
+        local ROOT_OPTS=$(echo "$ROOT_LINE" | awk -F'\t' '{print $4}' | sed 's/subvol=\/@/subvol=\/@swap/')
+
+        # Add @swap subvolume mount entry
+        if [[ -n "$ROOT_UUID" ]] && [[ -n "$ROOT_OPTS" ]]; then
+            log_swap "Root UUID: $ROOT_UUID"
+            log_swap "Mount options: $ROOT_OPTS"
+            echo "UUID=${ROOT_UUID}	/swap	btrfs	${ROOT_OPTS},nodatacow	0	0" >> /mnt/etc/fstab
+            log_swap "SUCCESS: @swap subvolume entry added to /etc/fstab"
+
+            # Ensure /swap directory exists in installed system
+            log_swap "Ensuring /swap directory exists in installed system..."
+            arch-chroot /mnt mkdir -p /swap
+            log_swap "SUCCESS: /swap directory created/verified"
+        else
+            log_swap "ERROR: Could not determine root UUID or mount options"
+            log_swap "WARNING: @swap subvolume entry not added to /etc/fstab"
+            log_swap "You may need to manually add: UUID=<root_uuid>	/swap	btrfs	<options>,subvol=/@swap,nodatacow	0	0"
+        fi
+
         # Add swap file entry with correct priority
         if [[ "${USE_ZRAM:-false}" == true ]]; then
+            log_swap "Adding swap file entry with priority 50 (ZRAM + Swapfile)..."
             echo "/swap/swapfile none swap defaults,pri=50 0 0" >> /mnt/etc/fstab
         else
+            log_swap "Adding swap file entry (Swapfile only)..."
             echo "/swap/swapfile none swap defaults 0 0" >> /mnt/etc/fstab
         fi
 
+        log_swap "SUCCESS: Swap file added to /etc/fstab"
+        log_swap "SUCCESS: Swap file configured: ${SWAP_SIZE_GB}GB at /swap/swapfile (Btrfs @swap subvolume)"
         echo "Swap file added to /etc/fstab"
         echo "Swap file configured: ${SWAP_SIZE_GB}GB at /swap/swapfile (Btrfs @swap subvolume)"
+
+        # Log swap info for debugging
+        log_info SWAP
     else
+        log_swap "ERROR: Swap file was not created at /swap/swapfile"
+        log_swap "Falling back to standard swap file location"
         echo "Error: Swap file was not created at /swap/swapfile"
         echo "Falling back to standard swap file location"
         _create_standard_swapfile
     fi
+
+    log_swap "=== Btrfs Swapfile Creation Complete ==="
 }
 
 

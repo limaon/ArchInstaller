@@ -35,6 +35,11 @@ for filename in "$SCRIPTS_DIR"/utils/*.sh; do
   source "$filename"
 done
 
+# Initialize logging system
+log_init "$LOG_FILE"
+log_info SYSTEM
+log_info FILESYSTEM
+
 # Actual install sequence
 setfont ter-v18b
 show_logo
@@ -45,5 +50,8 @@ sequence
 echo -ne "
             Done - Please Eject Install Media and Reboot
 "
+
+# Finalize logging and copy to installed system
+log_finish /mnt
 
 end_script
