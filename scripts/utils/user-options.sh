@@ -82,22 +82,6 @@ install_type() {
 }
 
 
-# @description Choose swap configuration type (ZRAM only or ZRAM + Swapfile for hibernation support)
-# @noargs
-swap_type() {
-    echo -ne "Please select swap configuration type:\n
-  ${BOLD}${GREEN}ZRAM Only${RESET}   : Fast compressed swap in RAM (no hibernation support, saves disk space)
-  ${BOLD}${YELLOW}ZRAM + Swapfile${RESET} : ZRAM for daily use + swapfile for hibernation support
-  ${BOLD}${BRED}Swapfile Only${RESET}   : Only swapfile on disk (for systems with very limited RAM)\n"
-    options=("ZRAM Only" "ZRAM + Swapfile" "Swapfile Only")
-    select_option $? 3 "${options[@]}"
-    swap_type_choice="${options[$?]}"
-    set_option SWAP_TYPE "$swap_type_choice"
-    export SWAP_TYPE="$swap_type_choice"
-    echo "Swap configuration selected: $swap_type_choice"
-}
-
-
 # @description Choose AUR helper.
 # @noargs
 aur_helper() {
@@ -402,18 +386,17 @@ show_configurations() {
 ------------------------------------------------------------------------
 Do you want to redo any step? Select an option below, or press Enter to proceed:"
 
-         echo "1) Full Name, Username and Password"
-         echo "2) Installation Type"
-         echo "3) AUR Helper"
-         echo "4) Desktop Environment"
-         echo "5) Disk Selection and Usage Percentage"
-         echo "6) File System"
-         echo "7) Timezone"
-         echo "8) System Language (Locale)"
-         echo "9) Keyboard Layout"
-         echo "10) Swap Configuration"
+          echo "1) Full Name, Username and Password"
+          echo "2) Installation Type"
+          echo "3) AUR Helper"
+          echo "4) Desktop Environment"
+          echo "5) Disk Selection and Usage Percentage"
+          echo "6) File System"
+          echo "7) Timezone"
+          echo "8) System Language (Locale)"
+          echo "9) Keyboard Layout"
 
-         # Only show Desktop, AUR, Filesystem, Timezone, Locale, Keyboard, Swap if not SERVER
+          # Only show Desktop, AUR, Filesystem, Timezone, Locale, Keyboard if not SERVER
          if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
              echo "11) Re-select File System"  # Extra option
          fi
@@ -488,16 +471,13 @@ Do you want to redo any step? Select an option below, or press Enter to proceed:
                 fi
                 ;;
              9)
-                 if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
-                     keymap
-                 else
-                     echo "Invalid option. Please try again."
-                 fi
-                 ;;
-             10)
-                 swap_type
-                 ;;
-             11)
+                  if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                      keymap
+                  else
+                      echo "Invalid option. Please try again."
+                  fi
+                  ;;
+              10)
                  if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
                      filesystem
                  else
