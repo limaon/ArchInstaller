@@ -17,9 +17,9 @@ set_password() {
         set_option "$1" "$PASSWORD1"
         echo -ne "\n"
     else
-		echo -ne "ERROR! Passwords do not match. \n"
-		sed -i '/&PASSWORD1=.*/d' "$CONFIG_FILE"
-		set_password "$1"
+        echo -ne "ERROR! Passwords do not match. \n"
+        sed -i '/&PASSWORD1=.*/d' "$CONFIG_FILE"
+        set_password "$1"
     fi
 }
 
