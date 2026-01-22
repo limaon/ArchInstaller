@@ -70,7 +70,6 @@ ssh your-username@server-ip
 - `install.log` - Complete installation log
 - `verify-installation.sh` - Verification script
 - `setup.conf` - Installation configuration (password removed)
-- `fix-swap.sh` - Swap fix script (if needed)
 
 ## Documentation
 

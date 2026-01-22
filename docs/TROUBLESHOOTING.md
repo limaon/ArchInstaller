@@ -260,47 +260,58 @@ free -h
 zramctl
 cat /proc/swaps
 
-# Check swap file (if created)
-ls -lh /swapfile
+# Check swap file location (depends on filesystem)
+# For Btrfs: /swap/swapfile (dedicated @swap subvolume)
+# For ext4:  /swapfile (root filesystem)
+ls -lh /swap/swapfile 2>/dev/null || ls -lh /swapfile 2>/dev/null
 
 # Check for failed systemd swap units
 systemctl --failed | grep swap
+```
 
-# Fix swap file issues
-# Option 1: Use the fix script (if available)
-sudo ~/.archinstaller/fix-swap.sh
+**Manual Fix for Btrfs (recommended):**
 
-# Option 2: Manual fix
-# Deactivate and remove old swap
+```bash
+# 1. Deactivate existing swap
+sudo swapoff -a
+
+# 2. Check if @swap subvolume exists and is mounted
+findmnt /swap
+
+# 3. If not mounted, mount it
+sudo mkdir -p /swap
+sudo mount -o subvol=@swap /dev/sdXY /swap  # Replace with your device
+
+# 4. Create swap file using btrfs-specific method
+sudo btrfs filesystem mkswapfile --size 4G --uuid clear /swap/swapfile
+
+# 5. Activate swap
+sudo swapon /swap/swapfile
+
+# 6. Add to fstab (if not present)
+echo "/swap/swapfile none swap defaults 0 0" | sudo tee -a /etc/fstab
+```
+
+**Manual Fix for ext4:**
+
+```bash
+# 1. Deactivate and remove old swap
 sudo swapoff /swapfile 2>/dev/null || true
 sudo rm -f /swapfile
 
-# Remove systemd units
-sudo systemctl stop swapfile.swap 2>/dev/null || true
-sudo systemctl disable swapfile.swap 2>/dev/null || true
-sudo rm -f /etc/systemd/system/swapfile.swap
-sudo systemctl daemon-reload
+# 2. Remove from fstab
+sudo sed -i '/swapfile/d' /etc/fstab
 
-# Remove from fstab
-sudo sed -i '/\/swapfile/d' /etc/fstab
-
-# Recreate swap file (4GB example, adjust as needed)
-# For Btrfs:
-sudo mkswap -U clear --size 4G --file /swapfile
-sudo chmod 600 /swapfile
-sudo chattr +C /swapfile
-sudo btrfs property set /swapfile compression none
-
-# For ext4:
+# 3. Create new swap file
 sudo mkswap -U clear --size 4G --file /swapfile
 sudo chmod 600 /swapfile
 
-# Activate and add to fstab
+# 4. Activate and add to fstab
 sudo swapon /swapfile
 echo "/swapfile none swap defaults 0 0" | sudo tee -a /etc/fstab
 ```
 
-**Reference**: [ArchWiki - Swap](https://wiki.archlinux.org/title/Swap)
+**Reference**: [ArchWiki - Swap](https://wiki.archlinux.org/title/Swap), [ArchWiki - Btrfs Swap](https://wiki.archlinux.org/title/Btrfs#Swap_file)
 
 #### Swap File Creation Requirements
 
@@ -308,51 +319,40 @@ The installer automatically creates a swap file based on intelligent hardware an
 
 **Decision Table by RAM:**
 
-| RAM | SSD | HDD | Strategy | Swap File Size |
-|-----|-----|-----|----------|----------------|
-| **< 4GB** | ❌ No | ❌ No | ZRAM only (2x RAM) | N/A |
-| **4-8GB** | ❌ No | ✅ **Yes** | ZRAM (2x RAM) + Swap File | **2GB** |
-| **8-16GB** | ❌ No | ✅ **Yes** | Swap File only | **4GB** |
-| **16-32GB** | ✅ **Yes** | ✅ **Yes** | Swap File only | **2GB (SSD)** or **4GB (HDD)** |
-| **> 32GB** | ✅ **Yes** | ✅ **Yes** | Swap File only | **1GB (SSD)** or **2GB (HDD)** |
+| RAM | Strategy | Swap File Size (SSD) | Swap File Size (HDD) |
+|-----|----------|---------------------|---------------------|
+| **< 4GB** | ZRAM (2x) + Swapfile | 4GB | 4GB |
+| **4-8GB** | ZRAM (2x) + Swapfile | 4GB | 6GB |
+| **8-16GB** | ZRAM (1x) + Swapfile | 4GB | 8GB |
+| **16-32GB** | ZRAM (1x) + Swapfile | 4GB | 8GB |
+| **> 32GB** | ZRAM (1x) + Swapfile | 4GB | 4GB |
 
 **Special Cases:**
-- **SERVER installations**: Always creates 4GB swap file, regardless of RAM or storage type
+- **SERVER installations**: Swap file only (4GB), no ZRAM
 - **Disk space requirement**: Needs at least (SWAP_SIZE + 2GB) free space
-- **If insufficient space**: Swap file is not created, uses ZRAM only if available
+- **If insufficient space**: Swap file size is reduced or skipped
 
-**Why swap file wasn't created:**
+**Btrfs-specific Configuration:**
 
-1. **Check RAM amount:**
-   ```bash
-   free -h
-   grep MemTotal /proc/meminfo
-   ```
+For Btrfs filesystems, the installer creates a **dedicated `@swap` subvolume** to avoid the "Text file busy" (errno:26) error when creating snapshots with Snapper.
 
-2. **Check storage type:**
-   ```bash
-   lsblk -n --output TYPE,ROTA /dev/sda  # Replace /dev/sda with your disk
-   # SSD: ROTA=0, HDD: ROTA=1
-   ```
+- **Swap file location**: `/swap/swapfile` (inside `@swap` subvolume)
+- **Subvolume**: `@swap` mounted at `/swap`
+- **Created with**: `btrfs filesystem mkswapfile` (handles NOCOW automatically)
 
-3. **Check available space:**
-   ```bash
-   df -h /
-   ```
+This is required because:
+1. Btrfs cannot create snapshots of subvolumes containing active swap files
+2. The `@swap` subvolume is excluded from snapshots
+3. NOCOW (No Copy-on-Write) is automatically applied
 
-4. **Check installation type:**
-   ```bash
-   grep INSTALL_TYPE ~/.archinstaller/setup.conf
-   ```
+**ext4/Other Filesystems:**
 
-**Swap file location:**
-- Path: `/swapfile` (root of filesystem)
-- Permissions: `600` (rw-------)
-- Created with: `mkswap --file`
+- **Swap file location**: `/swapfile` (root filesystem)
+- **Created with**: `mkswap --file`
 
 **Automatic configuration:**
 When created, the swap file is automatically:
-- Activated immediately (`swapon /swapfile`)
+- Activated immediately (`swapon`)
 - Added to `/etc/fstab` for automatic activation on boot
 - Configured with appropriate priority (50 if ZRAM exists, default otherwise)
 - Configured `vm.swappiness` (10 if ZRAM exists, 60 otherwise)
@@ -501,23 +501,22 @@ grep -i "resume" /etc/default/grub
 ```
 
 **Note**: The `resume=` parameter is automatically added to GRUB when:
-- A swap file exists at `/swapfile` (created by the installer's intelligent swap configuration)
+- A swap file exists (created by the installer's intelligent swap configuration)
+- **Btrfs**: Swap file at `/swap/swapfile` (dedicated `@swap` subvolume)
+- **ext4**: Swap file at `/swapfile` (root filesystem)
 - This enables hibernation support by telling the kernel which swap device to resume from
-- The installer automatically detects the swap file UUID and adds it during GRUB configuration
 - If no swap file exists, this parameter is **not** added (hibernation won't work without swap)
 
-**When swap file is created (and thus `resume=` is added):**
-- **4-8GB RAM + HDD**: Swap file (2GB) is created → `resume=` is added
-- **8-16GB RAM + HDD**: Swap file (4GB) is created → `resume=` is added
-- **16-32GB RAM + SSD/HDD**: Swap file (2GB SSD / 4GB HDD) is created → `resume=` is added
-- **>32GB RAM + SSD/HDD**: Swap file (1GB SSD / 2GB HDD) is created → `resume=` is added
-- **SERVER installations**: Swap file (4GB) is always created → `resume=` is always added
+**Swap file is always created** (with ZRAM) for all RAM configurations:
+- **< 4GB RAM**: ZRAM (2x) + 4GB swap file
+- **4-8GB RAM**: ZRAM (2x) + 4-6GB swap file
+- **8-16GB RAM**: ZRAM (1x) + 4-8GB swap file
+- **16-32GB RAM**: ZRAM (1x) + 4-8GB swap file
+- **> 32GB RAM**: ZRAM (1x) + 4GB swap file
+- **SERVER**: Swap file only (4GB), no ZRAM
 
-**When swap file is NOT created (and thus `resume=` is NOT added):**
-- **<4GB RAM**: Only ZRAM, no swap file → `resume=` is **not** added
-- **4-8GB RAM + SSD**: Only ZRAM, no swap file → `resume=` is **not** added
-- **8-16GB RAM + SSD**: Only ZRAM, no swap file → `resume=` is **not** added
-- **Insufficient disk space**: Swap file not created → `resume=` is **not** added
+**When swap file is NOT created:**
+- **Insufficient disk space**: Less than (SWAP_SIZE + 2GB) available
 
 **Check swap**:
 ```bash
@@ -652,13 +651,18 @@ grep resume /etc/default/grub
 # If there's no resume=, regenerate GRUB:
 sudo grub-mkconfig -o /boot/grub/grub.cfg
 
-# Check if swap file exists
+# Check if swap file exists (location depends on filesystem)
+# For Btrfs:
+ls -lh /swap/swapfile
+
+# For ext4:
 ls -lh /swapfile
 
-# Check swap UUID
+# Check swap UUID/offset (for Btrfs, you need resume_offset)
+# For Btrfs:
+sudo btrfs inspect-internal map-swapfile -r /swap/swapfile
+# For ext4:
 sudo findmnt -no UUID -T /swapfile
-# Or
-sudo blkid | grep swap
 ```
 
 **Problem: System does not return from hibernation**

@@ -320,17 +320,18 @@ BIOS:
 
 **Btrfs Subvolumes**:
 ```
-@              → /           (root)
-@home          → /home       (user data)
-@snapshots     → /.snapshots (Snapper snapshots)
-@var_log       → /var/log    (logs, CoW disabled)
-@var_cache     → /var/cache  (cache, CoW disabled)
-@var_tmp       → /var/tmp    (temp, CoW disabled)
+@              → /              (root)
+@home          → /home          (user data)
+@snapshots     → /.snapshots    (Snapper snapshots)
+@swap          → /swap          (swap file, CoW disabled, excluded from snapshots)
+@var_log       → /var/log       (logs, CoW disabled)
+@var_cache     → /var/cache     (cache, CoW disabled)
+@var_tmp       → /var/tmp       (temp, CoW disabled)
 @docker        → /var/lib/docker
 @flatpak       → /var/lib/flatpak
 ```
 
-**Rationale**: Separate subvolumes allow selective snapshots and better management.
+**Rationale**: Separate subvolumes allow selective snapshots and better management. The `@swap` subvolume is dedicated for the swap file to avoid the "Text file busy" (errno:26) error when creating snapshots with Snapper.
 
 ---
 
@@ -548,30 +549,56 @@ rankmirrors -n 5 /etc/pacman.d/mirrorlist
 
 ### 3. Intelligent Swap Configuration
 
-The system intelligently configures swap based on hardware analysis:
+The system intelligently configures swap based on **hardware analysis and user preference**:
 
 ```bash
-# Decision logic based on RAM, storage type (SSD/HDD), and installation type
+# User selects swap type during configuration:
+# - "ZRAM Only": Fast swap in RAM (no hibernation, saves disk space)
+# - "ZRAM + Swapfile": ZRAM for daily use + swapfile for hibernation (default)
+# - "Swapfile Only": Only swapfile on disk (for systems with very limited RAM)
+
+# Decision logic based on RAM, storage type (SSD/HDD), and user preference
 TOTAL_MEM=$(grep -i 'memtotal' /proc/meminfo | grep -o '[[:digit:]]*')
 IS_SSD=$([[ $(lsblk -n --output ROTA "${DISK}") == "0" ]] && echo 1 || echo 0)
+SWAP_TYPE="${SWAP_TYPE:-ZRAM + Swapfile}"  # User preference
 ```
 
-**Decision Table**:
+**User Choice Options:**
 
-| RAM | SSD | HDD | Strategy |
-|-----|-----|-----|----------|
-| <4GB | ZRAM (2x) | ZRAM (2x) | ZRAM critical for low RAM |
-| 4-8GB | ZRAM (2x) | ZRAM + 2GB swap | ZRAM primary, file backup |
-| 8-16GB | ZRAM (1x) | 4GB swap file | Light swap needs |
-| 16-32GB | 2GB swap | 4GB swap | Hibernation support |
-| >32GB | 1GB swap | 2GB swap | Minimal swap |
+| Swap Type | ZRAM | Swapfile | Use Case |
+|-----------|-------|----------|----------|
+| **ZRAM Only** | ✅ Yes | ❌ No | Desktops with sufficient RAM, no need for hibernation |
+| **ZRAM + Swapfile** | ✅ Yes | ✅ Yes | Laptops/Systems needing hibernation (default) |
+| **Swapfile Only** | ❌ No | ✅ Yes | Systems with very limited RAM |
 
-**Special Cases**:
-- SERVER installations always get 4GB swap file
-- Swap file created with `mkswap --file` (handles btrfs nocow)
-- GRUB `resume=` parameter added automatically for hibernation
+**Decision Table (Auto-Detection for "ZRAM + Swapfile"):**
 
-**Rationale**: Adaptive configuration based on actual hardware provides optimal performance. ZRAM is preferred for SSDs (reduces wear), swap files for HDDs (ZRAM less beneficial).
+| RAM | Strategy | Swap Size (SSD) | Swap Size (HDD) |
+|-----|----------|-----------------|-----------------|
+| <4GB | ZRAM (2x) + Swapfile | 4GB | 4GB |
+| 4-8GB | ZRAM (2x) + Swapfile | 4GB | 6GB |
+| 8-16GB | ZRAM (1x) + Swapfile | 4GB | 8GB |
+| 16-32GB | ZRAM (1x) + Swapfile | 4GB | 8GB |
+| >32GB | ZRAM (1x) + Swapfile | 4GB | 4GB |
+
+**Special Cases:**
+- SERVER installations: Always Swapfile only (4GB), no ZRAM
+- User preference overrides auto-detection
+- Insufficient disk space: Swap size reduced or skipped
+
+**Btrfs-specific Handling:**
+- Dedicated `@swap` subvolume to avoid snapshot conflicts (errno:26 "Text file busy")
+- Swap file at `/swap/swapfile` (inside `@swap` subvolume)
+- Created with `btrfs filesystem mkswapfile` (handles NOCOW automatically)
+
+**ext4/Other Filesystems:**
+- Swap file at `/swapfile` (root filesystem)
+- Created with `mkswap --file`
+
+**Rationale**: All systems get ZRAM (fast, compressed RAM swap) by default. Users can choose:
+1. ZRAM only (saves disk space, no hibernation)
+2. ZRAM + Swapfile (balanced, supports hibernation) - **DEFAULT**
+3. Swapfile only (very limited RAM systems)
 
 ### 4. Btrfs Mount Options
 
@@ -591,250 +618,43 @@ fi
 
 ---
 
-## Data Flow & Visual Architecture
-
-### High-Level Architecture Diagram
-
-```mermaid
-graph TB
-    subgraph "User Interface Layer"
-        A[User] --> B[archinstall.sh]
-        B --> C[configuration.sh]
-        C --> D[user-options.sh]
-    end
-
-    subgraph "Configuration Layer"
-        D --> E[setup.conf]
-        E --> F[JSON Package Files]
-        E --> G[Theme Configs]
-    end
-
-    subgraph "Execution Phases"
-        E --> H[Phase 0: Pre-install]
-        H --> I[Phase 1: System Setup]
-        I --> J[Phase 2: User Config]
-        J --> K[Phase 3: Post-setup]
-    end
-
-    subgraph "Utility Modules"
-        L[installer-helper.sh]
-        M[system-checks.sh]
-        N[software-install.sh]
-        O[system-config.sh]
-    end
-
-    subgraph "Target System"
-        K --> P[Installed Arch Linux]
-    end
-
-    L -.-> H
-    L -.-> I
-    L -.-> J
-    L -.-> K
-    M -.-> H
-    N -.-> I
-    N -.-> J
-    O -.-> H
-    O -.-> I
-    O -.-> K
-
+## Data Flow
 
 ```
-
-### Phase Transition Flow
-
-```mermaid
-stateDiagram-v2
-    [*] --> Phase0_LiveISO
-    Phase0_LiveISO --> Phase1_ChrootRoot : arch-chroot
-    Phase1_ChrootRoot --> Phase2_ChrootUser : runuser -u USERNAME
-    Phase2_ChrootUser --> Phase3_ChrootRoot : arch-chroot
-    Phase3_ChrootRoot --> [*] : Installation Complete
-
-    note right of Phase0_LiveISO
-        - Full hardware access
-        - Disk partitioning
-        - Filesystem creation
-    end note
-
-    note right of Phase1_ChrootRoot
-        - Base system install
-        - System configuration
-        - Service setup
-    end note
-
-    note right of Phase2_ChrootUser
-        - AUR package compilation
-        - Desktop environment
-        - User themes
-    end note
-
-    note right of Phase3_ChrootRoot
-        - Final services
-        - Cleanup
-        - Boot configuration
-    end note
-```
-
-### Module Dependencies
-
-```mermaid
-graph LR
-    subgraph "Core Modules"
-        A[installer-helper.sh]
-        B[system-checks.sh]
-    end
-
-    subgraph "Configuration"
-        C[user-options.sh]
-    end
-
-    subgraph "Installation"
-        D[software-install.sh]
-        E[system-config.sh]
-    end
-
-    subgraph "Phase Scripts"
-        F[0-preinstall.sh]
-        G[1-setup.sh]
-        H[2-user.sh]
-        I[3-post-setup.sh]
-    end
-
-    A --> F
-    A --> G
-    A --> H
-    A --> I
-
-    B --> F
-    B --> G
-
-    C --> G
-    C --> H
-
-    D --> G
-    D --> H
-
-    E --> F
-    E --> G
-    E --> I
-
-
-```
-
-### Package Installation Flow
-
-```mermaid
-flowchart TD
-    A[Start Installation] --> B[Detect INSTALL_TYPE]
-    B --> C{Install Type?}
-    C -->|FULL| D[Load minimal + full packages]
-    C -->|MINIMAL| E[Load minimal packages only]
-    C -->|SERVER| F[Load server packages only]
-
-    D --> G[Check AUR Helper]
-    E --> G
-    F --> G
-
-    G --> H{AUR Available?}
-    H -->|Yes| I[Include AUR packages]
-    H -->|No| J[Official packages only]
-
-    I --> K[Build JQ filter]
-    J --> K
-    K --> L[Query JSON with JQ]
-    L --> M[Process package list]
-
-    M --> N{Package Type?}
-    N -->|Official| O[Install with pacman]
-    N -->|AUR| P[Install with AUR helper]
-
-    O --> Q[Log installation]
-    P --> Q
-    Q --> R[Continue next package]
-    R --> S{More packages?}
-    S -->|Yes| M
-    S -->|No| T[Installation Complete]
-
-
-```
-
-### Hardware Detection Pipeline
-
-```mermaid
-flowchart LR
-    A[Start Detection] --> B[CPU Detection]
-    B --> C{CPU Type?}
-    C -->|Intel| D[Intel-ucode]
-    C -->|AMD| E[AMD-ucode]
-
-    A --> F[GPU Detection]
-    F --> G{lspci analysis}
-    G --> H{GPU Vendor?}
-    H -->|NVIDIA| I[NVIDIA drivers]
-    H -->|AMD| J[AMD drivers]
-    H -->|Intel| K[Intel drivers]
-    H -->|Unknown| L[Generic drivers]
-
-    A --> M[VM Detection]
-    M --> N{Virtualization?}
-    N -->|Yes| O[VM-specific drivers]
-    N -->|No| P[Bare metal detection]
-
-    A --> Q[Storage Detection]
-    Q --> R{Storage Type?}
-    R -->|SSD| S[SSD optimizations]
-    R -->|HDD| T[HDD optimizations]
-
-    D --> U[Package Selection]
-    E --> U
-    I --> U
-    J --> U
-    K --> U
-    L --> U
-    O --> U
-    P --> U
-    S --> V[System Configuration]
-    T --> V
-
-    U --> W[Apply Configuration]
-    V --> W
-
-
-```
-
-### Configuration Management Flow
-
-```mermaid
-graph TB
-    subgraph "Input Collection"
-        A[User Input] --> B[Validation]
-        B --> C[Error?]
-        C -->|Yes| D[Show Error + Retry]
-        C -->|No| E[Save to setup.conf]
-        D --> A
-    end
-
-    subgraph "Configuration Storage"
-        E --> F[setup.conf]
-        F --> G[Source of Truth]
-    end
-
-    subgraph "Configuration Usage"
-        G --> H[Phase 0 Reader]
-        G --> I[Phase 1 Reader]
-        G --> J[Phase 2 Reader]
-        G --> K[Phase 3 Reader]
-    end
-
-    subgraph "Configuration Actions"
-        H --> L[Disk Operations]
-        I --> M[System Setup]
-        J --> N[User Configuration]
-        K --> O[Finalization]
-    end
-
-
+┌──────────────────┐
+│ User             │
+└────────┬─────────┘
+         │ Interactive input
+         ↓
+┌──────────────────────────┐
+│ configuration.sh         │
+│ + user-options.sh        │
+└────────┬─────────────────┘
+         │ Saves
+         ↓
+┌──────────────────────────┐
+│ configs/setup.conf       │ ← Source of truth
+└────────┬─────────────────┘
+         │ Read by all phases
+         ↓
+┌──────────────────────────┐
+│ 0-preinstall.sh          │ → Creates partitions + filesystem
+└────────┬─────────────────┘
+         │
+┌──────────────────────────┐
+│ 1-setup.sh               │ → Installs base + configures system
+└────────┬─────────────────┘
+         │
+┌──────────────────────────┐
+│ 2-user.sh                │ → AUR + Desktop + Themes
+└────────┬─────────────────┘
+         │
+┌──────────────────────────┐
+│ 3-post-setup.sh          │ → Services + Cleanup
+└────────┬─────────────────┘
+         │
+         ↓
+   Installed System
 ```
 
 ---
@@ -879,140 +699,4 @@ graph TB
 
 ---
 
-## API Documentation - Internal Functions
-
-### Core Helper Functions (installer-helper.sh)
-
-#### Error Handling & Utilities
-```bash
-# Exits script with error message and logging
-exit_on_error <exit_code> <command_description>
-
-# Displays ASCII art logo
-show_logo()
-
-# Creates multi-select menu with checkboxes
-multiselect <title> <options_array>
-
-# Creates single-select menu
-select_option <default_choice> <num_options> <options_array>
-
-# Orchestrates all 4 installation phases
-sequence()
-
-# Saves key-value pair to setup.conf
-set_option <key> <value>
-
-# Safely sources file with validation
-source_file <file_path>
-
-# Finalizes script and copies logs
-end_script()
-```
-
-#### Usage Examples
-```bash
-# Error handling pattern
-pacstrap /mnt base base-devel
-exit_on_error $? "Installing base system"
-
-# Menu creation
-options=("Option 1" "Option 2" "Option 3")
-select_option 0 3 "${options[@]}"
-choice=${options[$?]}
-
-# Configuration persistence
-set_option INSTALL_TYPE "FULL"
-set_option DESKTOP_ENV "kde"
-```
-
-### System Check Functions (system-checks.sh)
-
-#### Precondition Validation
-```bash
-# Verifies script is running as root
-root_check() -> boolean
-
-# Checks if running on Arch Linux
-arch_check() -> boolean
-
-# Ensures pacman database is not locked
-pacman_check() -> boolean
-
-# Prevents execution inside Docker containers
-docker_check() -> boolean
-
-# Verifies /mnt is mounted for chroot operations
-mount_check() -> boolean
-
-# Executes all background checks
-background_checks() -> exit_code
-```
-
-#### Validation Patterns
-```bash
-# Usage in scripts
-if ! background_checks; then
-    echo "System requirements not met"
-    exit 1
-fi
-
-# Check specific conditions
-if ! mount_check; then
-    echo "System not properly mounted"
-    exit 1
-fi
-```
-
-### Configuration Functions (user-options.sh)
-
-#### Input Collection & Validation
-```bash
-# Secure password input with confirmation
-set_password <prompt_text> -> string
-
-# Collects user information with validation
-user_info() -> {name, username, hostname}
-
-# Installation type selection
-install_type() -> "FULL"|"MINIMAL"|"SERVER"
-
-# AUR helper selection
-aur_helper() -> helper_name
-
-# Desktop environment selection (JSON-based)
-desktop_environment() -> de_name
-
-# Disk selection and percentage configuration
-disk_select() -> {disk, percentage}
-
-# Filesystem selection
-filesystem() -> "btrfs"|"ext4"|"luks"
-
-# Btrfs subvolume configuration
-set_btrfs() -> subvolumes_array
-
-# Timezone detection and confirmation
-timezone() -> timezone_string
-
-# Locale and keyboard configuration
-locale_selection() -> {locale, keymap}
-
-# Configuration review and editing
-show_configurations() -> allows_reconfiguration
-```
-
-#### Input Validation Examples
-```bash
-# Username validation (alphanumeric, max 32 chars)
-[[ "${username,,}" =~ ^[a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30}\$)$ ]]
-
-# Hostname validation
-[[ "${hostname,,}" =~ ^[a-z][a-z0-9_.-]{0,62}[a-z0-9]$ ]]
-
-# Password strength check
-if [[ ${#password} -lt 8 ]]; then
-    echo "Password must be at least 8 characters"
-fi
-```
-
+This architecture allows for extensibility, maintainability, and robustness in the Arch Linux installation process.

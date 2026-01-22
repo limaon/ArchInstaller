@@ -13,15 +13,16 @@ set_password() {
     read -rs -p "Please enter password: " PASSWORD1
     echo -ne "\n"
     read -rs -p "Please re-enter password: " PASSWORD2
-    echo -ne "\n"
     if [[ "$PASSWORD1" == "$PASSWORD2" ]]; then
         set_option "$1" "$PASSWORD1"
+        echo -ne "\n"
     else
-		echo -ne "ERROR! Passwords do not match. \n"
-		sed -i '/&PASSWORD1=.*/d' "$CONFIG_FILE"
-		set_password "$1"
+        echo -ne "ERROR! Passwords do not match. \n"
+        sed -i '/&PASSWORD1=.*/d' "$CONFIG_FILE"
+        set_password "$1"
     fi
 }
+
 
 # @description Gather username, real name, and password to be used for installation.
 # @noargs
@@ -70,7 +71,7 @@ user_info() {
 # @noargs
 install_type() {
     echo -ne "Please select type of installation:\n
-  ${BOLD}${BRED}Full Install:${RESET} Installs full featured desktop enviroment, with added apps and themes needed for everyday use.
+  ${BOLD}${BRED}Full Install:${RESET} Installs full featured desktop environment, with added apps and themes needed for everyday use.
   ${BOLD}${BRED}Minimal Install:${RESET} Installs only apps few selected apps to get you started.
   ${BOLD}${BRED}Server Install${RESET} Installs only base system without a desktop environment.\n"
     options=(FULL MINIMAL SERVER)
@@ -161,8 +162,8 @@ disk_select() {
 
                 # Calculate and show preview
                 disk_size=$(lsblk -n -b -o SIZE "${disk}" | head -n1)
-                disk_size_gb=$(( (disk_size / 1024 / 1024 / 1024) ))
-                used_size_gb=$(( (disk_size * disk_percent) / 100 / 1024 / 1024 / 1024 ))
+                disk_size_gb=$((disk_size / 1024 / 1024 / 1024))
+                used_size_gb=$((disk_size * disk_percent / 100 / 1024 / 1024 / 1024))
 
                 echo -e "\n${BOLD}Preview:${RESET}"
                 echo -e "Total disk size: ${disk_size_gb}GB"
@@ -228,8 +229,9 @@ set_btrfs() {
     read -r -p "Press enter to use the default subvolumes: " -a ARR
 
     # If no subvolumes are provided, use the defaults as per the article
+    # Note: @swap is included for dedicated swap subvolume (required for btrfs snapshots compatibility)
     if [[ -z "${ARR[*]}" ]]; then
-        set_option "SUBVOLUMES" "(@ @docker @flatpak @home @opt @snapshots @var_cache @var_log @var_tmp)"
+        set_option "SUBVOLUMES" "(@ @docker @flatpak @home @opt @snapshots @swap @var_cache @var_log @var_tmp)"
     else
         NAMES=("@")
         for i in "${ARR[@]}"; do
@@ -362,6 +364,8 @@ Please select keyboard layout from this list:
 # @noargs
 show_configurations() {
     # Load INSTALL_TYPE from config if not already set
+    # shellcheck disable=SC1090
+    # Reason: CONFIG_FILE path is dynamically set, ShellCheck can't follow it
     if [[ -f "$CONFIG_FILE" ]] && grep -q "^INSTALL_TYPE=" "$CONFIG_FILE"; then
         source "$CONFIG_FILE"
     fi
@@ -382,25 +386,20 @@ show_configurations() {
 ------------------------------------------------------------------------
 Do you want to redo any step? Select an option below, or press Enter to proceed:"
 
-        echo "1) Full Name, Username and Password"
-        echo "2) Installation Type"
+          echo "1) Full Name, Username and Password"
+          echo "2) Installation Type"
+          echo "3) AUR Helper"
+          echo "4) Desktop Environment"
+          echo "5) Disk Selection and Usage Percentage"
+          echo "6) File System"
+          echo "7) Timezone"
+          echo "8) System Language (Locale)"
+          echo "9) Keyboard Layout"
 
-        # Only show AUR Helper and Desktop Environment if not SERVER
-        if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
-            echo "3) AUR Helper"
-            echo "4) Desktop Environment"
-            echo "5) Disk Selection and Usage Percentage"
-            echo "6) File System"
-            echo "7) Timezone"
-            echo "8) System Language (Locale)"
-            echo "9) Keyboard Layout"
-        else
-            echo "3) Disk Selection and Usage Percentage"
-            echo "4) File System"
-            echo "5) Timezone"
-            echo "6) System Language (Locale)"
-            echo "7) Keyboard Layout"
-        fi
+          # Only show Desktop, AUR, Filesystem, Timezone, Locale, Keyboard if not SERVER
+         if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+             echo "11) Re-select File System"  # Extra option
+         fi
 
         echo "------------------------------------------------------------------------
 "
@@ -412,6 +411,8 @@ Do you want to redo any step? Select an option below, or press Enter to proceed:
         fi
 
         # Reload INSTALL_TYPE in case it was changed
+        # shellcheck disable=SC1090
+        # Reason: CONFIG_FILE path is dynamically set, ShellCheck can't follow it
         if [[ -f "$CONFIG_FILE" ]] && grep -q "^INSTALL_TYPE=" "$CONFIG_FILE"; then
             source "$CONFIG_FILE"
         fi
@@ -421,6 +422,8 @@ Do you want to redo any step? Select an option below, or press Enter to proceed:
             2)
                 install_type
                 # Reload INSTALL_TYPE after change
+                # shellcheck disable=SC1090
+                # Reason: CONFIG_FILE path is dynamically set, ShellCheck can't follow it
                 if [[ -f "$CONFIG_FILE" ]] && grep -q "^INSTALL_TYPE=" "$CONFIG_FILE"; then
                     source "$CONFIG_FILE"
                 fi
@@ -467,14 +470,21 @@ Do you want to redo any step? Select an option below, or press Enter to proceed:
                     echo "Invalid option. Please try again."
                 fi
                 ;;
-            9)
-                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
-                    keymap
-                else
-                    echo "Invalid option. Please try again."
-                fi
-                ;;
-            *)
+             9)
+                  if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                      keymap
+                  else
+                      echo "Invalid option. Please try again."
+                  fi
+                  ;;
+              10)
+                 if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                     filesystem
+                 else
+                     echo "Invalid option. Please try again."
+                 fi
+                 ;;
+             *)
                 echo "Invalid option. Please try again."
                 ;;
         esac

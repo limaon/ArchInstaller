@@ -176,7 +176,8 @@ set_option() {
     # Remove existing key if present (suppress errors if grep fails)
     grep -Eq "^${key}.*" "$CONFIG_FILE" 2>/dev/null && sed -i "/^${key}.*/d" "$CONFIG_FILE"
 
-    if [[ "$key" == "REAL_NAME" && "$value" =~ \  ]]; then
+    # Quote values that contain spaces or special characters
+    if [[ "$value" =~ [[:space:]] ]]; then
         echo "${key}=\"${value}\"" >>"$CONFIG_FILE"
     else
         echo "${key}=${value}" >>"$CONFIG_FILE"
