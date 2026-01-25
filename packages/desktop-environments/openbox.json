@@ -145,16 +145,13 @@
 				"package": "w3m"
 			}
 		],
-		"aur": [
-			{
-				"package": "lightdm-settings"
-			},
-			{
-				"package": "picom-git"
-			},
-			{
-				"package": "xidlehook"
-			}
-		]
+"aur": [
+		{
+			"package": "lightdm-settings"
+		},
+		{
+			"package": "picom-git"
+		}
+	]
 	}
 }
