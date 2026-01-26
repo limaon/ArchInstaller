@@ -624,8 +624,6 @@ user_theming() {
             cd ~/archinstaller/ && git submodule update --init
             cp -r ~/archinstaller/configs/awesome/home/. ~/
             sudo cp -r ~/archinstaller/configs/awesome/etc/xdg/awesome /etc/xdg/awesome
-            sudo mkdir -p /usr/share/backgrounds/
-            sudo cp ~/archinstaller/configs/base/usr/share/backgrounds/butterfly.png /usr/share/backgrounds/butterfly.png
 
         elif [[ "$DESKTOP_ENV" == "i3-wm" ]]; then
             # Check if configs directory exists before modifying
@@ -644,33 +642,20 @@ user_theming() {
                 echo "i3blocks scripts made executable"
             fi
 
-            # Configure i3 wallpaper/background based on installation type
+            # Configure i3 wallpaper/background with solid color for all installation types
             I3_CONFIG_FILE="/etc/skel/.config/i3/config"
             if [[ -f "$I3_CONFIG_FILE" ]]; then
-                echo "Configuring i3 background based on installation type..."
+                echo "Configuring i3 background with solid color #073642..."
 
-                if [[ "$INSTALL_TYPE" == "FULL" ]]; then
-                    # FULL: Use wallpaper image
-                    if grep -q "xwallpaper\|xsetroot" "$I3_CONFIG_FILE"; then
-                        sed -i 's|^exec --no-startup-id xsetroot.*|exec --no-startup-id xwallpaper --zoom /usr/share/backgrounds/archlinux/geolanes.jpg|' "$I3_CONFIG_FILE"
-                        sed -i 's|^exec --no-startup-id xwallpaper.*geolanes.jpg|exec --no-startup-id xwallpaper --zoom /usr/share/backgrounds/archlinux/geolanes.jpg|' "$I3_CONFIG_FILE"
-                        # If no wallpaper line exists, add it after "# Load Wallpaper"
-                        if ! grep -q "xwallpaper.*geolanes" "$I3_CONFIG_FILE"; then
-                            sed -i '/^# Load Wallpaper/a exec --no-startup-id xwallpaper --zoom /usr/share/backgrounds/archlinux/geolanes.jpg' "$I3_CONFIG_FILE"
-                        fi
-                    fi
+                # Use xsetroot for solid color (part of xorg-apps, usually installed)
+                # xsetroot sets the root window color, which serves as background
+                if grep -q "xwallpaper\|xsetroot" "$I3_CONFIG_FILE"; then
+                    # Replace existing wallpaper/background command with xsetroot
+                    sed -i 's|^exec --no-startup-id xwallpaper.*|exec --no-startup-id xsetroot -solid '"'"'#073642'"'"'|' "$I3_CONFIG_FILE"
+                    sed -i 's|^exec --no-startup-id xsetroot.*|exec --no-startup-id xsetroot -solid '"'"'#073642'"'"'|' "$I3_CONFIG_FILE"
                 else
-                    # MINIMAL: Use solid color background (#6a6a6a)
-                    # Use xsetroot for solid color (part of xorg-apps, usually installed)
-                    # xsetroot sets the root window color, which serves as background
-                    if grep -q "xwallpaper\|xsetroot" "$I3_CONFIG_FILE"; then
-                        # Replace existing wallpaper/background command with xsetroot
-                        sed -i 's|^exec --no-startup-id xwallpaper.*|exec --no-startup-id xsetroot -solid '"'"'#6a6a6a'"'"'|' "$I3_CONFIG_FILE"
-                        sed -i 's|^exec --no-startup-id xsetroot.*|exec --no-startup-id xsetroot -solid '"'"'#6a6a6a'"'"'|' "$I3_CONFIG_FILE"
-                    else
-                        # If no background line exists, add it after "# Load Wallpaper"
-                        sed -i '/^# Load Wallpaper/a exec --no-startup-id xsetroot -solid '"'"'#6a6a6a'"'"'' "$I3_CONFIG_FILE"
-                    fi
+                    # If no background line exists, add it after "# Load Wallpaper"
+                    sed -i '/^# Load Wallpaper/a exec --no-startup-id xsetroot -solid '"'"'#073642'"'"'' "$I3_CONFIG_FILE"
                 fi
             fi
 
