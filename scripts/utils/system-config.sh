@@ -1308,26 +1308,15 @@ greeter-session=lightdm-gtk-greeter" > /etc/lightdm/lightdm.conf
             ["battery"]=""
         )
 
-        # Background and theme configuration based on installation type
-        if [[ "${INSTALL_TYPE}" == "FULL" ]]; then
-            # FULL: Use wallpaper image
-            base_greeter_config["background"]="/usr/share/backgrounds/archlinux/geolanes.png"
-            base_greeter_config["user-background"]="true"
-            base_greeter_config["draw-user-backgrounds"]="true"
-            # Theme configuration for FULL installation (using Adwaita-dark theme)
-            base_greeter_config["icon-theme-name"]="zafiro-dark"
-            base_greeter_config["cursor-theme-name"]="Adwaita"
-            base_greeter_config["theme-name"]="Adwaita-dark"
-        else
-            # MINIMAL: Use solid color background with dark theme
-            base_greeter_config["background"]="#6a6a6a"
-            base_greeter_config["user-background"]="false"
-            base_greeter_config["draw-user-backgrounds"]="false"
-            # Dark theme configuration for MINIMAL installation (using Adwaita-dark theme)
-            base_greeter_config["icon-theme-name"]="zafiro-dark"
-            base_greeter_config["cursor-theme-name"]="Adwaita"
-            base_greeter_config["theme-name"]="Adwaita-dark"
-        fi
+        # Background configuration with solid color for all installation types
+        # Use solid color background #073642 for both FULL and MINIMAL installations
+        base_greeter_config["background"]="#073642"
+        base_greeter_config["user-background"]="false"
+        base_greeter_config["draw-user-backgrounds"]="false"
+        # Dark theme configuration (using Adwaita-dark theme)
+        base_greeter_config["icon-theme-name"]="zafiro-dark"
+        base_greeter_config["cursor-theme-name"]="Adwaita"
+        base_greeter_config["theme-name"]="Adwaita-dark"
 
         # Apply configuration: remove existing entries first, then add new ones
         for key in "${!base_greeter_config[@]}"; do
