@@ -41,7 +41,6 @@
     ],
     "aur": [
       { "package": "xautocfg" },
-      { "package": "xidlehook" },
       { "package": "zafiro-icon-theme" }
     ]
   },

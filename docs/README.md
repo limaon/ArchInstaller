@@ -7,6 +7,7 @@
 3. **[FUNCTIONS-REFERENCE.md](FUNCTIONS-REFERENCE.md)** - Complete function reference
 4. **[PACKAGE-SYSTEM.md](PACKAGE-SYSTEM.md)** - JSON package system
 5. **[DEVELOPMENT-GUIDE.md](DEVELOPMENT-GUIDE.md)** - Developer guide
+6. **[troubleshooting/](troubleshooting/)** - Complete troubleshooting guide (organized)
 
 ---
 

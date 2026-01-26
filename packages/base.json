@@ -28,7 +28,6 @@
 	},
 	"full": {
 		"pacman": [
-			{ "package": "archlinux-wallpaper" },
 			{ "package": "pipewire" },
 			{ "package": "pipewire-alsa" },
 			{ "package": "pipewire-jack" },

@@ -624,8 +624,6 @@ user_theming() {
             cd ~/archinstaller/ && git submodule update --init
             cp -r ~/archinstaller/configs/awesome/home/. ~/
             sudo cp -r ~/archinstaller/configs/awesome/etc/xdg/awesome /etc/xdg/awesome
-            sudo mkdir -p /usr/share/backgrounds/
-            sudo cp ~/archinstaller/configs/base/usr/share/backgrounds/butterfly.png /usr/share/backgrounds/butterfly.png
 
         elif [[ "$DESKTOP_ENV" == "i3-wm" ]]; then
             # Check if configs directory exists before modifying
@@ -644,33 +642,20 @@ user_theming() {
                 echo "i3blocks scripts made executable"
             fi
 
-            # Configure i3 wallpaper/background based on installation type
+            # Configure i3 wallpaper/background with solid color for all installation types
             I3_CONFIG_FILE="/etc/skel/.config/i3/config"
             if [[ -f "$I3_CONFIG_FILE" ]]; then
-                echo "Configuring i3 background based on installation type..."
+                echo "Configuring i3 background with solid color #073642..."
 
-                if [[ "$INSTALL_TYPE" == "FULL" ]]; then
-                    # FULL: Use wallpaper image
-                    if grep -q "xwallpaper\|xsetroot" "$I3_CONFIG_FILE"; then
-                        sed -i 's|^exec --no-startup-id xsetroot.*|exec --no-startup-id xwallpaper --zoom /usr/share/backgrounds/archlinux/geolanes.jpg|' "$I3_CONFIG_FILE"
-                        sed -i 's|^exec --no-startup-id xwallpaper.*geolanes.jpg|exec --no-startup-id xwallpaper --zoom /usr/share/backgrounds/archlinux/geolanes.jpg|' "$I3_CONFIG_FILE"
-                        # If no wallpaper line exists, add it after "# Load Wallpaper"
-                        if ! grep -q "xwallpaper.*geolanes" "$I3_CONFIG_FILE"; then
-                            sed -i '/^# Load Wallpaper/a exec --no-startup-id xwallpaper --zoom /usr/share/backgrounds/archlinux/geolanes.jpg' "$I3_CONFIG_FILE"
-                        fi
-                    fi
+                # Use xsetroot for solid color (part of xorg-apps, usually installed)
+                # xsetroot sets the root window color, which serves as background
+                if grep -q "xwallpaper\|xsetroot" "$I3_CONFIG_FILE"; then
+                    # Replace existing wallpaper/background command with xsetroot
+                    sed -i 's|^exec --no-startup-id xwallpaper.*|exec --no-startup-id xsetroot -solid '"'"'#073642'"'"'|' "$I3_CONFIG_FILE"
+                    sed -i 's|^exec --no-startup-id xsetroot.*|exec --no-startup-id xsetroot -solid '"'"'#073642'"'"'|' "$I3_CONFIG_FILE"
                 else
-                    # MINIMAL: Use solid color background (#6a6a6a)
-                    # Use xsetroot for solid color (part of xorg-apps, usually installed)
-                    # xsetroot sets the root window color, which serves as background
-                    if grep -q "xwallpaper\|xsetroot" "$I3_CONFIG_FILE"; then
-                        # Replace existing wallpaper/background command with xsetroot
-                        sed -i 's|^exec --no-startup-id xwallpaper.*|exec --no-startup-id xsetroot -solid '"'"'#6a6a6a'"'"'|' "$I3_CONFIG_FILE"
-                        sed -i 's|^exec --no-startup-id xsetroot.*|exec --no-startup-id xsetroot -solid '"'"'#6a6a6a'"'"'|' "$I3_CONFIG_FILE"
-                    else
-                        # If no background line exists, add it after "# Load Wallpaper"
-                        sed -i '/^# Load Wallpaper/a exec --no-startup-id xsetroot -solid '"'"'#6a6a6a'"'"'' "$I3_CONFIG_FILE"
-                    fi
+                    # If no background line exists, add it after "# Load Wallpaper"
+                    sed -i '/^# Load Wallpaper/a exec --no-startup-id xsetroot -solid '"'"'#073642'"'"'' "$I3_CONFIG_FILE"
                 fi
             fi
 
@@ -899,8 +884,8 @@ i3wm_battery_notifications() {
 }
 
 
-# @description Install and configure auto suspend/hibernate for i3-wm
-# Installs scripts, systemd config, and configures xidlehook in i3 config
+# @description Configure power management for i3-wm using systemd-logind
+# Minimal approach without external scripts
 # @noargs
 i3wm_auto_suspend_hibernate() {
     # Only install for i3-wm desktop environment
@@ -909,218 +894,93 @@ i3wm_auto_suspend_hibernate() {
     fi
 
     echo -ne "
--------------------------------------------------------------------------
-                    Installing Auto Suspend/Hibernate for i3-wm
--------------------------------------------------------------------------
+--------------------------------------------------------------------------
+                  Configuring Power Management for i3-wm
+--------------------------------------------------------------------------
+
 "
 
-    # Check if configs exist
-    if [[ ! -d ~/archinstaller/configs/i3-wm/usr/local/bin ]]; then
-        echo "Warning: Auto suspend/hibernate scripts not found, skipping..."
-        return 1
-    fi
+    # Create systemd logind configuration
+    echo "Configuring systemd logind for power management..."
+    sudo mkdir -p /etc/systemd/logind.conf.d/
 
-    # Copy scripts to /usr/local/bin/ (requires sudo)
-    echo "Installing auto suspend/hibernate scripts..."
-    if [[ -d ~/archinstaller/configs/i3-wm/usr/local/bin ]]; then
-        sudo mkdir -p /usr/local/bin/
-        sudo cp ~/archinstaller/configs/i3-wm/usr/local/bin/auto-suspend-hibernate /usr/local/bin/ 2>/dev/null || true
-        sudo cp ~/archinstaller/configs/i3-wm/usr/local/bin/check-swap-for-hibernate /usr/local/bin/ 2>/dev/null || true
-        sudo chmod 755 /usr/local/bin/auto-suspend-hibernate /usr/local/bin/check-swap-for-hibernate 2>/dev/null || true
-        echo "Scripts installed to /usr/local/bin/"
-    fi
+    sudo tee /etc/systemd/logind.conf.d/50-power.conf > /dev/null << 'EOF'
+HandleLidSwitch=suspend
+HandleLidSwitchDocked=hibernate
+HandleLidSwitchExternalPower=suspend
 
-    # Copy systemd logind configuration (requires sudo)
-    echo "Installing systemd logind configuration..."
-    if [[ -f ~/archinstaller/configs/i3-wm/etc/systemd/logind.conf.d/50-hibernate.conf ]]; then
-        sudo mkdir -p /etc/systemd/logind.conf.d/
-        sudo cp ~/archinstaller/configs/i3-wm/etc/systemd/logind.conf.d/50-hibernate.conf /etc/systemd/logind.conf.d/ 2>/dev/null || true
-        sudo chmod 644 /etc/systemd/logind.conf.d/50-hibernate.conf 2>/dev/null || true
-        echo "Systemd logind configuration installed"
-        echo "Note: Logind configuration will be active after reboot"
-    fi
+IdleAction=suspend
+IdleActionSec=1800s  # 30 minutes
 
-    # Configure xidlehook in i3 config
-    echo "Configuring xidlehook in i3 config..."
+InhibitDelayMax=30s
 
-    # Find i3 config location (could be in user's home or /etc/skel)
-    I3_CONFIG_USER="${HOME}/.config/i3/config"
+# Suspend when battery is low
+HandlePowerKey=suspend
+HandleSleepKey=suspend
+EOF
+
+    sudo chmod 644 /etc/systemd/logind.conf.d/50-power.conf
+
+    # Restart logind to apply changes
+    sudo systemctl restart systemd-logind
+    echo "✓  Power management configured"
+
+    # Configure i3-wm key bindings
+    echo "Configuring i3-wm key bindings..."
     I3_CONFIG_SKEL="/etc/skel/.config/i3/config"
 
-    # Function to add xidlehook config to i3 config
-    configure_xidlehook_i3() {
-        local config_file="$1"
+    # Ensure config directory exists
+    sudo mkdir -p /etc/skel/.config/i3/ 2>/dev/null || true
 
-        # Disable interactive prompts and aliases
-        unalias mv 2>/dev/null || true
-        unalias cp 2>/dev/null || true
-        unalias rm 2>/dev/null || true
-        set +o noclobber 2>/dev/null || true  # Allow overwriting files without prompt
-
-        if [[ ! -f "$config_file" ]]; then
-            echo "Warning: i3 config not found at $config_file, skipping xidlehook configuration"
-            return 1
-        fi
-
-        # Check if xidlehook line already exists
-        if grep -q "xidlehook" "$config_file"; then
-            echo "xidlehook configuration already exists in $config_file, skipping..."
-            return 0
-        fi
-
-        # Check if xidlehook is installed
-        # Note: We're in Phase 2 (as normal user), xidlehook should have been installed
-        # by desktop_environment_install() if AUR_HELPER != NONE
-        if ! command -v xidlehook &>/dev/null; then
-            echo "Warning: xidlehook not found in PATH"
-            if [[ "${AUR_HELPER:-NONE}" == "NONE" ]]; then
-                echo "  AUR_HELPER=NONE was selected, so xidlehook was not installed"
-                echo "  xidlehook configuration will be added but will not work until xidlehook is installed"
-                echo "  To install manually:"
-                echo "    1. Install base-devel and git: sudo pacman -S base-devel git"
-                echo "    2. Install xidlehook manually from AUR"
-            else
-                echo "  xidlehook should have been installed via ${AUR_HELPER}"
-                echo "  If installation failed, you can install manually: ${AUR_HELPER} -S xidlehook"
-            fi
-        else
-            echo "xidlehook is installed and ready to use"
-        fi
-
-        # Add xidlehook configuration after xss-lock line (if exists) or at the end
-        # Use temporary file to append the configuration (non-interactive)
-        local temp_file=$(mktemp)
-        local backup_file="${config_file}.bak"
-
-        # Create backup of original config
-        cp "$config_file" "$backup_file" 2>/dev/null || true
-
-        if grep -q "xss-lock" "$config_file"; then
-            # Find line with xss-lock and add after it
+    # Add key bindings to i3 config if they don't exist
+    if [[ -f "$I3_CONFIG_SKEL" ]]; then
+        # Check if power bindings already exist
+        if ! grep -q "Control+Delete" "$I3_CONFIG_SKEL"; then
+            # Add power key bindings before the bar section (common in i3 configs)
             awk '
-                /exec --no-startup-id xss-lock/ {
-                    print
+                /bar/ {
+                    print "bindsym $mod+Control+Delete exec --no-startup-id systemctl suspend"
+                    print "bindsym $mod+Control+BackSpace exec --no-startup-id systemctl hibernate"
+                    print "bindsym $mod+Shift+p exec --no-startup-id xterm -e \"acpi -b; read\""
                     print ""
-                    print "# Auto suspend/hibernate on inactivity (requires xidlehook from AUR)"
-                    print "exec --no-startup-id xidlehook \\"
-                    print "  --not-when-audio \\"
-                    print "  --not-when-fullscreen \\"
-                    print "  --timer 1800 \\"
-                    print "  '\''notify-send -u normal \"Inatividade\" \"O sistema irá hibernar/suspender em 30 segundos...\"'\'' \\"
-                    print "  '\'''\'' \\"
-                    print "  --timer 30 \\"
-                    print "  '\''/usr/local/bin/auto-suspend-hibernate'\'' \\"
-                    print "  '\'''\''"
-                    next
                 }
                 { print }
-            ' "$config_file" > "$temp_file"
-        else
-            # Append at the end
-            cp "$config_file" "$temp_file"
-            cat >> "$temp_file" << 'EOF'
+            ' "$I3_CONFIG_SKEL" > "${I3_CONFIG_SKEL}.tmp" 2>/dev/null || true
 
-# Auto suspend/hibernate on inactivity (requires xidlehook from AUR)
-exec --no-startup-id xidlehook \
-  --not-when-audio \
-  --not-when-fullscreen \
-  --timer 1800 \
-  'notify-send -u normal "Inatividade" "O sistema irá hibernar/suspender em 30 segundos..."' \
-  '' \
-  --timer 30 \
-  '/usr/local/bin/auto-suspend-hibernate' \
-  ''
-EOF
-        fi
-
-        # Force move without prompting (non-interactive)
-        # Use absolute path to mv to bypass any aliases that might ask for confirmation
-        # This is critical when running via sudo, as aliases may still be active
-        if [[ -x /bin/mv ]]; then
-            /bin/mv -f "$temp_file" "$config_file"
-        elif [[ -x /usr/bin/mv ]]; then
-            /usr/bin/mv -f "$temp_file" "$config_file"
-        else
-            # Fallback: use command -v to find mv and force overwrite
-            MV_CMD=$(command -v mv 2>/dev/null || echo "mv")
-            $MV_CMD -f "$temp_file" "$config_file"
-        fi
-
-        # Remove backup file
-        rm -f "$backup_file" 2>/dev/null || true
-
-        echo "xidlehook configuration added to $config_file"
-    }
-
-    # Configure in /etc/skel for future users (requires sudo)
-    if [[ -f "$I3_CONFIG_SKEL" ]] || [[ -f ~/archinstaller/configs/i3-wm/etc/skel/.config/i3/config ]]; then
-        echo "Configuring xidlehook in /etc/skel/.config/i3/config..."
-
-        # Ensure the target directory exists
-        sudo mkdir -p /etc/skel/.config/i3/ 2>/dev/null || true
-
-        # If /etc/skel/.config/i3/config doesn't exist yet, copy from source
-        if [[ ! -f "$I3_CONFIG_SKEL" ]] && [[ -f ~/archinstaller/configs/i3-wm/etc/skel/.config/i3/config ]]; then
-            sudo cp ~/archinstaller/configs/i3-wm/etc/skel/.config/i3/config "$I3_CONFIG_SKEL" 2>/dev/null || true
-            sudo chmod 644 "$I3_CONFIG_SKEL" 2>/dev/null || true
-        fi
-
-        # Use sudo to modify /etc/skel/ (system directory) - export function and run non-interactively
-        # Use sh instead of bash to avoid aliases and interactive prompts
-        if [[ -f "$I3_CONFIG_SKEL" ]]; then
-            sudo sh -c "
-                set -e
-                $(declare -f configure_xidlehook_i3)
-                configure_xidlehook_i3 '$I3_CONFIG_SKEL'
-            " 2>/dev/null || {
-                echo "Note: Could not modify $I3_CONFIG_SKEL automatically"
-                echo "      You may need to add xidlehook configuration manually"
-            }
+            if [[ -f "${I3_CONFIG_SKEL}.tmp" ]]; then
+                sudo mv "${I3_CONFIG_SKEL}.tmp" "$I3_CONFIG_SKEL" 2>/dev/null || true
+            fi
         fi
     fi
 
-    # Configure in current user's home (if exists and we're not in chroot)
-    if [[ ! -d /mnt ]] && [[ -f "$I3_CONFIG_USER" ]]; then
-        echo "Configuring xidlehook in current user's i3 config..."
-        configure_xidlehook_i3 "$I3_CONFIG_USER"
-    fi
+    echo "✓  i3-wm key bindings configured"
 
-    # Check swap and warn if insufficient for hibernation
+    # Check swap and hibernation capability
     echo ""
-    echo "Checking swap configuration for hibernation..."
-    if [[ -f /usr/local/bin/check-swap-for-hibernate ]]; then
-        if /usr/local/bin/check-swap-for-hibernate --verbose; then
-            echo "✓ Swap is sufficient for hibernation"
-        else
-            echo "⚠ Warning: Swap is insufficient for hibernation"
-            echo "  System will suspend instead of hibernating on battery"
-            echo "  To enable hibernation, increase swap to match or exceed RAM size"
-            echo "  Current swap can be checked with: swapon --show"
-        fi
+    echo "Checking swap configuration..."
+    SWAP_SIZE=$(free -k | awk '/^Swap:/ {print $2}')
+    RAM_SIZE=$(free -k | awk '/^Mem:/ {print $2}')
+
+    if [[ $SWAP_SIZE -gt 0 && $SWAP_SIZE -ge $RAM_SIZE ]]; then
+        echo "✓  Swap sufficient for hibernation ($((SWAP_SIZE/1024/1024))GB >= $((RAM_SIZE/1024/1024))GB)"
     else
-        echo "Warning: check-swap-for-hibernate script not found"
+        echo "⚠  Warning: Insufficient swap for hibernation"
+        echo "  Current swap: $((SWAP_SIZE/1024/1024))GB, Required: $((RAM_SIZE/1024/1024))GB"
+        echo "  System will suspend instead of hibernating on battery"
+        echo "  To enable hibernation: sudo systemctl edit systemd-logind and set:"
+        echo "    HandleLidSwitch=hibernate"
+        echo "    HandleLidSwitchDocked=hibernate"
     fi
 
     echo ""
-    # Configure sudoers to allow suspend/hibernate without password for wheel group
-    echo "Configuring sudoers to allow suspend/hibernate without password..."
-    SUDOERS_FILE="/etc/sudoers.d/99-i3wm-suspend-hibernate"
-    if [[ -w /etc/sudoers.d/ ]] || sudo test -w /etc/sudoers.d/ 2>/dev/null; then
-        sudo tee "$SUDOERS_FILE" > /dev/null << 'EOF'
-# Allow members of wheel group to suspend/hibernate without password
-# Required for auto-suspend-hibernate script to work when called by xidlehook
-%wheel ALL=(ALL) NOPASSWD: /usr/bin/systemctl suspend, /usr/bin/systemctl hibernate
-EOF
-        sudo chmod 440 "$SUDOERS_FILE"
-        echo "Sudoers configuration added: $SUDOERS_FILE"
-    else
-        echo "Warning: Cannot write to /etc/sudoers.d/ - sudoers configuration skipped"
-        echo "  You may need to manually configure sudoers to allow suspend/hibernate without password"
-    fi
-
-    echo "Auto suspend/hibernate configuration complete!"
+    echo "✓  Power management configuration complete!"
     echo ""
-    echo "Note: xidlehook must be installed from AUR for automatic suspend/hibernate to work"
-    echo "      If you chose an AUR helper during installation, it should be installed automatically"
-    echo "      If not, install manually: yay -S xidlehook  (or your AUR helper)"
+    echo "Available commands:"
+    echo "  • systemctl suspend          - Force immediate suspend"
+    echo "  • systemctl hibernate        - Force immediate hibernate"
+    echo "  • systemd-inhibit -who='Working' -what='sleep' -why='Working' sleep 3600  - Prevent sleep"
+    echo "  • acpi -b                    - Check battery status"
+    echo ""
+    echo "System will automatically suspend after 30 minutes of inactivity"
+    echo "Press $mod+Control+Delete to suspend, $mod+Control+BackSpace to hibernate"
 }
