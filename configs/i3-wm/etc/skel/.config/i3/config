@@ -259,7 +259,7 @@ exec --no-startup-id picom --config ~/.config/picom/picom.conf
 
 # Load Wallpaper (configured dynamically in user_theming function)
 # This will be replaced by installation script based on INSTALL_TYPE
-exec --no-startup-id xwallpaper --zoom /usr/share/backgrounds/archlinux/geolanes.jpg
+exec --no-startup-id xsetroot -solid '#073642'
 
 # Start xautocfg service
 exec --no-startup-id systemctl start --user xautocfg.service
