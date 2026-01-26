@@ -770,9 +770,118 @@ sudo pacman -Scc
 
 ---
 
+---
+
+## Bootloader Problems
+
+### Problem: GRUB Won't Start (Btrfs Subvolumes)
+
+**Symptoms:**
+- System boots to GRUB rescue prompt
+- GRUB configuration is missing or corrupted
+- System won't boot after kernel updates
+
+**Diagnosis:**
+```bash
+# Check GRUB installation
+ls /boot/EFI/BOOT/  # Should see bootx64.efi
+ls /boot/grub/      # Should have grub.cfg
+
+# Check EFI partition mount
+mount | grep /boot
+```
+
+**Solutions:**
+
+#### Solution 1: GRUB Recovery for Btrfs Subvolumes
+
+**Este resumo assume que seu SSD é `/dev/sda`, sua partição EFI é `/dev/sda1` e sua partição Root (Arch) é `/dev/sda2`.**
+
+**1. Preparação e Montagem Correta**
+
+O segredo aqui foi montar o **subvolume `@**` e vincular a partição EFI diretamente à pasta onde o Kernel reside.
+
+```bash
+# 1. Montar o subvolume principal do sistema (@)
+mount -o subvol=@ /dev/sda2 /mnt
+
+# 2. Montar a partição EFI diretamente em /boot
+# (Necessário se o kernel e os .img estiverem na partição EFI)
+mount /dev/sda1 /mnt/boot
+
+# 3. Entrar no sistema instalado
+arch-chroot /mnt
+```
+
+**2. Reinstalação do Bootloader**
+
+Com o sistema "montado" corretamente, forçamos o GRUB a se registrar na NVRAM da placa-mãe Lenovo.
+
+```bash
+# Instalar o binário do GRUB na partição de boot
+grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
+
+# Gerar o arquivo de configuração (detectando Linux e Windows)
+grub-mkconfig -o /boot/grub/grub.cfg
+```
+
+**3. Ajuste de Persistência (fstab)**
+
+Para evitar que o sistema pare de iniciar após uma atualização de kernel, o arquivo `/etc/fstab` deve refletir que a partição EFI monta em `/boot`.
+
+```bash
+# Verifique o arquivo
+cat /etc/fstab
+
+# A linha da partição EFI deve ser algo como:
+# UUID=XXXX-XXXX  /boot  vfat  defaults,rw  0  2
+```
+
+#### Solution 2: Basic GRUB Commands
+
+```bash
+# Check GRUB installation
+grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB --recheck
+
+# Generate configuration
+grub-mkconfig -o /boot/grub/grub.cfg
+
+# Update initramfs for all kernels
+mkinitcpio -P
+
+# For specific kernel if needed
+mkinitcpio -p linux
+mkinitcpio -p linux-lts
+```
+
+#### Solution 3: Manual GRUB Repair
+
+If automatic repair fails:
+
+```bash
+# Enter live environment and mount
+mount -o subvol=@ /dev/sda2 /mnt
+mount /dev/sda1 /mnt/boot
+
+# Chroot and reinstall
+arch-chroot /mnt
+
+# Manually edit GRUB config if needed
+nano /etc/default/grub
+# Add: GRUB_DISABLE_OS_PROBER=false
+# Add: GRUB_TIMEOUT=10
+
+# Reinstall and regenerate
+grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
+grub-mkconfig -o /boot/grub/grub.cfg
+```
+
+---
+
 ## Referências
 
 - [Arch Linux Wiki - Troubleshooting](https://wiki.archlinux.org/Troubleshooting)
 - [Arch Linux Wiki - Common Issues](https://wiki.archlinux.org/Common_issues)
+- [Arch Linux Wiki - GRUB](https://wiki.archlinux.org/title/GRUB)
 
 Próximo: [Recursos Específicos](./SPECIFIC-FEATURES.md)
