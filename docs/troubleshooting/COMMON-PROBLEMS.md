@@ -819,7 +819,7 @@ Com o sistema "montado" corretamente, forçamos o GRUB a se registrar na NVRAM d
 
 ```bash
 # Instalar o binário do GRUB na partição de boot
-grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
+grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id='Arch Linux'
 
 # Gerar o arquivo de configuração (detectando Linux e Windows)
 grub-mkconfig -o /boot/grub/grub.cfg
@@ -841,7 +841,7 @@ cat /etc/fstab
 
 ```bash
 # Check GRUB installation
-grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB --recheck
+grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id='Arch Linux' --recheck
 
 # Generate configuration
 grub-mkconfig -o /boot/grub/grub.cfg
@@ -872,7 +872,7 @@ nano /etc/default/grub
 # Add: GRUB_TIMEOUT=10
 
 # Reinstall and regenerate
-grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
+grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id='Arch Linux'
 grub-mkconfig -o /boot/grub/grub.cfg
 ```
 
