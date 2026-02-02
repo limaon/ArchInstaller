@@ -41,7 +41,7 @@
     ],
     "aur": [
       { "package": "xautocfg" },
-      { "package": "zafiro-icon-theme" }
+      { "package": "pop-icon-theme" }
     ]
   },
   "full": {
@@ -53,7 +53,7 @@
       { "package": "hsetroot" },
       { "package": "ibus-kkc" },
       { "package": "imagemagick" },
-      { "package": "keepassxc" },
+      { "package": "pass" },
       { "package": "lf" },
       { "package": "maim" },
       { "package": "mpv" },
@@ -74,7 +74,8 @@
     "aur": [
       { "package": "asdf-vm" },
       { "package": "kvantum-theme-vimix-git" },
-      { "package": "zafiro-icon-theme" }
+      { "package": "kanata" },
+      { "package": "pop-icon-theme" }
     ]
   }
 }

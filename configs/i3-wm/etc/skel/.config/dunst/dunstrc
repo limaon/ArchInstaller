@@ -108,8 +108,8 @@
     icon_position = left
     max_icon_size = 64
 
-    # Paths to Zafiro icon theme (consistent with GTK theme)
-    icon_path = /usr/share/icons/zafiro-dark/16x16/status/:/usr/share/icons/zafiro-dark/16x16/devices/:/usr/share/icons/zafiro-dark/16x16/apps/:/usr/share/icons/zafiro-dark/24x24/status/:/usr/share/icons/zafiro-dark/24x24/devices/:/usr/share/icons/zafiro-dark/24x24/apps/:/usr/share/icons/Zafiro-Dark/16x16/status/:/usr/share/icons/Zafiro-Dark/16x16/devices/
+    # Paths to Pop icon theme (consistent with GTK theme)
+    icon_path = /usr/share/icons/Pop/16x16/status/:/usr/share/icons/Pop/16x16/devices/:/usr/share/icons/Pop/16x16/apps/:/usr/share/icons/Pop/24x24/status/:/usr/share/icons/Pop/24x24/devices/:/usr/share/icons/Pop/24x24/apps/:/usr/share/icons/Pop/16x16/status/:/usr/share/icons/Pop/16x16/devices/
 
     ### Stacking ###
 
