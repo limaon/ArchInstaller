@@ -39,10 +39,7 @@
       { "package": "xss-lock" },
       { "package": "xwallpaper" }
     ],
-    "aur": [
-      { "package": "xautocfg" },
-      { "package": "pop-icon-theme" }
-    ]
+    "aur": [{ "package": "xautocfg" }, { "package": "pop-icon-theme" }]
   },
   "full": {
     "pacman": [
