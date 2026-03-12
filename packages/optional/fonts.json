@@ -25,6 +25,5 @@
     { "package": "ttf-ubuntu-font-family" },
     { "package": "ttf-ubuntu-mono-nerd" }
   ],
-  "aur": [
-  ]
+  "aur": []
 }

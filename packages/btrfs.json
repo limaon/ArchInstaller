@@ -1,14 +1,14 @@
 {
-	"pacman": [
-		{ "package": "grub-btrfs" },
-		{ "package": "snap-pac" },
-		{ "package": "snapper" },
-		{ "package": "inotify-tools" }
-	],
-	"aur": [
-		{ "package": "btrfs-assistant" },
-		{ "package": "btrfsmaintenance" },
-		{ "package": "snapper-tools" },
-		{ "package": "snapper-support" }
-	]
+  "pacman": [
+    { "package": "grub-btrfs" },
+    { "package": "snap-pac" },
+    { "package": "snapper" },
+    { "package": "inotify-tools" }
+  ],
+  "aur": [
+    { "package": "btrfs-assistant" },
+    { "package": "btrfsmaintenance" },
+    { "package": "snapper-tools" },
+    { "package": "snapper-support" }
+  ]
 }
