@@ -53,6 +53,7 @@
 			{ "package": "efibootmgr" },
 			{ "package": "dmidecode" },
 			{ "package": "cronie" },
+			{ "package": "cpupower" },
 			{ "package": "gparted" },
 			{ "package": "cmake" },
 			{ "package": "extra-cmake-modules" },

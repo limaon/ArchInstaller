@@ -1,17 +1,85 @@
-install.conf
-installlog.txt
-archnikus.code-workspace
-configs/setup.conf
+# ============================================
+# ArchInstaller .gitignore
+# ============================================
 
-# keep logs out
+# -----------------------------------------------
+# Runtime configuration (generated during install)
+# -----------------------------------------------
+install.conf
+configs/setup.conf
 configs/*.log
 
-# Replit-specific files
+# -----------------------------------------------
+# Installation logs
+# -----------------------------------------------
+installlog.txt
+install.log
+*.log
+
+# -----------------------------------------------
+# Temporary / Backup files
+# -----------------------------------------------
+*.bak
+*.tmp
+*.swp
+*.swo
+*~
+\#*\#
+.#*
+
+# -----------------------------------------------
+# Editors & IDEs
+# -----------------------------------------------
+
+# VSCode
+*.code-workspace
+.vscode/
+
+# Vim / Neovim
+*.swp
+*.swo
+*.un~
+Session.vim
+.netrwhist
+
+# JetBrains (IntelliJ, WebStorm, etc.)
+.idea/
+*.iml
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# -----------------------------------------------
+# OS generated files
+# -----------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# -----------------------------------------------
+# AI / Tooling
+# -----------------------------------------------
+.opencode/
+.tmp/
+
+# -----------------------------------------------
+# Replit
+# -----------------------------------------------
 .replit
 replit.nix
+replit.md
 .upm/
 .cache/
 .pythonlibs/
-replit.md
 .breakpoints
+
+# -----------------------------------------------
+# Implementation plans (internal docs)
+# -----------------------------------------------
 docs/implementation-plans

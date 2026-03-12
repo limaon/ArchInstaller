@@ -760,6 +760,10 @@ essential_services() {
         systemctl enable avahi-daemon.service
         echo -e "Avahi enabled \n"
 
+        echo "Enabling cpupower"
+        systemctl enable cpupower.service
+        echo -e "cpupower enabled \n"
+
         if [[ "${FS}" == "luks" || "${FS}" == "btrfs" ]]; then
             snapper_config
             systemctl enable snapper-timeline.timer
