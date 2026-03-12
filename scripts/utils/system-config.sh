@@ -1181,7 +1181,12 @@ display_manager() {
         # Create lightdm.conf if it doesn't exist
         if [[ ! -f /etc/lightdm/lightdm.conf ]]; then
             echo "[Seat:*]
-greeter-session=lightdm-webkit2-greeter" > /etc/lightdm/lightdm.conf
+greeter-session=lightdm-webkit2-greeter
+greeter-setup-script=/usr/bin/xset -b" > /etc/lightdm/lightdm.conf
+        fi
+
+        if ! grep -q "^greeter-setup-script=/usr/bin/xset -b" /etc/lightdm/lightdm.conf; then
+            sed -i '/\[Seat:\*\]/a greeter-setup-script=/usr/bin/xset -b' /etc/lightdm/lightdm.conf
         fi
 
         if [[ "${INSTALL_TYPE}" == "FULL" ]]; then
@@ -1221,7 +1226,12 @@ greeter-session=lightdm-webkit2-greeter" > /etc/lightdm/lightdm.conf
         # Create lightdm.conf if it doesn't exist
         if [[ ! -f /etc/lightdm/lightdm.conf ]]; then
             echo "[Seat:*]
-greeter-session=lightdm-slick-greeter" > /etc/lightdm/lightdm.conf
+greeter-session=lightdm-slick-greeter
+greeter-setup-script=/usr/bin/xset -b" > /etc/lightdm/lightdm.conf
+        fi
+
+        if ! grep -q "^greeter-setup-script=/usr/bin/xset -b" /etc/lightdm/lightdm.conf; then
+            sed -i '/\[Seat:\*\]/a greeter-setup-script=/usr/bin/xset -b' /etc/lightdm/lightdm.conf
         fi
 
         if [[ "${INSTALL_TYPE}" == "FULL" ]]; then
@@ -1264,13 +1274,17 @@ greeter-session=lightdm-slick-greeter" > /etc/lightdm/lightdm.conf
         # Create lightdm.conf if it doesn't exist
         if [[ ! -f /etc/lightdm/lightdm.conf ]]; then
             echo "[Seat:*]
-greeter-session=lightdm-gtk-greeter" > /etc/lightdm/lightdm.conf
+greeter-session=lightdm-gtk-greeter
+greeter-setup-script=/usr/bin/xset -b" > /etc/lightdm/lightdm.conf
         else
             # Set lightdm greeter to lightdm-gtk-greeter
             sed -i 's/#greeter-session=example.*/greeter-session=lightdm-gtk-greeter/g' /etc/lightdm/lightdm.conf
             # Ensure it's set even if not commented
             if ! grep -q "^greeter-session=lightdm-gtk-greeter" /etc/lightdm/lightdm.conf; then
                 sed -i '/\[Seat:\*\]/a greeter-session=lightdm-gtk-greeter' /etc/lightdm/lightdm.conf
+            fi
+            if ! grep -q "^greeter-setup-script=/usr/bin/xset -b" /etc/lightdm/lightdm.conf; then
+                sed -i '/\[Seat:\*\]/a greeter-setup-script=/usr/bin/xset -b' /etc/lightdm/lightdm.conf
             fi
         fi
 

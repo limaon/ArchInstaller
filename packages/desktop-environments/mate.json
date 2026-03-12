@@ -1,17 +1,10 @@
 {
-	"minimal": {
-		"pacman": [
-			{
-				"package": "mate"
-			},
-			{
-				"package": "mate-extra"
-			}
-		],
-		"aur": []
-	},
-	"full": {
-		"pacman": [],
-		"aur": []
-	}
+  "minimal": {
+    "pacman": [{ "package": "mate" }, { "package": "mate-extra" }],
+    "aur": []
+  },
+  "full": {
+    "pacman": [],
+    "aur": []
+  }
 }

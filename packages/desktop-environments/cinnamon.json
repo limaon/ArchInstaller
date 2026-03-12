@@ -1,20 +1,14 @@
 {
-	"minimal": {
-		"pacman": [
-			{
-				"package": "cinnamon"
-			},
-			{
-				"package": "metacity"
-			},
-			{
-				"package": "gnome-shell "
-			}
-		],
-		"aur": []
-	},
-	"full": {
-		"pacman": [],
-		"aur": []
-	}
+  "minimal": {
+    "pacman": [
+      { "package": "cinnamon" },
+      { "package": "metacity" },
+      { "package": "gnome-shell " }
+    ],
+    "aur": []
+  },
+  "full": {
+    "pacman": [],
+    "aur": []
+  }
 }

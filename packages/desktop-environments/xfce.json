@@ -1,17 +1,10 @@
 {
-	"minimal": {
-		"pacman": [
-			{
-				"package": "xfce4"
-			},
-			{
-				"package": "xfce4-goodies"
-			}
-		],
-		"aur": []
-	},
-	"full": {
-		"pacman": [],
-		"aur": []
-	}
+  "minimal": {
+    "pacman": [{ "package": "xfce4" }, { "package": "xfce4-goodies" }],
+    "aur": []
+  },
+  "full": {
+    "pacman": [],
+    "aur": []
+  }
 }
