@@ -1,23 +1,31 @@
 repo:
-    - '*'
+  - changed-files:
+    - any-glob-to-any-file: '*'
 
 GitHub-Action:
-    - .github/workflows/*
+  - changed-files:
+    - any-glob-to-any-file: '.github/workflows/*'
 
 Configs:
-    - configs/**/*
+  - changed-files:
+    - any-glob-to-any-file: 'configs/**/*'
 
 Package-Files:
-    - packages/**/*
+  - changed-files:
+    - any-glob-to-any-file: 'packages/**/*'
 
 scripts:
-    - scripts/**/*
+  - changed-files:
+    - any-glob-to-any-file: 'scripts/**/*'
 
 debug:
-    - scripts/debug/**/*
+  - changed-files:
+    - any-glob-to-any-file: 'scripts/debug/**/*'
 
 helpers:
-    - scripts/helpers/**/*
+  - changed-files:
+    - any-glob-to-any-file: 'scripts/helpers/**/*'
 
 installers:
-    - scripts/installers/**/*
+  - changed-files:
+    - any-glob-to-any-file: 'scripts/installers/**/*'
