@@ -682,16 +682,7 @@ sudo snapper -c root create --description "test"
 
 After installation completes and you reboot the system, you can verify everything worked correctly:
 
-#### Option 1: Run Locally After Reboot
-
-After logging into your new system:
-
-```bash
-# Run the verification script (as your user - it will use sudo when needed)
-~/.archinstaller/verify-installation.sh
-```
-
-#### Option 2: Connect via SSH
+#### Option 1: Connect via SSH
 
 The installer automatically configures SSH for remote access. After reboot:
 
@@ -707,28 +698,10 @@ The installer automatically configures SSH for remote access. After reboot:
    ssh your-username@server-ip-address
    ```
 
-3. **Run verification script**:
-   ```bash
-   ~/.archinstaller/verify-installation.sh
-   ```
-
-#### What the Script Checks
-
-The verification script automatically checks:
-- Installation logs for errors and warnings
-- System services status
-- Network and SSH configuration
-- Swap configuration (ZRAM and swap file)
-- User account setup and permissions
-- Desktop environment installation
-- AUR helper installation
-- Disk space usage
-
 #### Files Available After Installation
 
 The installer automatically copies these files to `~/.archinstaller/`:
 - `install.log` - Complete installation log
-- `verify-installation.sh` - Verification script
 - `setup.conf` - Installation configuration (password removed for security)
 
 These files persist even after the installer cleans up temporary files.

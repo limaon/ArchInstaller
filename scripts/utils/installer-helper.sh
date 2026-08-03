@@ -545,12 +545,6 @@ end_script() {
         # Copy installation log
         cp -v "$LOG_FILE" "/mnt/home/$USERNAME/.archinstaller/install.log"
 
-        # Copy verification script
-        if [[ -f "${SCRIPT_DIR}/scripts/verify-installation.sh" ]]; then
-            cp -v "${SCRIPT_DIR}/scripts/verify-installation.sh" "/mnt/home/$USERNAME/.archinstaller/verify-installation.sh"
-            chmod +x "/mnt/home/$USERNAME/.archinstaller/verify-installation.sh"
-        fi
-
         # Copy swap fix script
         if [[ -f "${SCRIPT_DIR}/scripts/fix-swap.sh" ]]; then
             cp -v "${SCRIPT_DIR}/scripts/fix-swap.sh" "/mnt/home/$USERNAME/.archinstaller/fix-swap.sh"

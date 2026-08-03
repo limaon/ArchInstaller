@@ -56,19 +56,8 @@ An automated and interactive Arch Linux installer that transforms the complex ma
 
 ### After Installation
 
-**Verify installation success**:
-```bash
-# Run verification script (as your user)
-~/.archinstaller/verify-installation.sh
-
-# Or connect via SSH (if remote access needed)
-ssh your-username@server-ip
-~/.archinstaller/verify-installation.sh
-```
-
 **Files available in `~/.archinstaller/`**:
 - `install.log` - Complete installation log
-- `verify-installation.sh` - Verification script
 - `setup.conf` - Installation configuration (password removed)
 
 ## Documentation
@@ -135,12 +124,7 @@ When reporting issues, please include:
    grep -A 10 -B 10 "ERROR_MESSAGE" ~/.archinstaller/install.log
    ```
 
-3. **Verification script output**:
-   ```bash
-   ~/.archinstaller/verify-installation.sh
-   ```
-
-4. **System information**:
+3. **System information**:
    - Git commit/branch used
    - Installation environment (VMWare, VirtualBox, QEMU/KVM, Baremetal)
    - If VM: RAM, CPU cores, disk size

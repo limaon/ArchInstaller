@@ -2,47 +2,95 @@
 
 This document explains how to verify if your Arch Linux installation worked correctly after reboot.
 
-## Method 1: Automatic Verification (Recommended)
+## Manual Verification
 
-After logging into your new system:
+After logging into your new system, check the following:
+
+### 1. Check Installation Log
 
 ```bash
-# Run verification script (as your user - uses sudo when needed)
-~/.archinstaller/verify-installation.sh
+# View the installation log
+cat ~/.archinstaller/install.log
 
-# Or if you're already in home directory
-./.archinstaller/verify-installation.sh
+# Check for errors
+grep -i "error\|failed\|fail" ~/.archinstaller/install.log
+
+# Check for warnings
+grep -i "warning" ~/.archinstaller/install.log
 ```
 
-### What the script automatically checks:
-- Checks installation logs for errors
-- Checks system services
-- Checks network and SSH configuration
-- Checks swap configuration
-- Checks user account and permissions
-- Checks desktop environment installation
-- Displays SSH connection information
+### 2. Check System Services
 
-## Method 2: Remote Verification via SSH
-
-The installer automatically configures SSH for remote access. After reboot:
-
-### 1. Find the server IP address:
 ```bash
-# On the newly installed server
+# Check for failed services
+systemctl --failed --no-legend
+
+# Check NetworkManager
+systemctl is-enabled NetworkManager
+systemctl is-active NetworkManager
+
+# Check display manager (lightdm, sddm, or gdm)
+systemctl is-enabled sddm
+systemctl is-active sddm
+```
+
+### 3. Check Network and SSH
+
+```bash
+# Test network connectivity
+ping -c 1 google.com
+
+# Check SSH service
+systemctl is-enabled sshd
+systemctl is-active sshd
+
+# Get IP address for SSH connection
 ip addr show
 # or
 hostname -I
 ```
 
-### 2. Connect remotely (from another machine):
+### 4. Check Swap Configuration
+
 ```bash
-ssh your-user@server-ip-address
+# Check swap status
+swapon --show
+free -h
+
+# Check ZRAM
+zramctl
 ```
 
-### 3. Run verification script:
+### 5. Check User Account
+
 ```bash
-~/.archinstaller/verify-installation.sh
+# Verify user exists
+id $USER
+
+# Check home directory
+ls -la ~/
+
+# Check sudo access
+sudo -v
+```
+
+### 6. Check Desktop Environment
+
+```bash
+# KDE Plasma
+pacman -Q plasma-desktop
+
+# GNOME
+pacman -Q gnome-shell
+
+# i3
+pacman -Q i3-wm
+```
+
+### 7. Check Disk Space
+
+```bash
+df -h /
 ```
 
 ## Files Available After Installation
@@ -50,7 +98,6 @@ ssh your-user@server-ip-address
 The installer automatically copies these files to `~/.archinstaller/`:
 
 - `install.log` - Complete installation log
-- `verify-installation.sh` - Verification script
 - `setup.conf` - Installation configuration (password removed for security)
 
 **Important:** These files persist even after the installer cleans up temporary files.

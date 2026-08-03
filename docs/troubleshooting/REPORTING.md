@@ -43,12 +43,7 @@ cat ~/.archinstaller/setup.conf | grep -v PASSWORD
 grep -A 10 -B 10 "ERROR_MESSAGE" ~/.archinstaller/install.log
 ```
 
-### 3. Verification Script
-```bash
-~/.archinstaller/verify-installation.sh
-```
-
-### 4. System Information
+### 3. System Information
 ```bash
 # Basic system
 uname -a
@@ -354,12 +349,7 @@ Thank you for your time in reporting and helping to improve ArchInstaller! Your 
 grep -A 10 -B 10 "MENSAGEM_DE_ERRO" ~/.archinstaller/install.log
 ```
 
-### 3. Script de Verificação
-```bash
-~/.archinstaller/verify-installation.sh
-```
-
-### 4. Informações do Sistema
+### 3. Informações do Sistema
 ```bash
 # Sistema básico
 uname -a
