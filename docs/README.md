@@ -2,14 +2,12 @@
 
 ## Documentation Index
 
-1. **[ARCHITECTURE.md](ARCHITECTURE.md)** - Complete system architecture
-2. **[USER-GUIDE.md](USER-GUIDE.md)** - Installation and usage guide
+1. **[USER-GUIDE.md](USER-GUIDE.md)** - End-user guide
+2. **[AUTO-SWAP-DETECTION.md](AUTO-SWAP-DETECTION.md)** - Automatic swap detection
 3. **[FUNCTIONS-REFERENCE.md](FUNCTIONS-REFERENCE.md)** - Complete function reference
 4. **[PACKAGE-SYSTEM.md](PACKAGE-SYSTEM.md)** - JSON package system
 5. **[DEVELOPMENT-GUIDE.md](DEVELOPMENT-GUIDE.md)** - Developer guide
 6. **[troubleshooting/](troubleshooting/)** - Complete troubleshooting guide (organized)
-
----
 
 ## What is ArchInstaller?
 
@@ -24,11 +22,10 @@
 - **Snapshot system** (btrfs + Snapper)
 - **Pre-applied themes and configurations**
 
----
-
 ## Quick Start
 
 ### Prerequisites
+
 - Boot into an Arch Linux ISO
 - Internet connection
 - Root privileges
@@ -62,94 +59,159 @@ The installer will ask:
 
 After reviewing the configuration, automatic installation begins!
 
----
-
 ## Project Structure
 
 ```
 ArchInstaller/
-├── archinstall.sh         # Main script
-├── configs/
-│   ├── base/              # Base configs
-│   ├── i3-wm/             # i3-wm configs
-│   ├── kde/               # KDE configs
-│   └── awesome/           # AwesomeWM configs
-├── scripts/               # Installation scripts
-│   └── utils/             # Utility scripts
-├── packages/              # Package definitions (JSON)
-└── docs/                  # Documentation
+|-- archinstall.sh         # Main script
+|-- configs/
+|   |-- base/              # Base configs
+|   |-- i3-wm/             # i3-wm configs
+|   |-- kde/               # KDE configs
+|   |-- awesome/           # AwesomeWM configs
+|-- scripts/               # Installation scripts
+|   +-- utils/             # Utility scripts
+|-- packages/              # Package definitions (JSON)
++-- docs/                  # Documentation
 ```
-
----
 
 ## Execution Flow
 
+The installer follows a **4-phase architecture**. Each phase runs in a different execution context (Live ISO, chroot root, chroot user, chroot root).
+
+### Installation Sequence
+
 ```
-┌─────────────────────────────────────────────────────────────┐
-│  1. archinstall.sh                                          │
-│     - Loads utilities                                       │
-│     - Executes configuration.sh (collect data)              │
-│     - Starts sequence() with 4 phases                       │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│  PHASE 0: 0-preinstall.sh (Live ISO - before chroot)       │
-│     - Updates mirrors                                       │
-│     - Partitions disk (GPT for UEFI/BIOS)                   │
-│     - Creates filesystems (ext4/btrfs/LUKS)                │
-│     - Pacstrap base system                                  │
-│     - Generates fstab                                       │
-│     - Installs bootloader prerequisites (efibootmgr)        │
-│     - Configures intelligent swap (ZRAM/swap file)          │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│  PHASE 1: 1-setup.sh (Chroot as root)                      │
-│     - Installs NetworkManager                               │
-│     - Configures locale, timezone, keymap                   │
-│     - Enables multilib                                      │
-│     - Installs base packages                                │
-│     - Detects and installs microcode (Intel/AMD)            │
-│     - Detects and installs GPU drivers (JSON-based)         │
-│     - Applies themes and configurations                     │
-│     - Configures base skel directory                        │
-│     - Creates user and groups                               │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│  PHASE 2: 2-user.sh (As normal user)                       │
-│     - Installs AUR helper (yay/paru)                        │
-│     - Installs fonts                                        │
-│     - Installs desktop environment                          │
-│     - Configures battery notifications (i3-wm)              │
-│     - Configures auto suspend/hibernate (i3-wm)             │
-│     - Installs btrfs tools                                  │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│  PHASE 3: 3-post-setup.sh (Chroot as root)                 │
-│     - Installs GRUB bootloader (UEFI or Legacy BIOS)        │
-│     - Configures GRUB (theme, splash, hibernation)          │
-│     - Configures display manager (SDDM/GDM/LightDM)        │
-│     - Enables services (NetworkManager, TLP, UFW, etc.)    │
-│     - Configures PAM faillock (5 password attempts)         │
-│     - Configures PipeWire audio server                      │
-│     - Configures root shell                                 │
-│     - Configures SSH server                                 │
-│     - Configures Snapper (snapshots)                        │
-│     - Configures Plymouth (boot splash)                     │
-│     - Cleanup temporary files                               │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-                    INSTALLATION COMPLETE!
-                      Eject ISO and Reboot
+./archinstall.sh
+        |
+        v
+configuration.sh (Interactive wizard)
+        |
+        v
++-------------------+       arch-chroot /mnt
+| Phase 0           |------------+
+| 0-preinstall.sh   |            |
+| Live ISO (root)   |            v
++-------------------+
+
+                    +-------------------+
+                    | Phase 1           |
+                    | 1-setup.sh        |
+                    | chroot (root)     |
+                    +-------------------+
+                            |
+                            | runuser -u $USER
+                            v
+                     +-------------------+
+                     | Phase 2           |
+                     | 2-user.sh         |
+                     | chroot (user)     |
+                     | (skipped SERVER)  |
+                     +-------------------+
+                            |
+                            | arch-chroot /mnt
+                            v
+                     +-------------------+
+                     | Phase 3           |
+                     | 3-post-setup.sh   |
+                     | chroot (root)     |
+                     +-------------------+
+                            |
+                            v
+                          Reboot
 ```
 
----
+### Phase Details
+
+| Phase | Script            | Context            | Key Steps                                                                              |
+| ----- | ----------------- | ------------------ | -------------------------------------------------------------------------------------- |
+| **0** | `0-preinstall.sh` | Live ISO (root)    | Checks, Config, Mirrors, Format, Filesystems, Pacstrap, Fstab, Swap      |
+| **1** | `1-setup.sh`      | chroot /mnt (root) | Network, Locale, Repos, Base pkgs, Microcode, GPU drivers, Theming, User |
+| **2** | `2-user.sh`       | chroot /mnt (user) | AUR helper, Fonts, DE packages, Btrfs pkgs _(skipped for SERVER)_        |
+| **3** | `3-post-setup.sh` | chroot /mnt (root) | GRUB, Display manager, Services, UFW, SSH, Cleanup                       |
+
+### Configuration Wizard
+
+```
+background_checks()
+        |
+        v
+    user_info()
+        |
+        v
+install_type()
+(FULL / MINIMAL / SERVER)
+        |
+        v
+    swap_type()
+        |
+        v
+    +-----------+
+    | SERVER?   |
+    +-----------+
+     /        \
+    No         Yes
+     |          |
+     v          v
+aur_helper()   |
+then           |
+desktop_       |
+env()          |
+     |         |
+     v         v
+    disk_select()
+        |
+        v
+   filesystem()
+(btrfs / ext4 / luks)
+        |
+        v
+  timezone()
+  then locale
+  then keymap
+        |
+        v
+show_configurations()
+        |
+        v
+    setup.conf
+```
+
+### Package Installation Logic
+
+```
+JSON files
+(base.json, DE, gpu-drivers.json)
+        |
+        v
+    Filters:
+.minimal.pacman[] .minimal.aur[]
+.full.pacman[]   .full.aur[]
+        |
+        v
++-------------------+
+| Installed?        |
+| (pacman -Qi)      |
++-------------------+
+    /          \
+   Yes         No
+    |            |
+    v            v
+   Skip    +-------------------+
+           | In repos?         |
+           | (pacman -Si)      |
+           +-------------------+
+              /          \
+             Yes         No
+              |            |
+              v            v
+        pacman -S    AUR helper -S
+```
 
 ## Key Features
 
 ### Automatic Hardware Detection
+
 - **CPU**: Detects Intel or AMD and installs appropriate microcode
 - **GPU**: Detects NVIDIA, AMD, Intel, or VM and installs drivers (JSON-based)
 - **SSD/HDD**: Automatically adjusts mount options and swap strategy
@@ -157,26 +219,28 @@ ArchInstaller/
 - **Memory**: Intelligent swap configuration based on RAM, storage type, and installation type
 
 ### Multiple Filesystem Support
+
 - **ext4**: Simple and reliable
 - **btrfs**: With subvolumes (@, @home, @snapshots, @var_log, etc.)
 - **LUKS**: Full-disk encryption + btrfs
 
 ### Supported Desktop Environments
+
 KDE Plasma, GNOME, XFCE, Cinnamon, i3-wm, Awesome, Openbox, Budgie, Deepin, LXDE, MATE
 
 ### Installation Types
+
 - **FULL**: Complete desktop + applications + themes + extra services
 - **MINIMAL**: Basic desktop without extra apps
 - **SERVER**: CLI only (no desktop environment)
 
 ### Automatic Optimizations
+
 - Parallel compilation based on CPU cores
 - Optimized mirror selection (reflector/rankmirrors)
 - Zstd compression for btrfs
 - Periodic trim for SSDs
 - Pre-configured UFW firewall (FULL)
-
----
 
 ## Saved Configurations
 
@@ -202,32 +266,24 @@ MOUNT_OPTION=defaults,noatime,compress=zstd,ssd,discard=async,commit=120
 
 This file is read by all subsequent scripts, ensuring consistency.
 
----
-
 ## Security Checks
 
 Before execution, the installer verifies:
+
 - Running as root
 - Running on Arch Linux
 - Pacman is not locked
 - Not in a Docker container
 - Partitions are mounted (phases 1-3)
 
----
-
 ## Logs
 
 All output is logged to `install.log` and copied to `/var/log/install.log` in the installed system for future reference.
 
----
-
 ## Next Steps
 
-- Consult **[ARCHITECTURE.md](ARCHITECTURE.md)** to understand the architecture in detail
 - See **[FUNCTIONS-REFERENCE.md](FUNCTIONS-REFERENCE.md)** for complete function list
 - Read **[DEVELOPMENT-GUIDE.md](DEVELOPMENT-GUIDE.md)** to add new features
-
----
 
 ## License
 

@@ -2,8 +2,6 @@
 
 This document is for developers who want to add features, fix bugs, or contribute to ArchInstaller.
 
----
-
 ## Getting Started
 
 ### Prerequisites
@@ -16,12 +14,14 @@ This document is for developers who want to add features, fix bugs, or contribut
 ### Development Setup
 
 1. **Fork and Clone**:
+
    ```bash
    git clone https://github.com/your-username/ArchInstaller
    cd ArchInstaller
    ```
 
 2. **Create Branch**:
+
    ```bash
    git checkout -b feature/my-feature
    ```
@@ -31,23 +31,21 @@ This document is for developers who want to add features, fix bugs, or contribut
    - Boot Arch Linux ISO
    - Clone your fork inside the VM
 
----
-
 ## Code Structure
 
 ### Hierarchy of Responsibilities
 
 ```
 archinstall.sh (orchestrator)
-    ↓
+    |
 configuration.sh (user input)
-    ↓
+    |
 sequence() (phase manager)
-    ├── 0-preinstall.sh (disk setup)
-    ├── 1-setup.sh (system config)
-    ├── 2-user.sh (user apps)
-    └── 3-post-setup.sh (finalization)
-         ↓
+    +-- 0-preinstall.sh (disk setup)
+    +-- 1-setup.sh (system config)
+    +-- 2-user.sh (user apps)
+    +-- 3-post-setup.sh (finalization)
+         |
     utils/*.sh (helper functions)
 ```
 
@@ -69,8 +67,6 @@ sequence() (phase manager)
 
 **packages/\*.json**: Add/remove packages.
 
----
-
 ## Adding Features
 
 ### Feature: New Desktop Environment
@@ -83,21 +79,16 @@ sequence() (phase manager)
 {
   "minimal": {
     "pacman": [
-      {"package": "my-de-core"},
-      {"package": "terminal-emulator"},
-      {"package": "file-manager"},
-      {"package": "display-manager"}
+      { "package": "my-de-core" },
+      { "package": "terminal-emulator" },
+      { "package": "file-manager" },
+      { "package": "display-manager" }
     ],
     "aur": []
   },
   "full": {
-    "pacman": [
-      {"package": "my-de-full"},
-      {"package": "extra-apps"}
-    ],
-    "aur": [
-      {"package": "aur-themes"}
-    ]
+    "pacman": [{ "package": "my-de-full" }, { "package": "extra-apps" }],
+    "aur": [{ "package": "aur-themes" }]
   }
 }
 ```
@@ -118,7 +109,7 @@ elif [[ "${DESKTOP_ENV}" == "my-de" ]]; then
 
 #### 3. (Optional) Theming
 
-If you have dotfiles in `configs/my-de/`, add to `scripts/utils/software-install.sh -> user_theming()`:
+If you have dotfiles in `configs/my-de/`, add to `scripts/utils/software-install.sh (user_theming())`:
 
 ```bash
 elif [[ "$DESKTOP_ENV" == "my-de" ]]; then
@@ -132,8 +123,6 @@ elif [[ "$DESKTOP_ENV" == "my-de" ]]; then
 ./archinstall.sh
 # Select "my-de" from list
 ```
-
----
 
 ### Feature: New Configuration Option
 
@@ -165,7 +154,7 @@ clear
 
 #### 3. Add to Show Configurations
 
-In `scripts/utils/user-options.sh -> show_configurations()`:
+In `scripts/utils/user-options.sh (show_configurations())`:
 
 ```bash
 # In menu
@@ -191,8 +180,6 @@ if [[ "$MY_OPTION" == "Option A" ]]; then
     # Do something
 fi
 ```
-
----
 
 ### Feature: Hardware Detection
 
@@ -239,15 +226,13 @@ In `scripts/1-setup.sh` or `scripts/2-user.sh`:
 touchpad_install
 ```
 
----
-
 ### Feature: New Filesystem
 
 Example: XFS support.
 
 #### 1. Add Option
 
-In `scripts/utils/user-options.sh -> filesystem()`:
+In `scripts/utils/user-options.sh (filesystem())`:
 
 ```bash
 options=("btrfs" "ext4" "xfs" "luks" "exit")
@@ -264,7 +249,7 @@ esac
 
 #### 2. Implement Creation
 
-In `scripts/utils/system-config.sh -> create_filesystems()`:
+In `scripts/utils/system-config.sh (create_filesystems())`:
 
 ```bash
 if [[ "${FS}" == "btrfs" ]]; then
@@ -280,8 +265,6 @@ elif [[ "${FS}" == "luks" ]]; then
     # ...
 fi
 ```
-
----
 
 ## Debugging
 
@@ -327,8 +310,6 @@ Add `-n` flag to critical commands:
 # Doesn't execute, just shows what it would do
 pacman -S firefox --needed -n
 ```
-
----
 
 ## Testing
 
@@ -393,8 +374,6 @@ EOF
 # Mock input
 ./archinstall.sh < test-config.txt
 ```
-
----
 
 ## Code Conventions
 
@@ -483,8 +462,6 @@ microcode_install() {
 }
 ```
 
----
-
 ## Git Workflow
 
 ### Recommended Branching Strategy
@@ -516,7 +493,7 @@ git commit -m "feat(installer): add support for XFS filesystem"
 
 # 3. Push and Pull Request
 git push origin feature/feature-name
-# Create PR: feature/feature-name → develop
+# Create PR: feature/feature-name to develop
 
 # 4. After merge, sync develop
 git checkout develop
@@ -546,19 +523,19 @@ We adopt the **Conventional Commits** specification for standardized and machine
 
 #### Commit Types
 
-| Type | Description | Example |
-|------|-------------|---------|
-| `feat` | New feature | `feat(installer): add ZFS filesystem support` |
-| `fix` | Bug fix | `fix(disk): resolve partition detection on NVMe` |
-| `docs` | Documentation changes | `docs(readme): update installation requirements` |
-| `style` | Formatting, style (no logic) | `style(utils): fix indentation in helper functions` |
-| `refactor` | Code refactoring | `refactor(config): simplify user input validation` |
-| `perf` | Performance improvements | `perf(bootstrap): reduce package download time` |
-| `test` | Add/fix tests | `test(installer): add unit tests for filesystem detection` |
-| `build` | Build/dependencies changes | `build(deps): update jq to latest version` |
-| `ci` | CI/CD changes | `ci(github): add automated testing workflow` |
-| `chore` | Maintenance tasks | `chore(deps): clean up unused dependencies` |
-| `revert` | Revert previous commit | `revert: feat(installer): remove experimental feature` |
+| Type       | Description                  | Example                                                    |
+| ---------- | ---------------------------- | ---------------------------------------------------------- |
+| `feat`     | New feature                  | `feat(installer): add ZFS filesystem support`              |
+| `fix`      | Bug fix                      | `fix(disk): resolve partition detection on NVMe`           |
+| `docs`     | Documentation changes        | `docs(readme): update installation requirements`           |
+| `style`    | Formatting, style (no logic) | `style(utils): fix indentation in helper functions`        |
+| `refactor` | Code refactoring             | `refactor(config): simplify user input validation`         |
+| `perf`     | Performance improvements     | `perf(bootstrap): reduce package download time`            |
+| `test`     | Add/fix tests                | `test(installer): add unit tests for filesystem detection` |
+| `build`    | Build/dependencies changes   | `build(deps): update jq to latest version`                 |
+| `ci`       | CI/CD changes                | `ci(github): add automated testing workflow`               |
+| `chore`    | Maintenance tasks            | `chore(deps): clean up unused dependencies`                |
+| `revert`   | Revert previous commit       | `revert: feat(installer): remove experimental feature`     |
 
 #### Common Scopes for ArchInstaller
 
@@ -642,9 +619,11 @@ release/v2.1.1-rc1
 
 ```markdown
 ## Description
+
 Brief description of the implemented change.
 
 ## Type of Change
+
 - [ ] Bug fix
 - [ ] New feature
 - [ ] Breaking change
@@ -654,23 +633,27 @@ Brief description of the implemented change.
 - [ ] Tests
 
 ## Related Issue
+
 Closes #123 (if applicable)
 
 ## Implemented Changes
+
 - Detailed list of changes
 - Include screenshots if visual change
 - Explain important technical decisions
 
 ## Testing Checklist
+
 - [ ] Tested in VM UEFI
 - [ ] Tested in VM BIOS (if applicable)
 - [ ] Tested MINIMAL installation
 - [ ] Tested FULL installation
 - [ ] Tested SERVER installation
-- [ ] Tested with different filesystems (ext4, btrfs, xfs)
+- [ ] Tested with different filesystems (ext4, btrfs, luks)
 - [ ] Tested different DEs (KDE, GNOME, etc.)
 
 ## Quality Checklist
+
 - [ ] Code follows style guide
 - [ ] Commits follow Conventional Commits
 - [ ] Documentation updated
@@ -679,6 +662,7 @@ Closes #123 (if applicable)
 - [ ] Automated tests pass
 
 ## Release Notes (if applicable)
+
 - Feature: X new functionality
 - Fix: Y bug fixed
 - Breaking: Z breaking change
@@ -687,6 +671,7 @@ Closes #123 (if applicable)
 #### Code Review
 
 **For Reviewers:**
+
 - [ ] Code follows conventions
 - [ ] Functions have clear purpose
 - [ ] No hardcoded values (use variables)
@@ -697,6 +682,7 @@ Closes #123 (if applicable)
 - [ ] Tests mentioned/executed
 
 **For Authors:**
+
 - Respond to all comments
 - Make requested corrections
 - Keep PR updated with main
@@ -743,13 +729,13 @@ jobs:
 # Format: MAJOR.MINOR.PATCH
 
 MAJOR: Breaking changes
-  ex: 1.2.3 → 2.0.0
+  ex: 1.2.3 to 2.0.0
 
 MINOR: New features (backward compatible)
-  ex: 1.2.3 → 1.3.0
+  ex: 1.2.3 to 1.3.0
 
 PATCH: Bug fixes (backward compatible)
-  ex: 1.2.3 → 1.2.4
+  ex: 1.2.3 to 1.2.4
 ```
 
 #### Commit-based Auto-versioning
@@ -864,7 +850,7 @@ git commit -m "feat(installer): add support for XFS filesystem"
 
 # 3. Push e Pull Request
 git push origin feature/nome-da-funcionalidade
-# Criar PR: feature/nome-da-funcionalidade → develop
+# Criar PR: feature/nome-da-funcionalidade to develop
 
 # 4. Após merge, sincronizar develop
 git checkout develop
@@ -894,19 +880,19 @@ Adotamos a especificação **Conventional Commits** para mensagens de commit pad
 
 #### Tipos de Commit
 
-| Tipo | Descrição | Exemplo |
-|------|----------|---------|
-| `feat` | Nova funcionalidade | `feat(installer): add ZFS filesystem support` |
-| `fix` | Correção de bug | `fix(disk): resolve partition detection on NVMe` |
-| `docs` | Mudanças na documentação | `docs(readme): update installation requirements` |
-| `style` | Formatação, estilo (sem lógica) | `style(utils): fix indentation in helper functions` |
-| `refactor` | Refatoração de código | `refactor(config): simplify user input validation` |
-| `perf` | Melhorias de performance | `perf(bootstrap): reduce package download time` |
-| `test` | Adicionar/corrigir testes | `test(installer): add unit tests for filesystem detection` |
-| `build` | Mudanças no build/dependencies | `build(deps): update jq to latest version` |
-| `ci` | Mudanças na CI/CD | `ci(github): add automated testing workflow` |
-| `chore` | Tarefas de manutenção | `chore(deps): clean up unused dependencies` |
-| `revert` | Reverter commit anterior | `revert: feat(installer): remove experimental feature` |
+| Tipo       | Descrição                       | Exemplo                                                    |
+| ---------- | ------------------------------- | ---------------------------------------------------------- |
+| `feat`     | Nova funcionalidade             | `feat(installer): add ZFS filesystem support`              |
+| `fix`      | Correção de bug                 | `fix(disk): resolve partition detection on NVMe`           |
+| `docs`     | Mudanças na documentação        | `docs(readme): update installation requirements`           |
+| `style`    | Formatação, estilo (sem lógica) | `style(utils): fix indentation in helper functions`        |
+| `refactor` | Refatoração de código           | `refactor(config): simplify user input validation`         |
+| `perf`     | Melhorias de performance        | `perf(bootstrap): reduce package download time`            |
+| `test`     | Adicionar/corrigir testes       | `test(installer): add unit tests for filesystem detection` |
+| `build`    | Mudanças no build/dependencies  | `build(deps): update jq to latest version`                 |
+| `ci`       | Mudanças na CI/CD               | `ci(github): add automated testing workflow`               |
+| `chore`    | Tarefas de manutenção           | `chore(deps): clean up unused dependencies`                |
+| `revert`   | Reverter commit anterior        | `revert: feat(installer): remove experimental feature`     |
 
 #### Escopos (Scopes) Comuns para ArchInstaller
 
@@ -990,9 +976,11 @@ release/v2.1.1-rc1
 
 ```markdown
 ## Descrição
+
 Breve descrição da mudança implementada.
 
 ## Tipo de Mudança
+
 - [ ] Bug fix
 - [ ] Nova feature
 - [ ] Breaking change
@@ -1002,23 +990,27 @@ Breve descrição da mudança implementada.
 - [ ] Testes
 
 ## Issue Relacionada
+
 Closes #123 (se aplicável)
 
 ## Mudanças Implementadas
+
 - Lista detalhada das mudanças
 - Incluir screenshots se for mudança visual
 - Explicar decisões técnicas importantes
 
 ## Checklist de Testes
+
 - [ ] Testado em VM UEFI
 - [ ] Testado em VM BIOS (se aplicável)
 - [ ] Testado instalação MINIMAL
 - [ ] Testado instalação FULL
 - [ ] Testado instalação SERVER
-- [ ] Testado com diferentes filesystems (ext4, btrfs, xfs)
+- [ ] Testado com diferentes filesystems (ext4, btrfs, luks)
 - [ ] Testado diferentes DEs (KDE, GNOME, etc.)
 
 ## Checklist de Qualidade
+
 - [ ] Código segue o style guide
 - [ ] Commits seguem Conventional Commits
 - [ ] Documentação atualizada
@@ -1027,6 +1019,7 @@ Closes #123 (se aplicável)
 - [ ] Testes automatizados passam
 
 ## Notas de Release (se aplicável)
+
 - Feature: X nova funcionalidade
 - Fix: Y bug corrigido
 - Breaking: Z mudança quebradora
@@ -1035,6 +1028,7 @@ Closes #123 (se aplicável)
 #### Revisão de Código
 
 **Para Revisores:**
+
 - [ ] Código segue as convenções
 - [ ] Funções têm propósito claro
 - [ ] Sem valores hardcoded (use variáveis)
@@ -1045,6 +1039,7 @@ Closes #123 (se aplicável)
 - [ ] Testes mencionados/executados
 
 **Para Autores:**
+
 - Responda a todos os comentários
 - Faça as correções solicitadas
 - Mantenha o PR atualizado com o main
@@ -1091,13 +1086,13 @@ jobs:
 # Formato: MAJOR.MINOR.PATCH
 
 MAIOR: Mudanças quebradoras (breaking changes)
-  ex: 1.2.3 → 2.0.0
+  ex: 1.2.3 to 2.0.0
 
 MENOR: Novas funcionalidades (backward compatible)
-  ex: 1.2.3 → 1.3.0
+  ex: 1.2.3 to 1.3.0
 
 PATCH: Correções de bugs (backward compatible)
-  ex: 1.2.3 → 1.2.4
+  ex: 1.2.3 to 1.2.4
 ```
 
 #### Auto-versionamento baseado em Commits
@@ -1198,8 +1193,6 @@ git reset --hard HEAD~1
 git rebase -i HEAD~5  # Selecionar "squash" para commits relacionados
 ```
 
----
-
 ## Code Review Checklist
 
 When reviewing PRs:
@@ -1213,8 +1206,6 @@ When reviewing PRs:
 - [ ] Documentation updated
 - [ ] Tests mentioned
 
----
-
 ## Useful Resources
 
 ### Official Documentation
@@ -1227,6 +1218,7 @@ When reviewing PRs:
 ### Tools
 
 - **shellcheck**: Bash linter
+
   ```bash
   shellcheck archinstall.sh
   ```
@@ -1249,8 +1241,6 @@ set -euo pipefail  # Strict mode
 trap 'echo "Error on line $LINENO"' ERR
 ```
 
----
-
 ## Feature Roadmap
 
 ### Planned
@@ -1270,8 +1260,6 @@ trap 'echo "Error on line $LINENO"' ERR
 - [ ] Plugin system
 - [ ] Automatic backup before installation
 
----
-
 ## Contributing
 
 Contributions are welcome! Please:
@@ -1282,14 +1270,11 @@ Contributions are welcome! Please:
 4. Document new features
 5. Be respectful in discussions
 
----
-
 ## Contact
 
 For development questions:
+
 - Open an issue on GitHub
 - Participate in discussions
-
----
 
 Happy coding!

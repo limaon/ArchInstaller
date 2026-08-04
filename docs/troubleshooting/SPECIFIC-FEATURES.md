@@ -299,9 +299,9 @@ systemctl hybrid-sleep               # Suspend + Hibernate
 systemd-inhibit -who='Working' -what='sleep' -why='Compiling' sleep 3600  # Block for 1h
 
 # i3-wm key bindings
-$mod+Control+Delete  → Suspend
-$mod+Control+BackSpace → Hibernate
-$mod+Shift+p          → Battery status
+$mod+Control+Delete: Suspend
+$mod+Control+BackSpace: Hibernate
+$mod+Shift+p: Battery status
 ```
 
 ---

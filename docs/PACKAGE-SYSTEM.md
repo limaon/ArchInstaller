@@ -2,8 +2,6 @@
 
 This document explains how the JSON-based package management system works in ArchInstaller.
 
----
-
 ## Why JSON?
 
 ### Advantages
@@ -23,31 +21,27 @@ This document explains how the JSON-based package management system works in Arc
 
 **Chosen**: JSON + JQ (already available in Arch ISO)
 
----
-
 ## Directory Structure
 
 ```
 packages/
-├── base.json                    # Base system packages
-├── btrfs.json                   # Btrfs tools
-├── desktop-environments/        # One JSON per DE
-│   ├── kde.json
-│   ├── gnome.json
-│   ├── xfce.json
-│   ├── cinnamon.json
-│   ├── i3-wm.json
-│   ├── awesome.json
-│   ├── openbox.json
-│   ├── budgie.json
-│   ├── deepin.json
-│   ├── lxde.json
-│   └── mate.json
-└── optional/
-    └── fonts.json               # System fonts
+|-- base.json                    # Base system packages
+|-- btrfs.json                   # Btrfs tools
+|-- desktop-environments/        # One JSON per DE
+|   |-- kde.json
+|   |-- gnome.json
+|   |-- xfce.json
+|   |-- cinnamon.json
+|   |-- i3-wm.json
+|   |-- awesome.json
+|   |-- openbox.json
+|   |-- budgie.json
+|   |-- deepin.json
+|   |-- lxde.json
+|   |-- mate.json
+|-- optional/
+    +-- fonts.json               # System fonts
 ```
-
----
 
 ## JSON Format
 
@@ -56,20 +50,12 @@ packages/
 ```json
 {
   "minimal": {
-    "pacman": [
-      {"package": "package-name"}
-    ],
-    "aur": [
-      {"package": "aur-package"}
-    ]
+    "pacman": [{ "package": "package-name" }],
+    "aur": [{ "package": "aur-package" }]
   },
   "full": {
-    "pacman": [
-      {"package": "extra-package"}
-    ],
-    "aur": [
-      {"package": "extra-aur-package"}
-    ]
+    "pacman": [{ "package": "extra-package" }],
+    "aur": [{ "package": "extra-aur-package" }]
   }
 }
 ```
@@ -83,8 +69,6 @@ packages/
 - **full**: Complete installation (only if INSTALL_TYPE=FULL)
   - **pacman**: Extra official packages
   - **aur**: Extra AUR packages
-
----
 
 ## base.json
 
@@ -138,8 +122,6 @@ Fundamental system packages (not desktop).
 **Office**: libreoffice-fresh
 **Graphics**: gimp, inkscape
 
----
-
 ## Desktop Environments
 
 Each DE has its own JSON in `desktop-environments/`.
@@ -150,29 +132,27 @@ Each DE has its own JSON in `desktop-environments/`.
 {
   "minimal": {
     "pacman": [
-      {"package": "plasma-desktop"},
-      {"package": "plasma-nm"},
-      {"package": "plasma-pa"},
-      {"package": "konsole"},
-      {"package": "dolphin"},
-      {"package": "sddm"}
+      { "package": "plasma-desktop" },
+      { "package": "plasma-nm" },
+      { "package": "plasma-pa" },
+      { "package": "konsole" },
+      { "package": "dolphin" },
+      { "package": "sddm" }
     ],
     "aur": []
   },
   "full": {
     "pacman": [
-      {"package": "plasma-meta"},
-      {"package": "kde-applications-meta"},
-      {"package": "kdenlive"},
-      {"package": "krita"},
-      {"package": "ark"},
-      {"package": "gwenview"},
-      {"package": "okular"},
-      {"package": "spectacle"}
+      { "package": "plasma-meta" },
+      { "package": "kde-applications-meta" },
+      { "package": "kdenlive" },
+      { "package": "krita" },
+      { "package": "ark" },
+      { "package": "gwenview" },
+      { "package": "okular" },
+      { "package": "spectacle" }
     ],
-    "aur": [
-      {"package": "sddm-theme-nordic-git"}
-    ]
+    "aur": [{ "package": "sddm-theme-nordic-git" }]
   }
 }
 ```
@@ -180,6 +160,7 @@ Each DE has its own JSON in `desktop-environments/`.
 ### Recommended Structure
 
 **minimal.pacman**:
+
 - Meta-package or core DE packages
 - Display manager (sddm, gdm, lightdm)
 - Terminal emulator
@@ -188,17 +169,17 @@ Each DE has its own JSON in `desktop-environments/`.
 - Audio applet
 
 **full.pacman**:
+
 - Complete meta-package
 - Ecosystem applications
 - Productivity tools
 - Extras and plugins
 
 **full.aur**:
+
 - Custom themes
 - Unofficial plugins
 - Community-specific apps
-
----
 
 ### Example: i3-wm.json
 
@@ -206,38 +187,33 @@ Each DE has its own JSON in `desktop-environments/`.
 {
   "minimal": {
     "pacman": [
-      {"package": "i3-wm"},
-      {"package": "i3status"},
-      {"package": "i3lock"},
-      {"package": "dmenu"},
-      {"package": "xorg-server"},
-      {"package": "xorg-xinit"},
-      {"package": "alacritty"},
-      {"package": "thunar"},
-      {"package": "lightdm"},
-      {"package": "lightdm-gtk-greeter"}
+      { "package": "i3-wm" },
+      { "package": "i3status" },
+      { "package": "i3lock" },
+      { "package": "dmenu" },
+      { "package": "xorg-server" },
+      { "package": "xorg-xinit" },
+      { "package": "alacritty" },
+      { "package": "thunar" },
+      { "package": "lightdm" },
+      { "package": "lightdm-gtk-greeter" }
     ],
     "aur": []
   },
   "full": {
     "pacman": [
-      {"package": "rofi"},
-      {"package": "polybar"},
-      {"package": "picom"},
-      {"package": "nitrogen"},
-      {"package": "dunst"},
-      {"package": "feh"},
-      {"package": "scrot"}
+      { "package": "rofi" },
+      { "package": "polybar" },
+      { "package": "picom" },
+      { "package": "nitrogen" },
+      { "package": "dunst" },
+      { "package": "feh" },
+      { "package": "scrot" }
     ],
-    "aur": [
-      {"package": "i3-gaps-git"},
-      {"package": "autotiling"}
-    ]
+    "aur": [{ "package": "i3-gaps-git" }, { "package": "autotiling" }]
   }
 }
 ```
-
----
 
 ## fonts.json
 
@@ -248,23 +224,18 @@ System fonts (FULL install only).
 ```json
 {
   "pacman": [
-    {"package": "ttf-dejavu"},
-    {"package": "ttf-liberation"},
-    {"package": "noto-fonts"},
-    {"package": "noto-fonts-emoji"},
-    {"package": "ttf-hack"},
-    {"package": "ttf-fira-code"}
+    { "package": "ttf-dejavu" },
+    { "package": "ttf-liberation" },
+    { "package": "noto-fonts" },
+    { "package": "noto-fonts-emoji" },
+    { "package": "ttf-hack" },
+    { "package": "ttf-fira-code" }
   ],
-  "aur": [
-    {"package": "ttf-ms-fonts"},
-    {"package": "nerd-fonts-complete"}
-  ]
+  "aur": [{ "package": "ttf-ms-fonts" }, { "package": "nerd-fonts-complete" }]
 }
 ```
 
 **Note**: No minimal/full separation - either installs all or nothing.
-
----
 
 ## btrfs.json
 
@@ -275,31 +246,28 @@ Btrfs-specific tools (only installs if FS=btrfs).
 ```json
 {
   "pacman": [
-    {"package": "btrfs-progs"},
-    {"package": "snapper"},
-    {"package": "snap-pac"},
-    {"package": "grub-btrfs"}
+    { "package": "btrfs-progs" },
+    { "package": "snapper" },
+    { "package": "snap-pac" },
+    { "package": "grub-btrfs" }
   ],
-  "aur": [
-    {"package": "snapper-gui-git"}
-  ]
+  "aur": [{ "package": "snapper-gui-git" }]
 }
 ```
 
 **Packages**:
+
 - **btrfs-progs**: Btrfs utilities
 - **snapper**: Snapshot management
 - **snap-pac**: Automatic snapshots when using pacman
 - **grub-btrfs**: Boot from snapshots via GRUB
-
----
 
 ## JQ Queries
 
 ### Installation Logic
 
 ```bash
-# Example from software-install.sh -> desktop_environment_install()
+# Example from software-install.sh (desktop_environment_install())
 
 # Define filters based on INSTALL_TYPE and AUR_HELPER
 MINIMAL_PACMAN_FILTER=".minimal.pacman[].package"
@@ -334,6 +302,7 @@ done
 ```
 
 **Key Features**:
+
 - **Intelligent source detection**: Automatically detects if package is from official repo or AUR
 - **Proper permissions**: Official packages use `sudo pacman -S`, AUR packages use AUR helper
 - **Error handling**: Provides clear error messages if installation fails
@@ -343,27 +312,29 @@ done
 ### Common Queries
 
 **Pacman minimal only**:
+
 ```bash
 jq -r '.minimal.pacman[].package' base.json
 ```
 
 **Pacman minimal + full**:
+
 ```bash
 jq -r '.minimal.pacman[].package, .full.pacman[].package' base.json
 ```
 
 **Everything (pacman + aur)**:
+
 ```bash
 jq -r '.minimal.pacman[].package, .minimal.aur[].package,
        .full.pacman[].package, .full.aur[].package' base.json
 ```
 
 **AUR only**:
+
 ```bash
 jq -r '.minimal.aur[].package, .full.aur[].package' base.json
 ```
-
----
 
 ## Adding New Desktop Environment
 
@@ -375,28 +346,23 @@ Create `packages/desktop-environments/my-de.json`:
 {
   "minimal": {
     "pacman": [
-      {"package": "my-de-core"},
-      {"package": "display-manager"},
-      {"package": "terminal"},
-      {"package": "file-manager"}
+      { "package": "my-de-core" },
+      { "package": "display-manager" },
+      { "package": "terminal" },
+      { "package": "file-manager" }
     ],
     "aur": []
   },
   "full": {
-    "pacman": [
-      {"package": "my-de-apps"},
-      {"package": "extras"}
-    ],
-    "aur": [
-      {"package": "custom-themes"}
-    ]
+    "pacman": [{ "package": "my-de-apps" }, { "package": "extras" }],
+    "aur": [{ "package": "custom-themes" }]
   }
 }
 ```
 
 ### Step 2: Configure Display Manager
 
-In `system-config.sh -> display_manager()`:
+In `system-config.sh (display_manager())`:
 
 ```bash
 elif [[ "${DESKTOP_ENV}" == "my-de" ]]; then
@@ -410,7 +376,7 @@ elif [[ "${DESKTOP_ENV}" == "my-de" ]]; then
 
 ### Step 3: (Optional) Add Theming
 
-In `software-install.sh -> user_theming()`:
+In `software-install.sh (user_theming())`:
 
 ```bash
 elif [[ "$DESKTOP_ENV" == "my-de" ]]; then
@@ -427,50 +393,51 @@ elif [[ "$DESKTOP_ENV" == "my-de" ]]; then
 
 The installer will detect the new JSON automatically!
 
----
-
 ## Package Installation Flow
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│ 1. Determine INSTALL_TYPE (MINIMAL, FULL, SERVER)      │
-└───────────────────┬─────────────────────────────────────┘
-                    ↓
-┌─────────────────────────────────────────────────────────┐
-│ 2. Determine AUR_HELPER (yay, paru, NONE)              │
-└───────────────────┬─────────────────────────────────────┘
-                    ↓
-┌─────────────────────────────────────────────────────────┐
-│ 3. Build JQ filters                                     │
-│    MINIMAL: .minimal.pacman[].package                   │
-│    FULL:    + .full.pacman[].package                    │
-│    AUR:     + .minimal.aur[].package                    │
-│             + .full.aur[].package (if FULL)             │
-└───────────────────┬─────────────────────────────────────┘
-                    ↓
-┌─────────────────────────────────────────────────────────┐
-│ 4. Read appropriate JSON                                │
-│    - base.json                                          │
-│    - desktop-environments/$DESKTOP_ENV.json             │
-│    - fonts.json (if not SERVER)                         │
-│    - btrfs.json (if FS=btrfs)                           │
-└───────────────────┬─────────────────────────────────────┘
-                    ↓
-┌─────────────────────────────────────────────────────────┐
-│ 5. Apply JQ filter and extract packages                │
-└───────────────────┬─────────────────────────────────────┘
-                    ↓
-┌─────────────────────────────────────────────────────────┐
-│ 6. For each package:                                    │
-│    a. Check if already installed (skip if yes)          │
-│    b. Detect source: pacman -Si $package                │
-│       - If YES → sudo pacman -S $package                │
-│       - If NO  → $AUR_HELPER -S $package                │
-│    c. Handle errors and warnings                        │
-└─────────────────────────────────────────────────────────┘
++-----------------------------------------------------------+
+| 1. Determine INSTALL_TYPE (MINIMAL, FULL, SERVER)         |
++-----------------------------------------------------------+
+                             |
+                             v
++-----------------------------------------------------------+
+| 2. Determine AUR_HELPER (yay, paru, NONE)                 |
++-----------------------------------------------------------+
+                             |
+                             v
++-----------------------------------------------------------+
+| 3. Build JQ filters                                       |
+|    MINIMAL: .minimal.pacman[].package                     |
+|    FULL:    + .full.pacman[].package                      |
+|    AUR:     + .minimal.aur[].package                      |
+|             + .full.aur[].package (if FULL)               |
++-----------------------------------------------------------+
+                             |
+                             v
++-----------------------------------------------------------+
+| 4. Read appropriate JSON                                  |
+|    - base.json                                            |
+|    - desktop-environments/$DESKTOP_ENV.json               |
+|    - fonts.json (if not SERVER)                           |
+|    - btrfs.json (if FS=btrfs)                             |
++-----------------------------------------------------------+
+                             |
+                             v
++-----------------------------------------------------------+
+| 5. Apply JQ filter and extract packages                   |
++-----------------------------------------------------------+
+                             |
+                             v
++-----------------------------------------------------------+
+| 6. For each package:                                      |
+|    a. Check if already installed (skip if yes)            |
+|    b. Detect source: pacman -Si $package                  |
+|       - If YES: sudo pacman -S $package                   |
+|       - If NO:  $AUR_HELPER -S $package                   |
+|    c. Handle errors and warnings                          |
++-----------------------------------------------------------+
 ```
-
----
 
 ## Best Practices
 
@@ -483,8 +450,8 @@ The installer will detect the new JSON automatically!
 ```json
 {
   "pacman": [
-    {"package": "firefox", "description": "Main browser"},
-    {"package": "thunderbird", "description": "Email client"}
+    { "package": "firefox", "description": "Main browser" },
+    { "package": "thunderbird", "description": "Email client" }
   ]
 }
 ```
@@ -492,6 +459,7 @@ The installer will detect the new JSON automatically!
 ### 2. Dependencies
 
 JQ doesn't validate dependencies. Ensure:
+
 - Base packages before extras
 - Display manager included in DE
 - Audio/video drivers in minimal
@@ -504,10 +472,9 @@ JQ doesn't validate dependencies. Ensure:
 ### 4. Testing
 
 Always test both:
+
 - MINIMAL install (fast, functional)
 - FULL install (complete, may be slow)
-
----
 
 ## Maintenance
 
@@ -541,8 +508,6 @@ Move package from `minimal` to `full` or vice versa.
 ```bash
 jq . packages/base.json > /dev/null && echo "Valid JSON" || echo "Invalid JSON"
 ```
-
----
 
 ## Usage Examples
 
@@ -580,7 +545,5 @@ for json in packages/**/*.json; do
     jq . "$json" > /dev/null && echo "✓ $json" || echo "✗ $json"
 done
 ```
-
----
 
 This system allows easy customization and maintenance of package lists without touching bash code!

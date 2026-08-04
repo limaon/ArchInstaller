@@ -63,10 +63,7 @@ An automated and interactive Arch Linux installer that transforms the complex ma
 ## Documentation
 
 - **[Complete Documentation](docs/README.md)** - Overview and index
-- **[User Guide](docs/USER-GUIDE.md)** - Step-by-step installation guide
-- **[Architecture](docs/ARCHITECTURE.md)** - System architecture details
 - **[Functions Reference](docs/FUNCTIONS-REFERENCE.md)** - Complete function documentation
-- **[Troubleshooting Guide](docs/TROUBLESHOOTING.md)** - Common issues and solutions
 - **[Package System](docs/PACKAGE-SYSTEM.md)** - JSON package management
 
 ## Troubleshooting
@@ -130,7 +127,7 @@ When reporting issues, please include:
    - If VM: RAM, CPU cores, disk size
    - Hardware specs (if relevant)
 
-5. **Error details**:
+4. **Error details**:
    - What step failed
    - Error messages
    - Screenshots (if applicable)
