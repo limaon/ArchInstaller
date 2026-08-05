@@ -1054,20 +1054,29 @@ grub_config() {
     cp -an /etc/default/grub /etc/default/grub.bak
 
     # Configure resume parameter for hibernation (if swap file exists)
-    if [[ -f /swapfile ]]; then
+    # Check both paths: /swapfile (ext4) and /swap/swapfile (btrfs @swap subvolume)
+    local SWAP_PATH=""
+    if [[ -f /swap/swapfile ]]; then
+        SWAP_PATH="/swap/swapfile"
+    elif [[ -f /swapfile ]]; then
+        SWAP_PATH="/swapfile"
+    fi
+
+    if [[ -n "$SWAP_PATH" ]]; then
         echo -e "\nConfiguring GRUB for hibernation support..."
+        echo "Swap file found at: $SWAP_PATH"
 
         # Method 1: Try to get UUID of swap file using blkid
-        SWAP_UUID=$(blkid -s UUID -o value /swapfile 2>/dev/null)
+        SWAP_UUID=$(blkid -s UUID -o value "$SWAP_PATH" 2>/dev/null)
 
         # Method 2: If blkid fails, try to get UUID from swapon output
         if [[ -z "$SWAP_UUID" ]]; then
-            SWAP_UUID=$(swapon --show=UUID --noheadings /swapfile 2>/dev/null | tr -d '[:space:]')
+            SWAP_UUID=$(swapon --show=UUID --noheadings "$SWAP_PATH" 2>/dev/null | tr -d '[:space:]')
         fi
 
         # Method 3: If still no UUID, try findmnt (requires swap to be mounted)
         if [[ -z "$SWAP_UUID" ]]; then
-            SWAP_UUID=$(findmnt -no UUID -T /swapfile 2>/dev/null)
+            SWAP_UUID=$(findmnt -no UUID -T "$SWAP_PATH" 2>/dev/null)
         fi
 
         # Method 4: Use file path as fallback (per ArchWiki: resume=/swapfile)
@@ -1078,9 +1087,9 @@ grub_config() {
             echo "Detected swap file UUID: $SWAP_UUID"
         else
             # Fallback: use file path directly (works but UUID is preferred)
-            RESUME_PARAM="resume=/swapfile"
+            RESUME_PARAM="resume=$SWAP_PATH"
             echo "Warning: Could not detect swap file UUID, using file path as fallback"
-            echo "         Using: resume=/swapfile"
+            echo "         Using: resume=$SWAP_PATH"
         fi
 
         # Check if resume parameter already exists (any form)
@@ -1099,7 +1108,7 @@ grub_config() {
             echo "  Current resume parameter: $(grep -oP 'resume=[^\s"]*' /etc/default/grub | head -n1)"
         fi
     else
-        echo -e "\nNo swap file found (/swapfile). Skipping hibernation configuration."
+        echo -e "\nNo swap file found (/swapfile or /swap/swapfile). Skipping hibernation configuration."
         echo "Note: Hibernation requires a swap file or swap partition"
     fi
 
