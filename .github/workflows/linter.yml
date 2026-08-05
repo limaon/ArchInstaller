@@ -42,4 +42,5 @@ jobs:
           VALIDATE_ALL_CODEBASE: false
           VALIDATE_BASH: true
           VALIDATE_SHELL_SHFMT: true
+          BASH_SEVERITY: error
           FILTER_REGEX_EXCLUDE: "^(docs/|packages/.*\\.md)$"
