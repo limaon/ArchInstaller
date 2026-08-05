@@ -18,8 +18,7 @@
         { "package": "xorg-server" },
         { "package": "xorg-xinit" }
       ],
-      "aur": [],
-      "post_install": ["nvidia-xconfig"]
+      "aur": []
     },
     "open-dkms": {
       "pacman": [
@@ -31,8 +30,7 @@
         { "package": "xorg-server" },
         { "package": "xorg-xinit" }
       ],
-      "aur": [],
-      "post_install": ["nvidia-xconfig"]
+      "aur": []
     },
     "nouveau": {
       "pacman": [
@@ -43,8 +41,7 @@
         { "package": "xorg-server" },
         { "package": "xorg-xinit" }
       ],
-      "aur": [],
-      "post_install": []
+      "aur": []
     }
   },
   "amd": {
@@ -57,8 +54,7 @@
       { "package": "xorg-server" },
       { "package": "xorg-xinit" }
     ],
-    "aur": [],
-    "post_install": []
+    "aur": []
   },
   "intel": {
     "pacman": [
@@ -69,8 +65,7 @@
       { "package": "xorg-server" },
       { "package": "xorg-xinit" }
     ],
-    "aur": [],
-    "post_install": []
+    "aur": []
   },
   "hybrid": {
     "nvidia-intel": {
@@ -88,8 +83,7 @@
           { "package": "xorg-server" },
           { "package": "xorg-xinit" }
         ],
-        "aur": [],
-        "post_install": ["nvidia-xconfig"]
+        "aur": []
       },
       "open-dkms": {
         "pacman": [
@@ -105,8 +99,7 @@
           { "package": "xorg-server" },
           { "package": "xorg-xinit" }
         ],
-        "aur": [],
-        "post_install": ["nvidia-xconfig"]
+        "aur": []
       },
       "nouveau": {
         "pacman": [
@@ -120,18 +113,8 @@
           { "package": "xorg-server" },
           { "package": "xorg-xinit" }
         ],
-        "aur": [],
-        "post_install": []
+        "aur": []
       }
     }
-  },
-  "fallback": {
-    "pacman": [
-      { "package": "mesa" },
-      { "package": "xorg-server" },
-      { "package": "xorg-xinit" }
-    ],
-    "aur": [],
-    "post_install": []
   }
 }

@@ -318,20 +318,16 @@ install_gpu_from_json() {
 
     # Build JQ filter based on GPU type and variant
     local jq_filter=""
-    local post_install_filter=""
 
     if [[ "$gpu_type" == "hybrid" ]]; then
         # Hybrid: .hybrid.nvidia-intel.proprietary.pacman[].package
         jq_filter=".hybrid.nvidia-intel.${nvidia_type}.pacman[].package"
-        post_install_filter=".hybrid.nvidia-intel.${nvidia_type}.post_install[]?"
     elif [[ "$gpu_type" == "nvidia" ]]; then
         # NVIDIA: .nvidia.proprietary.pacman[].package
         jq_filter=".nvidia.${driver_variant}.pacman[].package"
-        post_install_filter=".nvidia.${driver_variant}.post_install[]?"
     else
         # Simple types: .amd.pacman[].package
         jq_filter=".${gpu_type}.pacman[].package"
-        post_install_filter=".${gpu_type}.post_install[]?"
     fi
 
     # Extract packages using JQ
@@ -358,21 +354,6 @@ install_gpu_from_json() {
     if [[ $failed -gt 0 ]]; then
         echo "Warning: $failed package(s) failed to install"
     fi
-
-    # Execute post-installation commands
-    local post_commands=()
-    while IFS= read -r cmd; do
-        [[ -n "$cmd" ]] && post_commands+=("$cmd")
-    done < <(jq --raw-output "$post_install_filter" "$json_file" 2>/dev/null)
-
-    for cmd in "${post_commands[@]}"; do
-        echo "Running post-installation: $cmd"
-        if command -v "$cmd" &>/dev/null; then
-            $cmd || echo "Warning: $cmd failed (may need reboot)"
-        else
-            echo "Warning: Command $cmd not found"
-        fi
-    done
 
     # Save configuration
     set_option GPU_TYPE "$gpu_type"
