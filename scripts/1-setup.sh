@@ -48,7 +48,9 @@ microcode_install
 
 # Detects the GPU type using lspci and installs the appropriate
 # graphics drivers for NVIDIA, AMD, or Intel graphics on 'software-install.sh'
-graphics_install
+if [[ "$INSTALL_TYPE" != "SERVER" ]]; then
+    graphics_install
+fi
 
 # Function to apply desktop environment theming based on user selection
 # during FULL installation on 'software-install.sh'
