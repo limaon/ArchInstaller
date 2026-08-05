@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Simple power status script using built-in tools
 
 show_power_status() {
