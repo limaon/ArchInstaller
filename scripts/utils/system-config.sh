@@ -168,14 +168,35 @@ create_filesystems() {
 # @description Detect if system is running in a virtual machine/container
 # @noargs
 detect_vm() {
-    if systemd-detect-virt -q 2>/dev/null; then
-        VIRT_TYPE=$(systemd-detect-virt 2>/dev/null)
-        echo "$VIRT_TYPE"
-        return 0
-    else
-        echo "none"
-        return 1
+    # Try systemd-detect-virt first (most reliable)
+    if command -v systemd-detect-virt &>/dev/null; then
+        if systemd-detect-virt -q 2>/dev/null; then
+            VIRT_TYPE=$(systemd-detect-virt 2>/dev/null)
+            echo "$VIRT_TYPE"
+            return 0
+        fi
     fi
+
+    # Fallback: check DMI product name
+    if [[ -f /sys/class/dmi/id/product_name ]]; then
+        local product_name
+        product_name=$(cat /sys/class/dmi/id/product_name 2>/dev/null)
+        case "$product_name" in
+        *VirtualBox* | *VMware* | *QEMU* | *KVM* | *Bochs*)
+            echo "${product_name,,}"
+            return 0
+            ;;
+        esac
+    fi
+
+    # Fallback: check lspci for virtual graphics
+    if lspci 2>/dev/null | grep -iE "VirtualBox|VMware|QEMU|Virtio" &>/dev/null; then
+        echo "virtual"
+        return 0
+    fi
+
+    echo "none"
+    return 1
 }
 
 # @description Detect if system is a laptop (has battery)

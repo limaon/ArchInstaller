@@ -188,28 +188,6 @@ microcode_install() {
     fi
 }
 
-# @description Detect if running in virtual machine
-# @noargs
-# @return 0 if VM detected, 1 otherwise
-detect_vm() {
-    # Check DMI product name
-    if [[ -f /sys/class/dmi/id/product_name ]]; then
-        local product_name=$(cat /sys/class/dmi/id/product_name 2>/dev/null)
-        case "$product_name" in
-        *VirtualBox* | *VMware* | *QEMU* | *KVM* | *Bochs*)
-            return 0
-            ;;
-        esac
-    fi
-
-    # Check lspci for virtual graphics
-    if lspci | grep -iE "VirtualBox|VMware|QEMU|Virtio" &>/dev/null; then
-        return 0
-    fi
-
-    return 1
-}
-
 # @description Detect GPU type from lspci
 # @noargs
 # @stdout GPU type: nvidia, amd, intel, unknown
