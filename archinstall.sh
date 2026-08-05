@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #github-action genshdoc
 #
 # @file archinstall.sh
