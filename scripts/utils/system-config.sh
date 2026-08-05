@@ -1301,7 +1301,7 @@ greeter-setup-script=/usr/bin/xset -b" >/etc/lightdm/lightdm.conf
         base_greeter_config["user-background"]="false"
         base_greeter_config["draw-user-backgrounds"]="false"
         # Dark theme configuration (using Adwaita-dark theme)
-        base_greeter_config["icon-theme-name"]="zafiro-dark"
+        base_greeter_config["icon-theme-name"]="Pop"
         base_greeter_config["cursor-theme-name"]="Adwaita"
         base_greeter_config["theme-name"]="Adwaita-dark"
 
