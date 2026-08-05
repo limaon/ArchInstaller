@@ -6,8 +6,7 @@
 # @stdout Output routed to install.log
 # @stderror Output routed to install.log
 
-
-# @description Update mirrorlist to improve download speeds using rankmirrors if reflector is unavailable
+# @description Update mirrorlist to improve download speeds using rate-mirrors
 # @noargs
 mirrorlist_update() {
     # shellcheck disable=SC1009,SC1073
@@ -15,60 +14,28 @@ mirrorlist_update() {
 
     cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
 
-    # Use reflector if available and working, otherwise fall back to rankmirrors
-    if command -v reflector &> /dev/null; then
-        echo -ne "
--------------------------------------------------------------------------
-                    Setting up mirrors for faster downloads (reflector)
--------------------------------------------------------------------------
-"
-        # Set default country if iso variable is empty
-        local country="${iso:-US}"
-        echo "Using country code: $country"
+    # Set default country if iso variable is empty
+    local country="${iso:-US}"
 
-        # Try to use reflector with error handling
-        # Capture stderr to see actual error messages
-        if reflector_error=$(reflector -a 48 -c "$country" -f 5 -l 20 --sort rate --save /etc/pacman.d/mirrorlist 2>&1); then
-            echo "Mirror list updated successfully using reflector"
-        else
-            echo "Warning: reflector failed with error:"
-            echo "$reflector_error"
-            echo "Falling back to rankmirrors"
-            mirrorlist_rankmirrors_fallback
-        fi
-    else
-        echo "Warning: reflector not found, using rankmirrors"
-        mirrorlist_rankmirrors_fallback
-    fi
-}
-
-
-# @description Fallback method using rankmirrors when reflector is unavailable
-# @noargs
-mirrorlist_rankmirrors_fallback() {
     echo -ne "
 -------------------------------------------------------------------------
-                    Setting up mirrors using rankmirrors
+            Setting up mirrors for faster downloads (rate-mirrors)
 -------------------------------------------------------------------------
 "
-    # Get mirror list and rank by speed
-    curl -s 'https://archlinux.org/mirrorlist/?country=US&country=BR&country=DE&protocol=https&ip_version=4&ip_version=6' > /tmp/mirrorlist.new
+    echo "Using country code: $country"
 
-    # Uncomment servers and rank them
-    sed -i 's/^#Server/Server/' /tmp/mirrorlist.new
-
-    if command -v rankmirrors &> /dev/null; then
-        echo "Testing mirrors and ranking by speed..."
-        rankmirrors -n 10 -m 5 -v -w /tmp/mirrorlist.new > /etc/pacman.d/mirrorlist
+    # Use rate-mirrors to find and rank fastest mirrors
+    # --entry-country: starting country for geographic search
+    # --disable-comments: output only Server lines (clean mirrorlist)
+    # --save: write mirrorlist to file
+    # --allow-root: allow running as root
+    if rate-mirrors --entry-country "$country" --disable-comments --save /etc/pacman.d/mirrorlist --allow-root arch 2>/dev/null; then
+        echo "Mirror list updated successfully using rate-mirrors"
     else
-        # If rankmirrors is also not available, just use the new list
-        mv /tmp/mirrorlist.new /etc/pacman.d/mirrorlist
+        echo "Warning: rate-mirrors failed, keeping existing mirrorlist"
+        cp /etc/pacman.d/mirrorlist.backup /etc/pacman.d/mirrorlist
     fi
-
-    rm -f /tmp/mirrorlist.new
-    echo "Mirror list updated using rankmirrors"
 }
-
 
 # @description Format disk before creating filesystem(s)
 # @noargs
@@ -114,7 +81,7 @@ format_disk() {
             # Calculate available space after EFI partition
             available_bytes=$((disk_size_bytes - efi_size_bytes))
             # Calculate root partition size based on percentage of available space
-            root_size_mb=$(( (available_bytes * disk_percent) / 100 / 1024 / 1024 ))
+            root_size_mb=$(((available_bytes * disk_percent) / 100 / 1024 / 1024))
             sgdisk -n 2::+${root_size_mb}M --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
         fi
     else
@@ -133,7 +100,7 @@ format_disk() {
             # Calculate available space after BIOS Boot partition
             available_bytes=$((disk_size_bytes - bios_boot_size_bytes))
             # Calculate root partition size based on percentage of available space
-            root_size_mb=$(( (available_bytes * disk_percent) / 100 / 1024 / 1024 ))
+            root_size_mb=$(((available_bytes * disk_percent) / 100 / 1024 / 1024))
             sgdisk -n 2::+${root_size_mb}M --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
         fi
 
@@ -144,7 +111,6 @@ format_disk() {
 
     set +e
 }
-
 
 # @description Create the filesystem on the drive selected for installation
 # @noargs
@@ -199,7 +165,6 @@ create_filesystems() {
     set +e
 }
 
-
 # @description Detect if system is running in a virtual machine/container
 # @noargs
 detect_vm() {
@@ -213,7 +178,6 @@ detect_vm() {
     fi
 }
 
-
 # @description Detect if system is a laptop (has battery)
 # @noargs
 detect_laptop() {
@@ -224,17 +188,14 @@ detect_laptop() {
     fi
 }
 
-
 # @description Get CPU core count
 # @noargs
 get_cpu_cores() {
     grep -c ^processor /proc/cpuinfo
 }
 
-
 # @description Perform btrfs filesystem configuration
 # @noargs
-
 
 # @description Intelligently configure swap based on system hardware
 # Analyzes RAM, storage type, disk space, and installation type to choose optimal swap strategy
@@ -280,7 +241,7 @@ low_memory_config() {
         DISK_SIZE_BYTES=$(blockdev --getsize64 "${DISK}" 2>/dev/null || echo "0")
         DISK_SIZE_GB=$((DISK_SIZE_BYTES / 1024 / 1024 / 1024))
         DISK_PERCENT="${DISK_USAGE_PERCENT:-100}"
-        USED_GB=$(( (DISK_SIZE_GB * DISK_PERCENT) / 100 ))
+        USED_GB=$(((DISK_SIZE_GB * DISK_PERCENT) / 100))
         AVAILABLE_SPACE_GB=$((DISK_SIZE_GB - USED_GB))
     fi
 
@@ -345,109 +306,109 @@ low_memory_config() {
     # Priority 3: By installation type
     else
         case "$INSTALL_TYPE" in
-            "SERVER")
-                # Server logic: Performance is critical
-                if [[ $TOTAL_MEM_GB -lt 4 ]]; then
+        "SERVER")
+            # Server logic: Performance is critical
+            if [[ $TOTAL_MEM_GB -lt 4 ]]; then
+                USE_ZRAM=true
+                USE_SWAPFILE=true
+                ZRAM_MULTIPLIER=2
+                SWAP_SIZE_GB=4
+                SWAP_STRATEGY="SERVER_CRITICAL"
+                echo "Strategy: Server with critical RAM (${TOTAL_MEM_GB}GB) - ZRAM + Swapfile"
+                echo "  - ZRAM: 2x RAM ($(echo "$TOTAL_MEM_GB * 2" | bc)GB) to avoid OOM"
+                echo "  - Swapfile: 4GB as emergency backup"
+            elif [[ $TOTAL_MEM_GB -lt 16 ]]; then
+                if [[ $IS_SSD -eq 1 ]]; then
+                    USE_ZRAM=true
+                    ZRAM_MULTIPLIER=2
+                    SWAP_STRATEGY="SERVER_SSD_OPTIMAL"
+                    echo "Strategy: Server with SSD (${TOTAL_MEM_GB}GB RAM) - ZRAM Only"
+                    echo "  - ZRAM: 2x RAM ($(echo "$TOTAL_MEM_GB * 2" | bc)GB) for optimal performance"
+                    echo "  - Swapfile: Disabled (SSD swap is slow, causes I/O bottleneck)"
+                else
                     USE_ZRAM=true
                     USE_SWAPFILE=true
                     ZRAM_MULTIPLIER=2
                     SWAP_SIZE_GB=4
-                    SWAP_STRATEGY="SERVER_CRITICAL"
-                    echo "Strategy: Server with critical RAM (${TOTAL_MEM_GB}GB) - ZRAM + Swapfile"
-                    echo "  - ZRAM: 2x RAM ($(echo "$TOTAL_MEM_GB * 2" | bc)GB) to avoid OOM"
-                    echo "  - Swapfile: 4GB as emergency backup"
-                elif [[ $TOTAL_MEM_GB -lt 16 ]]; then
-                    if [[ $IS_SSD -eq 1 ]]; then
-                        USE_ZRAM=true
-                        ZRAM_MULTIPLIER=2
-                        SWAP_STRATEGY="SERVER_SSD_OPTIMAL"
-                        echo "Strategy: Server with SSD (${TOTAL_MEM_GB}GB RAM) - ZRAM Only"
-                        echo "  - ZRAM: 2x RAM ($(echo "$TOTAL_MEM_GB * 2" | bc)GB) for optimal performance"
-                        echo "  - Swapfile: Disabled (SSD swap is slow, causes I/O bottleneck)"
-                    else
-                        USE_ZRAM=true
-                        USE_SWAPFILE=true
-                        ZRAM_MULTIPLIER=2
-                        SWAP_SIZE_GB=4
-                        SWAP_STRATEGY="SERVER_HDD_BACKUP"
-                        echo "Strategy: Server with HDD (${TOTAL_MEM_GB}GB RAM) - ZRAM + Swapfile"
-                        echo "  - ZRAM: 2x RAM ($(echo "$TOTAL_MEM_GB * 2" | bc)GB) for performance"
-                        echo "  - Swapfile: 4GB as HDD backup (HDD is too slow for daily swap)"
-                    fi
-                else
-                    # Server with >= 16GB RAM
-                    USE_ZRAM=true
-                    ZRAM_MULTIPLIER=1
-                    SWAP_STRATEGY="SERVER_HIGH_RAM"
-                    echo "Strategy: Server with high RAM (${TOTAL_MEM_GB}GB) - ZRAM Only"
-                    echo "  - ZRAM: 1x RAM (${TOTAL_MEM_GB}GB) for occasional swap"
-                    echo "  - Swapfile: Disabled (sufficient RAM, unnecessary)"
+                    SWAP_STRATEGY="SERVER_HDD_BACKUP"
+                    echo "Strategy: Server with HDD (${TOTAL_MEM_GB}GB RAM) - ZRAM + Swapfile"
+                    echo "  - ZRAM: 2x RAM ($(echo "$TOTAL_MEM_GB * 2" | bc)GB) for performance"
+                    echo "  - Swapfile: 4GB as HDD backup (HDD is too slow for daily swap)"
                 fi
-                ;;
+            else
+                # Server with >= 16GB RAM
+                USE_ZRAM=true
+                ZRAM_MULTIPLIER=1
+                SWAP_STRATEGY="SERVER_HIGH_RAM"
+                echo "Strategy: Server with high RAM (${TOTAL_MEM_GB}GB) - ZRAM Only"
+                echo "  - ZRAM: 1x RAM (${TOTAL_MEM_GB}GB) for occasional swap"
+                echo "  - Swapfile: Disabled (sufficient RAM, unnecessary)"
+            fi
+            ;;
 
-            "DESKTOP"|"FULL")
-                # Desktop logic: Balance performance with hibernation support
+        "DESKTOP" | "FULL")
+            # Desktop logic: Balance performance with hibernation support
+            USE_ZRAM=true
+            USE_SWAPFILE=true
+            ZRAM_MULTIPLIER=1
+            if [[ $TOTAL_MEM_GB -lt 8 ]]; then
+                SWAP_SIZE_GB=$((TOTAL_MEM_GB + 2))
+            elif [[ $TOTAL_MEM_GB -lt 32 ]]; then
+                SWAP_SIZE_GB=$TOTAL_MEM_GB
+            else
+                SWAP_SIZE_GB=8
+            fi
+            SWAP_STRATEGY="DESKTOP_HIBERNATION"
+            echo "Strategy: Desktop - ZRAM + Swapfile (hibernation support)"
+            echo "  - ZRAM: 1x RAM (${TOTAL_MEM_GB}GB) for daily performance"
+            echo "  - Swapfile: ${SWAP_SIZE_GB}GB for hibernation support"
+
+            # HDD gets larger swapfile
+            if [[ $IS_SSD -eq 0 ]]; then
+                ZRAM_MULTIPLIER=1.5
+                echo "  Note: Increased ZRAM to 1.5x RAM due to HDD being slow"
+            fi
+            ;;
+
+        "MINIMAL")
+            # Minimal logic: Resource efficiency
+            if [[ $TOTAL_MEM_GB -lt 4 ]]; then
                 USE_ZRAM=true
                 USE_SWAPFILE=true
-                ZRAM_MULTIPLIER=1
-                if [[ $TOTAL_MEM_GB -lt 8 ]]; then
-                    SWAP_SIZE_GB=$((TOTAL_MEM_GB + 2))
-                elif [[ $TOTAL_MEM_GB -lt 32 ]]; then
-                    SWAP_SIZE_GB=$TOTAL_MEM_GB
+                ZRAM_MULTIPLIER=2
+                SWAP_SIZE_GB=2
+                SWAP_STRATEGY="MINIMAL_LOW_RAM"
+                echo "Strategy: Minimal installation with low RAM (${TOTAL_MEM_GB}GB) - ZRAM + small swapfile"
+                echo "  - ZRAM: 2x RAM ($(echo "$TOTAL_MEM_GB * 2" | bc)GB) to avoid OOM"
+                echo "  - Swapfile: 2GB minimal safety net"
+            elif [[ $TOTAL_MEM_GB -lt 16 ]]; then
+                if [[ $IS_SSD -eq 1 ]]; then
+                    USE_ZRAM=true
+                    ZRAM_MULTIPLIER=1
+                    SWAP_STRATEGY="MINIMAL_OPTIMAL"
+                    echo "Strategy: Minimal installation on SSD (${TOTAL_MEM_GB}GB RAM) - ZRAM Only"
+                    echo "  - ZRAM: 1x RAM (${TOTAL_MEM_GB}GB) efficient performance"
+                    echo "  - Swapfile: Disabled (saves disk space)"
                 else
-                    SWAP_SIZE_GB=8
-                fi
-                SWAP_STRATEGY="DESKTOP_HIBERNATION"
-                echo "Strategy: Desktop - ZRAM + Swapfile (hibernation support)"
-                echo "  - ZRAM: 1x RAM (${TOTAL_MEM_GB}GB) for daily performance"
-                echo "  - Swapfile: ${SWAP_SIZE_GB}GB for hibernation support"
-
-                # HDD gets larger swapfile
-                if [[ $IS_SSD -eq 0 ]]; then
-                    ZRAM_MULTIPLIER=1.5
-                    echo "  Note: Increased ZRAM to 1.5x RAM due to HDD being slow"
-                fi
-                ;;
-
-            "MINIMAL")
-                # Minimal logic: Resource efficiency
-                if [[ $TOTAL_MEM_GB -lt 4 ]]; then
                     USE_ZRAM=true
                     USE_SWAPFILE=true
-                    ZRAM_MULTIPLIER=2
+                    ZRAM_MULTIPLIER=1
                     SWAP_SIZE_GB=2
-                    SWAP_STRATEGY="MINIMAL_LOW_RAM"
-                    echo "Strategy: Minimal installation with low RAM (${TOTAL_MEM_GB}GB) - ZRAM + small swapfile"
-                    echo "  - ZRAM: 2x RAM ($(echo "$TOTAL_MEM_GB * 2" | bc)GB) to avoid OOM"
-                    echo "  - Swapfile: 2GB minimal safety net"
-                elif [[ $TOTAL_MEM_GB -lt 16 ]]; then
-                    if [[ $IS_SSD -eq 1 ]]; then
-                        USE_ZRAM=true
-                        ZRAM_MULTIPLIER=1
-                        SWAP_STRATEGY="MINIMAL_OPTIMAL"
-                        echo "Strategy: Minimal installation on SSD (${TOTAL_MEM_GB}GB RAM) - ZRAM Only"
-                        echo "  - ZRAM: 1x RAM (${TOTAL_MEM_GB}GB) efficient performance"
-                        echo "  - Swapfile: Disabled (saves disk space)"
-                    else
-                        USE_ZRAM=true
-                        USE_SWAPFILE=true
-                        ZRAM_MULTIPLIER=1
-                        SWAP_SIZE_GB=2
-                        SWAP_STRATEGY="MINIMAL_HDD"
-                        echo "Strategy: Minimal installation on HDD (${TOTAL_MEM_GB}GB RAM) - ZRAM + small swapfile"
-                        echo "  - ZRAM: 1x RAM (${TOTAL_MEM_GB}GB) for performance"
-                        echo "  - Swapfile: 2GB minimal HDD backup"
-                    fi
-                else
-                    # Minimal with >= 16GB RAM
-                    USE_ZRAM=true
-                    ZRAM_MULTIPLIER=0.5
-                    SWAP_STRATEGY="MINIMAL_HIGH_RAM"
-                    echo "Strategy: Minimal installation with high RAM (${TOTAL_MEM_GB}GB) - Minimal ZRAM"
-                    echo "  - ZRAM: 0.5x RAM ($(echo "$TOTAL_MEM_GB * 0.5" | bc)GB) just in case"
-                    echo "  - Swapfile: Disabled (RAM more than sufficient)"
+                    SWAP_STRATEGY="MINIMAL_HDD"
+                    echo "Strategy: Minimal installation on HDD (${TOTAL_MEM_GB}GB RAM) - ZRAM + small swapfile"
+                    echo "  - ZRAM: 1x RAM (${TOTAL_MEM_GB}GB) for performance"
+                    echo "  - Swapfile: 2GB minimal HDD backup"
                 fi
-                ;;
+            else
+                # Minimal with >= 16GB RAM
+                USE_ZRAM=true
+                ZRAM_MULTIPLIER=0.5
+                SWAP_STRATEGY="MINIMAL_HIGH_RAM"
+                echo "Strategy: Minimal installation with high RAM (${TOTAL_MEM_GB}GB) - Minimal ZRAM"
+                echo "  - ZRAM: 0.5x RAM ($(echo "$TOTAL_MEM_GB * 0.5" | bc)GB) just in case"
+                echo "  - Swapfile: Disabled (RAM more than sufficient)"
+            fi
+            ;;
         esac
     fi
 
@@ -473,7 +434,7 @@ low_memory_config() {
         arch-chroot /mnt pacman -S zram-generator --noconfirm --needed
 
         mkdir -p /mnt/etc/systemd/
-        cat <<EOF > /mnt/etc/systemd/zram-generator.conf
+        cat <<EOF >/mnt/etc/systemd/zram-generator.conf
 [zram0]
 zram-size = ram * ${ZRAM_MULTIPLIER}
 swap-priority = 100
@@ -511,16 +472,15 @@ EOF
     mkdir -p /mnt/etc/sysctl.d
     if [[ "$USE_ZRAM" == true ]]; then
         # ZRAM has priority, lower swappiness to prefer RAM
-        echo "vm.swappiness=10" > /mnt/etc/sysctl.d/99-swap.conf
+        echo "vm.swappiness=10" >/mnt/etc/sysctl.d/99-swap.conf
     else
         # Swap file only, moderate swappiness
-        echo "vm.swappiness=60" > /mnt/etc/sysctl.d/99-swap.conf
+        echo "vm.swappiness=60" >/mnt/etc/sysctl.d/99-swap.conf
     fi
 
     echo ""
     echo "Swap configuration complete: ${SWAP_STRATEGY}"
 }
-
 
 # @description Create swap file on Btrfs filesystem using dedicated @swap subvolume
 # This avoids the "Text file busy" (errno:26) error when creating snapshots
@@ -744,7 +704,7 @@ _create_btrfs_swapfile() {
         if [[ -n "$ROOT_UUID" ]] && [[ -n "$ROOT_OPTS" ]]; then
             log_swap "Root UUID: $ROOT_UUID"
             log_swap "Mount options: $ROOT_OPTS"
-            echo "UUID=${ROOT_UUID}	/swap	btrfs	${ROOT_OPTS},nodatacow	0	0" >> /mnt/etc/fstab
+            echo "UUID=${ROOT_UUID}	/swap	btrfs	${ROOT_OPTS},nodatacow	0	0" >>/mnt/etc/fstab
             log_swap "SUCCESS: @swap subvolume entry added to /etc/fstab"
 
             # Ensure /swap directory exists in installed system
@@ -760,10 +720,10 @@ _create_btrfs_swapfile() {
         # Add swap file entry with correct priority
         if [[ "${USE_ZRAM:-false}" == true ]]; then
             log_swap "Adding swap file entry with priority 50 (ZRAM + Swapfile)..."
-            echo "/swap/swapfile none swap defaults,pri=50 0 0" >> /mnt/etc/fstab
+            echo "/swap/swapfile none swap defaults,pri=50 0 0" >>/mnt/etc/fstab
         else
             log_swap "Adding swap file entry (Swapfile only)..."
-            echo "/swap/swapfile none swap defaults 0 0" >> /mnt/etc/fstab
+            echo "/swap/swapfile none swap defaults 0 0" >>/mnt/etc/fstab
         fi
 
         log_swap "SUCCESS: Swap file added to /etc/fstab"
@@ -783,7 +743,6 @@ _create_btrfs_swapfile() {
 
     log_swap "=== Btrfs Swapfile Creation Complete ==="
 }
-
 
 # @description Create swap file on ext4 or other standard filesystems
 # @noargs
@@ -856,9 +815,9 @@ _create_standard_swapfile() {
         arch-chroot /mnt sed -i '/\/swapfile/d' /etc/fstab
 
         if [[ "$USE_ZRAM" == true ]]; then
-            echo "/swapfile none swap defaults,pri=50 0 0" >> /mnt/etc/fstab
+            echo "/swapfile none swap defaults,pri=50 0 0" >>/mnt/etc/fstab
         else
-            echo "/swapfile none swap defaults 0 0" >> /mnt/etc/fstab
+            echo "/swapfile none swap defaults 0 0" >>/mnt/etc/fstab
         fi
 
         echo "Swap file added to /etc/fstab"
@@ -867,7 +826,6 @@ _create_standard_swapfile() {
         echo "Error: Swap file was not created successfully"
     fi
 }
-
 
 # @description Configures makepkg settings dependent on cpu cores
 # @noargs
@@ -886,7 +844,6 @@ cpu_config() {
         /^COMPRESSXZ=(xz -c -z -)/s/-c /&-T $nc /" /etc/makepkg.conf
     fi
 }
-
 
 # @description Set locale, timezone, keymap, and vconsole configuration
 # @noargs
@@ -909,9 +866,12 @@ locale_config() {
         echo "LC_PAPER=${LOCALE}"
         echo "LC_TELEPHONE=${LOCALE}"
         echo "LC_TIME=${LOCALE}"
-    } > /etc/locale.conf
+    } >/etc/locale.conf
     echo "Generating locales..."
-    locale-gen || { echo "ERROR: Failed to generate locales."; exit 1; }
+    locale-gen || {
+        echo "ERROR: Failed to generate locales."
+        exit 1
+    }
     localectl --no-ask-password set-locale LANG="${LOCALE}" LC_TIME="${LOCALE}"
     echo "Locales generated successfully."
 
@@ -928,13 +888,12 @@ locale_config() {
     echo "Keymap configured: ${KEYMAP}"
 
     # Create /etc/vconsole.conf for console keymap configuration
-    echo -e "KEYMAP=${KEYMAP}\nFONT=Lat2-Terminus16\nFONT_MAP=" > /etc/vconsole.conf
+    echo -e "KEYMAP=${KEYMAP}\nFONT=Lat2-Terminus16\nFONT_MAP=" >/etc/vconsole.conf
 
     echo -ne "
     Locale, Timezone, Keymap, and VConsole configuration completed.
     "
 }
-
 
 # @description Adds multilib and chaotic-aur repo to get precompiled aur packages
 # @noargs
@@ -963,7 +922,6 @@ extra_repos() {
     echo -e "\n -|SYNCING REPOS|-"
     pacman -Sy --noconfirm --needed --color=always
 }
-
 
 # @description Configure base skel directory with common configurations for all users
 # Copies editor configurations and other base files to /etc/skel/
@@ -997,7 +955,6 @@ configure_base_skel() {
         echo "Base skel configuration directory not found, skipping"
     fi
 }
-
 
 # @description Adds user that was setup prior to installation
 # @noargs
@@ -1042,7 +999,7 @@ add_user() {
         echo "Hostname set to $NAME_OF_MACHINE."
 
         # Setup hosts file
-        cat >> /etc/hosts << EOF
+        cat >>/etc/hosts <<EOF
 127.0.0.1  localhost
 ::1        localhost ip6-localhost ip6-loopback
 ff02::1    ip6-allnodes
@@ -1055,7 +1012,6 @@ EOF
         echo "You are already a user, proceed with AUR installs."
     fi
 }
-
 
 # @description Configure GRUB and set a wallpaper (if not SERVER installation)
 # @noargs
@@ -1137,7 +1093,6 @@ grub_config() {
     echo -e "\nGRUB configuration complete."
 }
 
-
 # @description Install and enable display manager depending on desktop environment chosen
 # @noargs
 display_manager() {
@@ -1182,7 +1137,7 @@ display_manager() {
         if [[ ! -f /etc/lightdm/lightdm.conf ]]; then
             echo "[Seat:*]
 greeter-session=lightdm-webkit2-greeter
-greeter-setup-script=/usr/bin/xset -b" > /etc/lightdm/lightdm.conf
+greeter-setup-script=/usr/bin/xset -b" >/etc/lightdm/lightdm.conf
         fi
 
         if ! grep -q "^greeter-setup-script=/usr/bin/xset -b" /etc/lightdm/lightdm.conf; then
@@ -1194,7 +1149,7 @@ greeter-setup-script=/usr/bin/xset -b" > /etc/lightdm/lightdm.conf
             # Create config file if it doesn't exist
             if [[ ! -f /etc/lightdm/lightdm-webkit2-greeter.conf ]]; then
                 touch /etc/lightdm/lightdm-webkit2-greeter.conf
-                echo "[greeter]" >> /etc/lightdm/lightdm-webkit2-greeter.conf
+                echo "[greeter]" >>/etc/lightdm/lightdm-webkit2-greeter.conf
             fi
             # Set default lightdm-webkit2-greeter theme to Litarvan
             sed -i 's/^webkit_theme\s*=\s*\(.*\)/webkit_theme = litarvan #\1/g' /etc/lightdm/lightdm-webkit2-greeter.conf
@@ -1227,7 +1182,7 @@ greeter-setup-script=/usr/bin/xset -b" > /etc/lightdm/lightdm.conf
         if [[ ! -f /etc/lightdm/lightdm.conf ]]; then
             echo "[Seat:*]
 greeter-session=lightdm-slick-greeter
-greeter-setup-script=/usr/bin/xset -b" > /etc/lightdm/lightdm.conf
+greeter-setup-script=/usr/bin/xset -b" >/etc/lightdm/lightdm.conf
         fi
 
         if ! grep -q "^greeter-setup-script=/usr/bin/xset -b" /etc/lightdm/lightdm.conf; then
@@ -1242,7 +1197,7 @@ greeter-setup-script=/usr/bin/xset -b" > /etc/lightdm/lightdm.conf
             else
                 if [[ ! -f /etc/lightdm/slick-greeter.conf ]]; then
                     touch /etc/lightdm/slick-greeter.conf
-                    echo "[greeter]" >> /etc/lightdm/slick-greeter.conf
+                    echo "[greeter]" >>/etc/lightdm/slick-greeter.conf
                 fi
             fi
             sed -i 's/#greeter-session=example.*/greeter-session=lightdm-slick-greeter/g' /etc/lightdm/lightdm.conf
@@ -1275,7 +1230,7 @@ greeter-setup-script=/usr/bin/xset -b" > /etc/lightdm/lightdm.conf
         if [[ ! -f /etc/lightdm/lightdm.conf ]]; then
             echo "[Seat:*]
 greeter-session=lightdm-gtk-greeter
-greeter-setup-script=/usr/bin/xset -b" > /etc/lightdm/lightdm.conf
+greeter-setup-script=/usr/bin/xset -b" >/etc/lightdm/lightdm.conf
         else
             # Set lightdm greeter to lightdm-gtk-greeter
             sed -i 's/#greeter-session=example.*/greeter-session=lightdm-gtk-greeter/g' /etc/lightdm/lightdm.conf
@@ -1293,7 +1248,7 @@ greeter-setup-script=/usr/bin/xset -b" > /etc/lightdm/lightdm.conf
         # Create config file if it doesn't exist
         if [[ ! -f "$CONFIG_FILE" ]]; then
             touch "$CONFIG_FILE"
-            echo "[greeter]" >> "$CONFIG_FILE"
+            echo "[greeter]" >>"$CONFIG_FILE"
         fi
 
         # Base configuration (always applied)
@@ -1342,7 +1297,7 @@ greeter-setup-script=/usr/bin/xset -b" > /etc/lightdm/lightdm.conf
         for key in "${!base_greeter_config[@]}"; do
             # Skip empty values
             if [[ -n "${base_greeter_config[$key]}" ]]; then
-                echo "${key}=${base_greeter_config[$key]}" >> "$CONFIG_FILE"
+                echo "${key}=${base_greeter_config[$key]}" >>"$CONFIG_FILE"
             fi
         done
 
@@ -1356,7 +1311,6 @@ greeter-setup-script=/usr/bin/xset -b" > /etc/lightdm/lightdm.conf
         fi
     fi
 }
-
 
 # @description Configure snapper default setup
 # @noargs
@@ -1383,7 +1337,6 @@ snapper_config() {
     snapper -c root create --description "Initial snapshot"
     chown :users /.snapshots
 }
-
 
 # @description Configures TLP for power management on laptops.
 # @noargs
@@ -1435,7 +1388,6 @@ configure_tlp() {
     fi
 }
 
-
 # @description Install plymouth splash
 # @noargs
 plymouth_config() {
@@ -1462,7 +1414,6 @@ plymouth_config() {
     echo -e "\n Plymouth theme installed"
 }
 
-
 # @description Configure PAM to allow 5 password attempts before lockout
 # @noargs
 configure_pam_faillock() {
@@ -1480,7 +1431,7 @@ configure_pam_faillock() {
     # Check if faillock.conf exists
     if [[ ! -f "$FAILLOCK_CONF" ]]; then
         # Create default faillock.conf with 5 attempts
-        cat > "$FAILLOCK_CONF" << 'EOF'
+        cat >"$FAILLOCK_CONF" <<'EOF'
 # faillock configuration file
 # This file is parsed by faillock(8).
 # See 'man faillock.conf' for more information.
@@ -1512,8 +1463,8 @@ EOF
             sed -i '/^[^#[:space:]]/i deny = 5' "$FAILLOCK_CONF"
         else
             # File has only comments/empty lines, add at the end
-            echo "" >> "$FAILLOCK_CONF"
-            echo "deny = 5" >> "$FAILLOCK_CONF"
+            echo "" >>"$FAILLOCK_CONF"
+            echo "deny = 5" >>"$FAILLOCK_CONF"
         fi
 
         echo "Updated $FAILLOCK_CONF: deny = 5 (removed duplicates)"
@@ -1525,7 +1476,6 @@ EOF
     echo "PAM password attempts configured: 5 attempts before lockout"
     echo "Configuration file: $FAILLOCK_CONF"
 }
-
 
 # @description Configure PipeWire as audio server and remove PulseAudio if present
 # @noargs
@@ -1650,30 +1600,30 @@ do_btrfs() {
     # Mount remaining subvolumes in their respective directories
     for z in "${SUBVOLUMES[@]:1}"; do
         case "$z" in
-            "@docker")
-                w="var/lib/docker"
-                ;;
-            "@flatpak")
-                w="var/lib/flatpak"
-                ;;
-            "@snapshots")
-                w=".snapshots"
-                ;;
-            "@swap")
-                w="swap"
-                ;;
-            "@var_cache")
-                w="var/cache"
-                ;;
-            "@var_log")
-                w="var/log"
-                ;;
-            "@var_tmp")
-                w="var/tmp"
-                ;;
-            *)
-                w="${z//@/}"
-                ;;
+        "@docker")
+            w="var/lib/docker"
+            ;;
+        "@flatpak")
+            w="var/lib/flatpak"
+            ;;
+        "@snapshots")
+            w=".snapshots"
+            ;;
+        "@swap")
+            w="swap"
+            ;;
+        "@var_cache")
+            w="var/cache"
+            ;;
+        "@var_log")
+            w="var/log"
+            ;;
+        "@var_tmp")
+            w="var/tmp"
+            ;;
+        *)
+            w="${z//@/}"
+            ;;
         esac
 
         mkdir -p /mnt/"${w}"
@@ -1686,4 +1636,4 @@ do_btrfs() {
             chattr +C "/mnt/${w}"
         fi
     done
- }
+}

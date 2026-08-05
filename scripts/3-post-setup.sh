@@ -8,15 +8,13 @@
 
 # source utility scripts
 for filename in "$HOME"/archinstaller/scripts/utils/*.sh; do
-  [ -e "$filename" ] || continue
-  # shellcheck source=./utils/*.sh
-  source "$filename"
+    [ -e "$filename" ] || continue
+    # shellcheck source=./utils/*.sh
+    source "$filename"
 done
 source "$HOME"/archinstaller/configs/setup.conf
 
-
 show_logo
-
 
 echo -ne "
   Final Setup and Configurations
@@ -34,16 +32,13 @@ else
     grub-install --target=i386-pc "${DISK}"
 fi
 
-
 # Function to configure and theme the GRUB boot menu, including setting
 # kernel parameters and installing the some theme, function from 'system-config.sh'
 grub_config
 
-
 # Function to enable and theme the appropriate display manager
 # based on the selected desktop environment function from 'system-config.sh'
 display_manager
-
 
 # Function to enable essential services based on installation
 # type, including NetworkManager, periodic trim, and additional
@@ -95,7 +90,7 @@ if ! pacman -Qi openssh &>/dev/null; then
 fi
 
 # Configure SSH daemon
-cat <<EOF > /etc/ssh/sshd_config
+cat <<EOF >/etc/ssh/sshd_config
 # ArchInstaller SSH Configuration
 Port 22
 Protocol 2

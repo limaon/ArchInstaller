@@ -15,7 +15,7 @@ log_init() {
     touch "$LOG_FILE" "$SWAP_LOG"
 
     # Write header
-    cat << EOF > "$LOG_FILE"
+    cat <<EOF >"$LOG_FILE"
 ===============================================================================
                 ArchInstaller Installation Log
 ===============================================================================
@@ -25,7 +25,7 @@ Log File: $LOG_FILE
 
 EOF
 
-    cat << EOF > "$SWAP_LOG"
+    cat <<EOF >"$SWAP_LOG"
 ===============================================================================
                 ArchInstaller Swap Configuration Log
 ===============================================================================
@@ -54,23 +54,23 @@ log() {
     # Determine color
     local color nc_color
     case "$level" in
-        INFO)    color='\033[0;34m' nc_color='[INFO]   ' ;;
-        WARN)    color='\033[1;33m' nc_color='[WARNING]' ;;
-        ERROR)   color='\033[0;31m' nc_color='[ERROR]  ' ;;
-        SUCCESS) color='\033[0;32m' nc_color='[SUCCESS]' ;;
-        DEBUG)   color='\033[0;90m' nc_color='[DEBUG]  ' ;;
-        SWAP)    color='\033[0;36m' nc_color='[SWAP]   ' ;;
-        *)        color='\033[0m'      nc_color='[LOG]    ' ;;
+    INFO) color='\033[0;34m' nc_color='[INFO]   ' ;;
+    WARN) color='\033[1;33m' nc_color='[WARNING]' ;;
+    ERROR) color='\033[0;31m' nc_color='[ERROR]  ' ;;
+    SUCCESS) color='\033[0;32m' nc_color='[SUCCESS]' ;;
+    DEBUG) color='\033[0;90m' nc_color='[DEBUG]  ' ;;
+    SWAP) color='\033[0;36m' nc_color='[SWAP]   ' ;;
+    *) color='\033[0m' nc_color='[LOG]    ' ;;
     esac
 
     # Log to file
-    echo "[$timestamp] $nc_color $message" >> "$log_file"
+    echo "[$timestamp] $nc_color $message" >>"$log_file"
 
     # Also log to swap file if SWAP level
-    [[ "$level" == "SWAP" ]] && echo "[$timestamp] $nc_color $message" >> "$SWAP_LOG"
+    [[ "$level" == "SWAP" ]] && echo "[$timestamp] $nc_color $message" >>"$SWAP_LOG"
 
     # Console output (with color)
-    [[ "${DEBUG:-false}" == "true" || "$level" != "DEBUG" ]] && \
+    [[ "${DEBUG:-false}" == "true" || "$level" != "DEBUG" ]] &&
         echo -e "${color}[$level]${nc_color} $message"
 }
 
@@ -125,32 +125,32 @@ log_info() {
     timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 
     case "$type" in
-        SYSTEM)
-            log INFO "=== System Information ==="
-            log INFO "Hostname: $(hostname 2>/dev/null || echo unknown)"
-            log INFO "Kernel: $(uname -r 2>/dev/null || echo unknown)"
-            log INFO "RAM: $(free -h 2>/dev/null | awk '/^Mem:/ {print $2}')"
-            log INFO "Swap: $(free -h 2>/dev/null | awk '/^Swap:/ {print $2}')"
-            ;;
+    SYSTEM)
+        log INFO "=== System Information ==="
+        log INFO "Hostname: $(hostname 2>/dev/null || echo unknown)"
+        log INFO "Kernel: $(uname -r 2>/dev/null || echo unknown)"
+        log INFO "RAM: $(free -h 2>/dev/null | awk '/^Mem:/ {print $2}')"
+        log INFO "Swap: $(free -h 2>/dev/null | awk '/^Swap:/ {print $2}')"
+        ;;
 
-        FILESYSTEM)
-            log INFO "=== Filesystem Information ==="
-            if [[ -d /sys/fs/btrfs ]]; then
-                log INFO "Filesystem: Btrfs"
-                command -v btrfs &>/dev/null && log INFO "Btrfs subvolumes listed"
-            else
-                log INFO "Filesystem: $(findmnt -n -o FSTYPE / 2>/dev/null || echo unknown)"
-            fi
-            ;;
+    FILESYSTEM)
+        log INFO "=== Filesystem Information ==="
+        if [[ -d /sys/fs/btrfs ]]; then
+            log INFO "Filesystem: Btrfs"
+            command -v btrfs &>/dev/null && log INFO "Btrfs subvolumes listed"
+        else
+            log INFO "Filesystem: $(findmnt -n -o FSTYPE / 2>/dev/null || echo unknown)"
+        fi
+        ;;
 
-        SWAP)
-            log SWAP "=== Swap Information ==="
-            log SWAP "Devices:"
-            swapon --show 2>/dev/null | while IFS= read -r line; do log SWAP "  $line"; done
-            log SWAP "Summary: Total: $(free -h | awk '/^Swap:/ {print $2}') Used: $(free -h | awk '/^Swap:/ {print $3}')"
-            lsmod | grep -q zram && log SWAP "ZRAM module loaded"
-            [[ -f /swap/swapfile ]] && log SWAP "Swapfile exists: /swap/swapfile"
-            ;;
+    SWAP)
+        log SWAP "=== Swap Information ==="
+        log SWAP "Devices:"
+        swapon --show 2>/dev/null | while IFS= read -r line; do log SWAP "  $line"; done
+        log SWAP "Summary: Total: $(free -h | awk '/^Swap:/ {print $2}') Used: $(free -h | awk '/^Swap:/ {print $3}')"
+        lsmod | grep -q zram && log SWAP "ZRAM module loaded"
+        [[ -f /swap/swapfile ]] && log SWAP "Swapfile exists: /swap/swapfile"
+        ;;
     esac
 }
 
@@ -161,7 +161,7 @@ log_finish() {
 
     # Copy logs
     mkdir -p "${mount_point}/var/log/archinstaller"
-    cp "$LOG_FILE" "${mount_point}/var/log/archinstaller/install.log" 2>/dev/null && \
+    cp "$LOG_FILE" "${mount_point}/var/log/archinstaller/install.log" 2>/dev/null &&
         log SUCCESS "Logs copied to ${mount_point}/var/log/archinstaller/"
 
     [[ -f "$SWAP_LOG" ]] && cp "$SWAP_LOG" "${mount_point}/var/log/archinstaller/swap.log" 2>/dev/null
