@@ -6,7 +6,6 @@
 # @stdout Output routed to install.log
 # @stderror Output routed to install.log
 
-
 # @description Exits script if previous command fails
 # @arg $1 string Exit code of previous command
 # @arg $2 string Previous command
@@ -18,7 +17,6 @@ exit_on_error() {
         exit "$exit_code"
     fi
 }
-
 
 # @description display archinstaller logo
 # @noargs
@@ -34,7 +32,6 @@ show_logo() {
         SCRIPTHOME: $SCRIPT_DIR
 "
 }
-
 
 # @description Select multiple options
 # @noargs
@@ -125,16 +122,16 @@ function multiselect {
 
         # user key control
         case $(key_input) in
-        space) toggle_option selected $active ;;
-        enter) break ;;
-        up)
-            ((active--))
-            if [ $active -lt 0 ]; then active=$((${#options[@]} - 1)); fi
-            ;;
-        down)
-            ((active++))
-            if [ $active -ge ${#options[@]} ]; then active=0; fi
-            ;;
+            space) toggle_option selected $active ;;
+            enter) break ;;
+            up)
+                ((active--))
+                if [ $active -lt 0 ]; then active=$((${#options[@]} - 1)); fi
+                ;;
+            down)
+                ((active++))
+                if [ $active -ge ${#options[@]} ]; then active=0; fi
+                ;;
         esac
     done
 
@@ -146,7 +143,6 @@ function multiselect {
     eval "$retval"='("${selected[@]}")'
 }
 
-
 # @description Sequence to call scripts
 # @noargs
 sequence() {
@@ -157,7 +153,6 @@ sequence() {
     fi
     arch-chroot /mnt "$HOME"/archinstaller/scripts/3-post-setup.sh
 }
-
 
 # @description set options in setup.conf
 # @arg $1 string Configuration variable.
@@ -183,7 +178,6 @@ set_option() {
         echo "${key}=${value}" >>"$CONFIG_FILE"
     fi
 }
-
 
 # Renders a text-based list of options that can be selected by the
 # user using up, down, and enter keys and returns the chosen option.
@@ -214,8 +208,8 @@ select_option() {
         [[ $key == "" ]] && echo "enter"
         [[ $key == $'\x20' ]] && echo "space"
         [[ $key == "/" ]] && echo "search"
-        [[ $key == $'\x7f' ]] && echo "backspace"  # Backspace
-        [[ $key == $'\x08' ]] && echo "backspace"  # Ctrl+H (backspace)
+        [[ $key == $'\x7f' ]] && echo "backspace" # Backspace
+        [[ $key == $'\x08' ]] && echo "backspace" # Ctrl+H (backspace)
         [[ $key == "k" ]] && echo "up"
         [[ $key == "j" ]] && echo "down"
         [[ $key == "h" ]] && echo "left"
@@ -298,7 +292,7 @@ select_option() {
                 ;;
             down)
                 ((active_row++))
-                local max_row=$(( (${#local_options[@]} - 1) / colmax ))
+                local max_row=$(((${#local_options[@]} - 1) / colmax))
                 [[ $active_row -gt $max_row ]] && active_row=$max_row
                 ;;
             left)
@@ -319,7 +313,6 @@ select_option() {
     return $((active_col + active_row * colmax))
 }
 
-
 # @description Interactive menu with search functionality (press "/" to search)
 # @arg $1 number Number of options or return code (can be ignored)
 # @arg $2 number Number of columns (colmax)
@@ -339,8 +332,14 @@ select_option_with_search() {
     clear_line() { printf '%s[K' "$ESC"; }
     print_line() { printf '  %s' "$1"; }
     print_line_selected() { printf ' %s[7m %s %s[27m' "$ESC" "$1" "$ESC"; }
-    get_cursor_row() { IFS=';' read -rsdR -p $'\E[6n' ROW COL; echo "${ROW#*[}"; }
-    get_cursor_col() { IFS=';' read -rsdR -p $'\E[6n' ROW COL; echo "${COL#*[}"; }
+    get_cursor_row() {
+        IFS=';' read -rsdR -p $'\E[6n' ROW COL
+        echo "${ROW#*[}"
+    }
+    get_cursor_col() {
+        IFS=';' read -rsdR -p $'\E[6n' ROW COL
+        echo "${COL#*[}"
+    }
 
     key_input_search() {
         local key
@@ -409,7 +408,7 @@ select_option_with_search() {
     [[ $viewport_rows -lt 3 ]] && viewport_rows=3
 
     # Reserve viewport
-    for ((i=0;i<viewport_rows;i++)); do printf '\n'; done
+    for ((i = 0; i < viewport_rows; i++)); do printf '\n'; done
     local lastrow base_row
     lastrow=$(get_cursor_row)
     base_row=$((lastrow - viewport_rows))
@@ -432,16 +431,17 @@ select_option_with_search() {
                 [[ "$lo" == *"$q"* ]] && filtered_list+=("$o")
             done
         fi
-        (( active_index=0, top_index=0 ))
+        ((active_index = 0, top_index = 0))
     }
 
     draw() {
         local total=${#filtered_list[@]}
         local last=$((top_index + viewport_rows - 1))
-        [[ $last -ge $total ]] && last=$((total-1))
+        [[ $last -ge $total ]] && last=$((total - 1))
         local row=0
-        for ((i=top_index; i<=last; i++)); do
-            cursor_to $((base_row + row)) 1; clear_line
+        for ((i = top_index; i <= last; i++)); do
+            cursor_to $((base_row + row)) 1
+            clear_line
             if [[ $i -eq $active_index ]]; then
                 print_line_selected "${filtered_list[$i]}"
             else
@@ -450,10 +450,12 @@ select_option_with_search() {
             ((row++))
         done
         # Clear remaining rows if list shorter than viewport
-        for ((; row<viewport_rows; row++)); do
-            cursor_to $((base_row + row)) 1; clear_line
+        for (( ; row < viewport_rows; row++)); do
+            cursor_to $((base_row + row)) 1
+            clear_line
         done
-        cursor_to $prompt_row 1; clear_line
+        cursor_to $prompt_row 1
+        clear_line
         if $search_mode; then
             printf "Search: %s" "$search_query"
         else
@@ -475,7 +477,8 @@ select_option_with_search() {
             backspace)
                 if $search_mode; then
                     [[ ${#search_query} -gt 0 ]] && search_query="${search_query:0:${#search_query}-1}" || search_mode=false
-                    filter_apply; draw
+                    filter_apply
+                    draw
                 fi
                 ;;
             char:*)
@@ -495,7 +498,7 @@ select_option_with_search() {
             down)
                 ((active_index++))
                 local total=${#filtered_list[@]}
-                [[ $active_index -ge $total ]] && active_index=$((total-1))
+                [[ $active_index -ge $total ]] && active_index=$((total - 1))
                 while [[ $active_index -ge $((top_index + viewport_rows)) ]]; do ((top_index++)); done
                 draw
                 ;;
@@ -506,25 +509,29 @@ select_option_with_search() {
     local selected_item="${filtered_list[$active_index]}"
     local original_index=0
     for i in "${!local_options[@]}"; do
-        if [[ "${local_options[$i]}" == "$selected_item" ]]; then original_index=$i; break; fi
+        if [[ "${local_options[$i]}" == "$selected_item" ]]; then
+            original_index=$i
+            break
+        fi
     done
     cursor_blink_on
     return $original_index
 }
-
 
 # @description Sources file to be used by the script
 # @arg $1 File to source
 # shellcheck disable=SC1090
 source_file() {
     if [[ -f "$1" ]]; then
-        source "$1" || { echo "ERROR! Failed to source file: $1"; exit 1; }
+        source "$1" || {
+            echo "ERROR! Failed to source file: $1"
+            exit 1
+        }
     else
         echo "ERROR! Missing file: $1"
         exit 1
     fi
 }
-
 
 # @description Copy logs to installed system and user home, copy verification script
 # @noargs
@@ -553,7 +560,7 @@ end_script() {
 
         # Copy config file (without password)
         if [[ -f "$CONFIG_FILE" ]]; then
-            grep -v "^PASSWORD=" "$CONFIG_FILE" > "/mnt/home/$USERNAME/.archinstaller/setup.conf" || true
+            grep -v "^PASSWORD=" "$CONFIG_FILE" >"/mnt/home/$USERNAME/.archinstaller/setup.conf" || true
         fi
 
         # Set ownership using arch-chroot (user exists in installed system)

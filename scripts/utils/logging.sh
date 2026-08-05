@@ -15,7 +15,7 @@ log_init() {
     touch "$LOG_FILE" "$SWAP_LOG"
 
     # Write header
-    cat << EOF > "$LOG_FILE"
+    cat <<EOF >"$LOG_FILE"
 ===============================================================================
                 ArchInstaller Installation Log
 ===============================================================================
@@ -25,7 +25,7 @@ Log File: $LOG_FILE
 
 EOF
 
-    cat << EOF > "$SWAP_LOG"
+    cat <<EOF >"$SWAP_LOG"
 ===============================================================================
                 ArchInstaller Swap Configuration Log
 ===============================================================================
@@ -54,24 +54,24 @@ log() {
     # Determine color
     local color nc_color
     case "$level" in
-        INFO)    color='\033[0;34m' nc_color='[INFO]   ' ;;
-        WARN)    color='\033[1;33m' nc_color='[WARNING]' ;;
-        ERROR)   color='\033[0;31m' nc_color='[ERROR]  ' ;;
+        INFO) color='\033[0;34m' nc_color='[INFO]   ' ;;
+        WARN) color='\033[1;33m' nc_color='[WARNING]' ;;
+        ERROR) color='\033[0;31m' nc_color='[ERROR]  ' ;;
         SUCCESS) color='\033[0;32m' nc_color='[SUCCESS]' ;;
-        DEBUG)   color='\033[0;90m' nc_color='[DEBUG]  ' ;;
-        SWAP)    color='\033[0;36m' nc_color='[SWAP]   ' ;;
-        *)        color='\033[0m'      nc_color='[LOG]    ' ;;
+        DEBUG) color='\033[0;90m' nc_color='[DEBUG]  ' ;;
+        SWAP) color='\033[0;36m' nc_color='[SWAP]   ' ;;
+        *) color='\033[0m' nc_color='[LOG]    ' ;;
     esac
 
     # Log to file
-    echo "[$timestamp] $nc_color $message" >> "$log_file"
+    echo "[$timestamp] $nc_color $message" >>"$log_file"
 
     # Also log to swap file if SWAP level
-    [[ "$level" == "SWAP" ]] && echo "[$timestamp] $nc_color $message" >> "$SWAP_LOG"
+    [[ "$level" == "SWAP" ]] && echo "[$timestamp] $nc_color $message" >>"$SWAP_LOG"
 
     # Console output (with color)
-    [[ "${DEBUG:-false}" == "true" || "$level" != "DEBUG" ]] && \
-        echo -e "${color}[$level]${nc_color} $message"
+    [[ "${DEBUG:-false}" == "true" || "$level" != "DEBUG" ]] \
+        && echo -e "${color}[$level]${nc_color} $message"
 }
 
 # @description Unified command execution logger (replaces log_exec, log_swap_exec)
@@ -161,8 +161,8 @@ log_finish() {
 
     # Copy logs
     mkdir -p "${mount_point}/var/log/archinstaller"
-    cp "$LOG_FILE" "${mount_point}/var/log/archinstaller/install.log" 2>/dev/null && \
-        log SUCCESS "Logs copied to ${mount_point}/var/log/archinstaller/"
+    cp "$LOG_FILE" "${mount_point}/var/log/archinstaller/install.log" 2>/dev/null \
+        && log SUCCESS "Logs copied to ${mount_point}/var/log/archinstaller/"
 
     [[ -f "$SWAP_LOG" ]] && cp "$SWAP_LOG" "${mount_point}/var/log/archinstaller/swap.log" 2>/dev/null
 

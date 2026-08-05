@@ -6,7 +6,6 @@
 # @stdout Output routed to install.log
 # @stderror Output routed to install.log
 
-
 # @description Pacstrap arch linux to install location
 # @noargs
 arch_install() {
@@ -17,7 +16,6 @@ arch_install() {
 "
     pacstrap /mnt base base-devel linux linux-firmware linux-lts jq neovim sudo wget libnewt --noconfirm --needed --color=always
 }
-
 
 # @description Install bootloader prerequisites during Phase 0 (live ISO, before chroot)
 # For UEFI: Installs efibootmgr via pacstrap (required for GRUB EFI installation)
@@ -41,7 +39,6 @@ bootloader_install() {
         echo "GRUB will be installed to MBR in post-setup phase"
     fi
 }
-
 
 # @description Installs network management software
 # @noargs
@@ -79,7 +76,6 @@ network_install() {
     systemctl enable NetworkManager
 }
 
-
 # @description Installs fonts for the system if the installation type is not SERVER
 # @noargs
 install_fonts() {
@@ -112,12 +108,18 @@ install_fonts() {
     jq --raw-output "${PACMAN_FILTER}${AUR_FILTER}" "$FONTS_LIST_FILE" | while read -r font; do
         if [[ -n "$font" ]]; then
             echo "Installing font: $font..."
-            if pacman -Qi "$font" &>/dev/null || [[ "$AUR_HELPER" != NONE && "$($AUR_HELPER -Qi "$font" &>/dev/null; echo $?)" -eq 0 ]]; then
+            if pacman -Qi "$font" &>/dev/null || [[ "$AUR_HELPER" != NONE && "$(
+                $AUR_HELPER -Qi "$font" &>/dev/null
+                echo $?
+            )" -eq 0 ]]; then
                 echo "Font $font is already installed."
                 continue
             fi
 
-            if [[ "$AUR_HELPER" != NONE && $(pacman -Si "$font" &>/dev/null; echo $?) -ne 0 ]]; then
+            if [[ "$AUR_HELPER" != NONE && $(
+                pacman -Si "$font" &>/dev/null
+                echo $?
+            ) -ne 0 ]]; then
                 echo "Installing $font via AUR helper ($AUR_HELPER)..."
                 if ! "$AUR_HELPER" -S "$font" --noconfirm --needed --color=always; then
                     echo "Error: Failed to install font $font via $AUR_HELPER"
@@ -131,7 +133,6 @@ install_fonts() {
         fi
     done
 }
-
 
 # @description Installs base arch linux system
 # @noargs
@@ -168,7 +169,6 @@ base_install() {
     fi
 }
 
-
 # @description Installs cpu microcode depending on detected cpu
 # @noargs
 microcode_install() {
@@ -188,7 +188,6 @@ microcode_install() {
     fi
 }
 
-
 # @description Detect if running in virtual machine
 # @noargs
 # @return 0 if VM detected, 1 otherwise
@@ -197,7 +196,7 @@ detect_vm() {
     if [[ -f /sys/class/dmi/id/product_name ]]; then
         local product_name=$(cat /sys/class/dmi/id/product_name 2>/dev/null)
         case "$product_name" in
-            *VirtualBox*|*VMware*|*QEMU*|*KVM*|*Bochs*)
+            *VirtualBox* | *VMware* | *QEMU* | *KVM* | *Bochs*)
                 return 0
                 ;;
         esac
@@ -234,8 +233,8 @@ detect_gpu() {
 detect_hybrid_graphics() {
     local gpu_info=$(lspci | grep -iE "VGA|3D|Display" 2>/dev/null)
 
-    if echo "$gpu_info" | grep -iE "NVIDIA|GeForce" &>/dev/null && \
-       echo "$gpu_info" | grep -iE "Intel.*Graphics|Integrated Graphics Controller" &>/dev/null; then
+    if echo "$gpu_info" | grep -iE "NVIDIA|GeForce" &>/dev/null \
+        && echo "$gpu_info" | grep -iE "Intel.*Graphics|Integrated Graphics Controller" &>/dev/null; then
         return 0
     fi
 
@@ -457,7 +456,6 @@ graphics_install() {
     esac
 }
 
-
 # @description Installs software from the AUR
 # @noargs
 aur_helper_install() {
@@ -496,7 +494,6 @@ aur_helper_install() {
         )
     fi
 }
-
 
 # @description Installs desktop environment packages from base repositories
 # @noargs
@@ -548,7 +545,6 @@ desktop_environment_install() {
     )
 }
 
-
 # @description Installs btrfs packages
 # @noargs
 btrfs_install() {
@@ -597,7 +593,6 @@ btrfs_install() {
         )
     fi
 }
-
 
 # @description Perform desktop environment specific theming
 # @noargs
@@ -679,7 +674,6 @@ user_theming() {
     fi
 }
 
-
 # @description Enable essential services
 # @noargs
 essential_services() {
@@ -712,7 +706,7 @@ essential_services() {
         if grep -q '^IPV6=' /etc/ufw/ufw.conf; then
             sed -i 's/^IPV6=.*/IPV6=no/' /etc/ufw/ufw.conf
         else
-            echo 'IPV6=no' >> /etc/ufw/ufw.conf
+            echo 'IPV6=no' >>/etc/ufw/ufw.conf
         fi
 
         echo "Enabling UFW"
@@ -724,13 +718,13 @@ essential_services() {
         ufw default deny incoming
 
         # Allow inbound connections for essential services
-        ufw allow in 22/tcp    # SSH
-        ufw allow in 80/tcp    # HTTP
-        ufw allow in 443/tcp   # HTTPS
+        ufw allow in 22/tcp  # SSH
+        ufw allow in 80/tcp  # HTTP
+        ufw allow in 443/tcp # HTTPS
 
         # Allow local sharing (home network)
-        ufw allow in 5353/udp  # mDNS (Avahi)
-        ufw allow in 631/tcp   # Printers (CUPS)
+        ufw allow in 5353/udp # mDNS (Avahi)
+        ufw allow in 631/tcp  # Printers (CUPS)
 
         echo "Enabling UFW"
         ufw --force enable
@@ -774,7 +768,6 @@ essential_services() {
 
     fi
 }
-
 
 # @description Install battery notifications for i3-wm
 # @noargs
@@ -852,7 +845,7 @@ i3wm_battery_notifications() {
             echo "Creating timer symlinks manually..."
             mkdir -p "$HOME/.config/systemd/user/timers.target.wants/"
             ln -sf "$HOME/.config/systemd/user/battery-alert.timer" \
-                   "$HOME/.config/systemd/user/timers.target.wants/battery-alert.timer" 2>/dev/null || true
+                "$HOME/.config/systemd/user/timers.target.wants/battery-alert.timer" 2>/dev/null || true
             echo "Timer symlink created"
         fi
 
@@ -887,7 +880,6 @@ i3wm_battery_notifications() {
     echo "Battery notifications configuration complete!"
 }
 
-
 # @description Configure power management for i3-wm using systemd-logind
 # Minimal approach without external scripts
 # @noargs
@@ -908,7 +900,7 @@ i3wm_auto_suspend_hibernate() {
     echo "Configuring systemd logind for power management..."
     sudo mkdir -p /etc/systemd/logind.conf.d/
 
-    sudo tee /etc/systemd/logind.conf.d/50-power.conf > /dev/null << 'EOF'
+    sudo tee /etc/systemd/logind.conf.d/50-power.conf >/dev/null <<'EOF'
 HandleLidSwitch=suspend
 HandleLidSwitchDocked=hibernate
 HandleLidSwitchExternalPower=suspend
@@ -949,7 +941,7 @@ EOF
                     print ""
                 }
                 { print }
-            ' "$I3_CONFIG_SKEL" > "${I3_CONFIG_SKEL}.tmp" 2>/dev/null || true
+            ' "$I3_CONFIG_SKEL" >"${I3_CONFIG_SKEL}.tmp" 2>/dev/null || true
 
             if [[ -f "${I3_CONFIG_SKEL}.tmp" ]]; then
                 sudo mv "${I3_CONFIG_SKEL}.tmp" "$I3_CONFIG_SKEL" 2>/dev/null || true
@@ -966,10 +958,10 @@ EOF
     RAM_SIZE=$(free -k | awk '/^Mem:/ {print $2}')
 
     if [[ $SWAP_SIZE -gt 0 && $SWAP_SIZE -ge $RAM_SIZE ]]; then
-        echo "✓  Swap sufficient for hibernation ($((SWAP_SIZE/1024/1024))GB >= $((RAM_SIZE/1024/1024))GB)"
+        echo "✓  Swap sufficient for hibernation ($((SWAP_SIZE / 1024 / 1024))GB >= $((RAM_SIZE / 1024 / 1024))GB)"
     else
         echo "⚠  Warning: Insufficient swap for hibernation"
-        echo "  Current swap: $((SWAP_SIZE/1024/1024))GB, Required: $((RAM_SIZE/1024/1024))GB"
+        echo "  Current swap: $((SWAP_SIZE / 1024 / 1024))GB, Required: $((RAM_SIZE / 1024 / 1024))GB"
         echo "  System will suspend instead of hibernating on battery"
         echo "  To enable hibernation: sudo systemctl edit systemd-logind and set:"
         echo "    HandleLidSwitch=hibernate"

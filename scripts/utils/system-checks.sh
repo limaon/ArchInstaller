@@ -6,7 +6,6 @@
 # @stdout Output routed to install.log
 # @stderror Output routed to install.log
 
-
 # @description Check if script is run with root
 # @noargs
 root_check() {
@@ -15,7 +14,6 @@ root_check() {
         exit 0
     fi
 }
-
 
 # @description Check if script is being ran in an arch linux distro
 # @noargs
@@ -26,7 +24,6 @@ arch_check() {
     fi
 }
 
-
 # @description Checks if pacman lock exists
 # @noargs
 pacman_check() {
@@ -36,7 +33,6 @@ pacman_check() {
         exit 0
     fi
 }
-
 
 # @description Checks if script run inside docker container
 # @noargs
@@ -50,7 +46,6 @@ docker_check() {
     fi
 }
 
-
 # @description Checks if drive is mounted
 # @noargs
 mount_check() {
@@ -62,7 +57,6 @@ mount_check() {
         reboot now
     fi
 }
-
 
 # @description Run all checks necessary before running script
 # @noargs

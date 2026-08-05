@@ -6,7 +6,6 @@
 # @stdout Output routed to install.log
 # @stderror Output routed to install.log
 
-
 # @description Read and verify user password before setting
 # @noargs
 set_password() {
@@ -22,7 +21,6 @@ set_password() {
         set_password "$1"
     fi
 }
-
 
 # @description Gather username, real name, and password to be used for installation.
 # @noargs
@@ -66,7 +64,6 @@ user_info() {
     set_option NAME_OF_MACHINE "$nameofmachine"
 }
 
-
 # @description Choose whether to do full or minimal installation.
 # @noargs
 install_type() {
@@ -81,7 +78,6 @@ install_type() {
     export INSTALL_TYPE="$install_type"
 }
 
-
 # @description Choose AUR helper.
 # @noargs
 aur_helper() {
@@ -93,7 +89,6 @@ aur_helper() {
     set_option AUR_HELPER "$aur_helper"
 }
 
-
 # @description Choose Desktop Environment
 # @noargs
 desktop_environment() {
@@ -104,7 +99,6 @@ desktop_environment() {
     desktop_env="${options[$?]}"
     set_option DESKTOP_ENV "$desktop_env"
 }
-
 
 # @description Disk selection for drive to be used with installation.
 # @noargs
@@ -127,7 +121,7 @@ disk_select() {
 
     selected_index=$?
     disk="${options[$selected_index]%%|*}"
-    disk="${disk// }"  # Remove trailing spaces
+    disk="${disk// /}" # Remove trailing spaces
 
     echo -e "\n${disk} selected \n"
     set_option DISK "${disk}"
@@ -189,7 +183,6 @@ disk_select() {
     fi
 }
 
-
 # @description This function will handle file systems. At this movement we are handling only
 # btrfs and ext4. Others will be added in future.
 # @noargs
@@ -201,23 +194,22 @@ Please Select your file system for both boot and root
     select_option $? 1 "${options[@]}"
 
     case $? in
-    0)
-        set_btrfs
-        set_option FS btrfs
-        ;;
-    1) set_option FS ext4 ;;
-    2)
-        set_password "LUKS_PASSWORD"
-        set_option FS luks
-        ;;
-    3) exit ;;
-    *)
-        echo "Wrong option please select again"
-        filesystem
-        ;;
+        0)
+            set_btrfs
+            set_option FS btrfs
+            ;;
+        1) set_option FS ext4 ;;
+        2)
+            set_password "LUKS_PASSWORD"
+            set_option FS luks
+            ;;
+        3) exit ;;
+        *)
+            echo "Wrong option please select again"
+            filesystem
+            ;;
     esac
 }
-
 
 # @description Set btrfs subvolumes to be used during install
 # @noargs
@@ -248,7 +240,6 @@ set_btrfs() {
 
     set_option "MOUNTPOINT" "/mnt"
 }
-
 
 # @description Detects and sets timezone interactively from system timezones.
 # @noargs
@@ -296,8 +287,8 @@ timezone() {
         local rel_tz="${tz_path#/usr/share/zoneinfo/}"
         timezones+=("$rel_tz")
     done < <(find /usr/share/zoneinfo -type f \
-                ! -name "*.tab" ! -name "*.list" ! -name "*.zi" ! -name "*.leap" \
-                | grep -v "/posix/" | grep -v "/right/" | sort)
+        ! -name "*.tab" ! -name "*.list" ! -name "*.zi" ! -name "*.leap" \
+        | grep -v "/posix/" | grep -v "/right/" | sort)
 
     if [[ ${#timezones[@]} -eq 0 ]]; then
         echo "Error: No timezones found in /usr/share/zoneinfo"
@@ -326,7 +317,6 @@ timezone() {
     set_option TIMEZONE "$full_timezone"
 }
 
-
 # @description Set system language (locale)
 # @noargs
 locale_selection() {
@@ -341,7 +331,6 @@ Please select your system language (locale) from the list below:
     echo -ne "Selected system language: ${locale} \n"
     set_option LOCALE "$locale"
 }
-
 
 # @description Set user's keyboard mapping.
 # @noargs
@@ -358,7 +347,6 @@ Please select keyboard layout from this list:
     echo -ne "Your keyboards layout: ${keymap} \n"
     set_option KEYMAP "$keymap"
 }
-
 
 # @description Show all configurations set during the setup and allow user to redo any step.
 # @noargs
@@ -386,20 +374,20 @@ show_configurations() {
 ------------------------------------------------------------------------
 Do you want to redo any step? Select an option below, or press Enter to proceed:"
 
-          echo "1) Full Name, Username and Password"
-          echo "2) Installation Type"
-          echo "3) AUR Helper"
-          echo "4) Desktop Environment"
-          echo "5) Disk Selection and Usage Percentage"
-          echo "6) File System"
-          echo "7) Timezone"
-          echo "8) System Language (Locale)"
-          echo "9) Keyboard Layout"
+        echo "1) Full Name, Username and Password"
+        echo "2) Installation Type"
+        echo "3) AUR Helper"
+        echo "4) Desktop Environment"
+        echo "5) Disk Selection and Usage Percentage"
+        echo "6) File System"
+        echo "7) Timezone"
+        echo "8) System Language (Locale)"
+        echo "9) Keyboard Layout"
 
-          # Only show Desktop, AUR, Filesystem, Timezone, Locale, Keyboard if not SERVER
-         if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
-             echo "11) Re-select File System"  # Extra option
-         fi
+        # Only show Desktop, AUR, Filesystem, Timezone, Locale, Keyboard if not SERVER
+        if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+            echo "11) Re-select File System" # Extra option
+        fi
 
         echo "------------------------------------------------------------------------
 "
@@ -470,21 +458,21 @@ Do you want to redo any step? Select an option below, or press Enter to proceed:
                     echo "Invalid option. Please try again."
                 fi
                 ;;
-             9)
-                  if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
-                      keymap
-                  else
-                      echo "Invalid option. Please try again."
-                  fi
-                  ;;
-              10)
-                 if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
-                     filesystem
-                 else
-                     echo "Invalid option. Please try again."
-                 fi
-                 ;;
-             *)
+            9)
+                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                    keymap
+                else
+                    echo "Invalid option. Please try again."
+                fi
+                ;;
+            10)
+                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                    filesystem
+                else
+                    echo "Invalid option. Please try again."
+                fi
+                ;;
+            *)
                 echo "Invalid option. Please try again."
                 ;;
         esac
