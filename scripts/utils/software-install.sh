@@ -223,10 +223,11 @@ detect_hybrid_graphics() {
 # @noargs
 # @return 0 if supported, 1 otherwise
 nvidia_supports_open_dkms() {
-    local nvidia_model=$(lspci | grep -iE "NVIDIA|GeForce" | head -1)
+    local nvidia_model
+    nvidia_model=$(lspci | grep -iE "NVIDIA|GeForce" | head -1)
 
-    # RTX 20xx, 30xx, 40xx, GTX 16xx, GTX 20xx series
-    if echo "$nvidia_model" | grep -iE "RTX|GTX 16|GTX 20|GTX 30|GTX 40" &>/dev/null; then
+    # Turing and later: RTX 20xx/30xx/40xx/50xx+, GTX 16xx, T-series
+    if echo "$nvidia_model" | grep -iE "RTX|GTX 16|T[0-9]" &>/dev/null; then
         return 0
     fi
 
