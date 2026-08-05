@@ -35,8 +35,7 @@
       { "package": "udiskie" },
       { "package": "webkit2gtk-4.1" },
       { "package": "xarchiver" },
-      { "package": "xss-lock" },
-      { "package": "xwallpaper" }
+      { "package": "xss-lock" }
     ],
     "aur": [{ "package": "pop-icon-theme" }]
   },
@@ -60,6 +59,7 @@
       { "package": "xcolor" },
       { "package": "xdotool" },
       { "package": "xed" },
+      { "package": "xwallpaper" },
       { "package": "zathura" },
       { "package": "zathura-cb" },
       { "package": "zathura-djvu" },
