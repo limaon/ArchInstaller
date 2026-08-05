@@ -23,9 +23,6 @@ network_install
 pacman -S --noconfirm --needed --color=always pacman-contrib curl
 pacman -S --noconfirm --needed --color=always rsync grub arch-install-scripts git
 
-# Update the mirrorlist for optimal package download speeds on 'system-config.sh'
-mirrorlist_update
-
 # Configures makepkg settings based on the number
 # of CPU cores available on 'system-config.sh'
 cpu_config
