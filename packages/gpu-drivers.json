@@ -4,8 +4,7 @@
       { "package": "mesa" },
       { "package": "xorg-server" },
       { "package": "xorg-xinit" }
-    ],
-    "aur": []
+    ]
   },
   "nvidia": {
     "proprietary": {
@@ -17,8 +16,7 @@
         { "package": "nvidia-utils" },
         { "package": "xorg-server" },
         { "package": "xorg-xinit" }
-      ],
-      "aur": []
+      ]
     },
     "open-dkms": {
       "pacman": [
@@ -29,8 +27,7 @@
         { "package": "nvidia-utils" },
         { "package": "xorg-server" },
         { "package": "xorg-xinit" }
-      ],
-      "aur": []
+      ]
     },
     "nouveau": {
       "pacman": [
@@ -40,8 +37,7 @@
         { "package": "xf86-video-nouveau" },
         { "package": "xorg-server" },
         { "package": "xorg-xinit" }
-      ],
-      "aur": []
+      ]
     }
   },
   "amd": {
@@ -53,8 +49,7 @@
       { "package": "xf86-video-ati" },
       { "package": "xorg-server" },
       { "package": "xorg-xinit" }
-    ],
-    "aur": []
+    ]
   },
   "intel": {
     "pacman": [
@@ -64,8 +59,7 @@
       { "package": "vulkan-intel" },
       { "package": "xorg-server" },
       { "package": "xorg-xinit" }
-    ],
-    "aur": []
+    ]
   },
   "hybrid": {
     "nvidia-intel": {
@@ -82,8 +76,7 @@
           { "package": "vulkan-intel" },
           { "package": "xorg-server" },
           { "package": "xorg-xinit" }
-        ],
-        "aur": []
+        ]
       },
       "open-dkms": {
         "pacman": [
@@ -98,8 +91,7 @@
           { "package": "vulkan-intel" },
           { "package": "xorg-server" },
           { "package": "xorg-xinit" }
-        ],
-        "aur": []
+        ]
       },
       "nouveau": {
         "pacman": [
@@ -112,8 +104,7 @@
           { "package": "xf86-video-nouveau" },
           { "package": "xorg-server" },
           { "package": "xorg-xinit" }
-        ],
-        "aur": []
+        ]
       }
     }
   }
