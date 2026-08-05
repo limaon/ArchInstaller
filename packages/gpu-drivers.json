@@ -11,7 +11,7 @@
       "pacman": [
         { "package": "dkms" },
         { "package": "libva-nvidia-driver" },
-        { "package": "nvidia-dkms" },
+        { "package": "nvidia" },
         { "package": "nvidia-settings" },
         { "package": "nvidia-utils" },
         { "package": "xorg-server" },
@@ -31,7 +31,6 @@
     },
     "nouveau": {
       "pacman": [
-        { "package": "libva-mesa-driver" },
         { "package": "mesa" },
         { "package": "vulkan-nouveau" },
         { "package": "xf86-video-nouveau" },
@@ -42,7 +41,6 @@
   },
   "amd": {
     "pacman": [
-      { "package": "libva-mesa-driver" },
       { "package": "mesa" },
       { "package": "vulkan-radeon" },
       { "package": "xf86-video-amdgpu" },
@@ -69,9 +67,9 @@
           { "package": "intel-media-driver" },
           { "package": "libva-intel-driver" },
           { "package": "libva-nvidia-driver" },
-          { "package": "mesa" },
-          { "package": "nvidia-dkms" },
-          { "package": "nvidia-settings" },
+        { "package": "mesa" },
+        { "package": "nvidia" },
+        { "package": "nvidia-settings" },
           { "package": "nvidia-utils" },
           { "package": "vulkan-intel" },
           { "package": "xorg-server" },
@@ -97,7 +95,6 @@
         "pacman": [
           { "package": "intel-media-driver" },
           { "package": "libva-intel-driver" },
-          { "package": "libva-mesa-driver" },
           { "package": "mesa" },
           { "package": "vulkan-intel" },
           { "package": "vulkan-nouveau" },
