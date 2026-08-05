@@ -306,109 +306,109 @@ low_memory_config() {
     # Priority 3: By installation type
     else
         case "$INSTALL_TYPE" in
-            "SERVER")
-                # Server logic: Performance is critical
-                if [[ $TOTAL_MEM_GB -lt 4 ]]; then
+        "SERVER")
+            # Server logic: Performance is critical
+            if [[ $TOTAL_MEM_GB -lt 4 ]]; then
+                USE_ZRAM=true
+                USE_SWAPFILE=true
+                ZRAM_MULTIPLIER=2
+                SWAP_SIZE_GB=4
+                SWAP_STRATEGY="SERVER_CRITICAL"
+                echo "Strategy: Server with critical RAM (${TOTAL_MEM_GB}GB) - ZRAM + Swapfile"
+                echo "  - ZRAM: 2x RAM ($(echo "$TOTAL_MEM_GB * 2" | bc)GB) to avoid OOM"
+                echo "  - Swapfile: 4GB as emergency backup"
+            elif [[ $TOTAL_MEM_GB -lt 16 ]]; then
+                if [[ $IS_SSD -eq 1 ]]; then
+                    USE_ZRAM=true
+                    ZRAM_MULTIPLIER=2
+                    SWAP_STRATEGY="SERVER_SSD_OPTIMAL"
+                    echo "Strategy: Server with SSD (${TOTAL_MEM_GB}GB RAM) - ZRAM Only"
+                    echo "  - ZRAM: 2x RAM ($(echo "$TOTAL_MEM_GB * 2" | bc)GB) for optimal performance"
+                    echo "  - Swapfile: Disabled (SSD swap is slow, causes I/O bottleneck)"
+                else
                     USE_ZRAM=true
                     USE_SWAPFILE=true
                     ZRAM_MULTIPLIER=2
                     SWAP_SIZE_GB=4
-                    SWAP_STRATEGY="SERVER_CRITICAL"
-                    echo "Strategy: Server with critical RAM (${TOTAL_MEM_GB}GB) - ZRAM + Swapfile"
-                    echo "  - ZRAM: 2x RAM ($(echo "$TOTAL_MEM_GB * 2" | bc)GB) to avoid OOM"
-                    echo "  - Swapfile: 4GB as emergency backup"
-                elif [[ $TOTAL_MEM_GB -lt 16 ]]; then
-                    if [[ $IS_SSD -eq 1 ]]; then
-                        USE_ZRAM=true
-                        ZRAM_MULTIPLIER=2
-                        SWAP_STRATEGY="SERVER_SSD_OPTIMAL"
-                        echo "Strategy: Server with SSD (${TOTAL_MEM_GB}GB RAM) - ZRAM Only"
-                        echo "  - ZRAM: 2x RAM ($(echo "$TOTAL_MEM_GB * 2" | bc)GB) for optimal performance"
-                        echo "  - Swapfile: Disabled (SSD swap is slow, causes I/O bottleneck)"
-                    else
-                        USE_ZRAM=true
-                        USE_SWAPFILE=true
-                        ZRAM_MULTIPLIER=2
-                        SWAP_SIZE_GB=4
-                        SWAP_STRATEGY="SERVER_HDD_BACKUP"
-                        echo "Strategy: Server with HDD (${TOTAL_MEM_GB}GB RAM) - ZRAM + Swapfile"
-                        echo "  - ZRAM: 2x RAM ($(echo "$TOTAL_MEM_GB * 2" | bc)GB) for performance"
-                        echo "  - Swapfile: 4GB as HDD backup (HDD is too slow for daily swap)"
-                    fi
-                else
-                    # Server with >= 16GB RAM
-                    USE_ZRAM=true
-                    ZRAM_MULTIPLIER=1
-                    SWAP_STRATEGY="SERVER_HIGH_RAM"
-                    echo "Strategy: Server with high RAM (${TOTAL_MEM_GB}GB) - ZRAM Only"
-                    echo "  - ZRAM: 1x RAM (${TOTAL_MEM_GB}GB) for occasional swap"
-                    echo "  - Swapfile: Disabled (sufficient RAM, unnecessary)"
+                    SWAP_STRATEGY="SERVER_HDD_BACKUP"
+                    echo "Strategy: Server with HDD (${TOTAL_MEM_GB}GB RAM) - ZRAM + Swapfile"
+                    echo "  - ZRAM: 2x RAM ($(echo "$TOTAL_MEM_GB * 2" | bc)GB) for performance"
+                    echo "  - Swapfile: 4GB as HDD backup (HDD is too slow for daily swap)"
                 fi
-                ;;
+            else
+                # Server with >= 16GB RAM
+                USE_ZRAM=true
+                ZRAM_MULTIPLIER=1
+                SWAP_STRATEGY="SERVER_HIGH_RAM"
+                echo "Strategy: Server with high RAM (${TOTAL_MEM_GB}GB) - ZRAM Only"
+                echo "  - ZRAM: 1x RAM (${TOTAL_MEM_GB}GB) for occasional swap"
+                echo "  - Swapfile: Disabled (sufficient RAM, unnecessary)"
+            fi
+            ;;
 
-            "DESKTOP" | "FULL")
-                # Desktop logic: Balance performance with hibernation support
+        "DESKTOP" | "FULL")
+            # Desktop logic: Balance performance with hibernation support
+            USE_ZRAM=true
+            USE_SWAPFILE=true
+            ZRAM_MULTIPLIER=1
+            if [[ $TOTAL_MEM_GB -lt 8 ]]; then
+                SWAP_SIZE_GB=$((TOTAL_MEM_GB + 2))
+            elif [[ $TOTAL_MEM_GB -lt 32 ]]; then
+                SWAP_SIZE_GB=$TOTAL_MEM_GB
+            else
+                SWAP_SIZE_GB=8
+            fi
+            SWAP_STRATEGY="DESKTOP_HIBERNATION"
+            echo "Strategy: Desktop - ZRAM + Swapfile (hibernation support)"
+            echo "  - ZRAM: 1x RAM (${TOTAL_MEM_GB}GB) for daily performance"
+            echo "  - Swapfile: ${SWAP_SIZE_GB}GB for hibernation support"
+
+            # HDD gets larger swapfile
+            if [[ $IS_SSD -eq 0 ]]; then
+                ZRAM_MULTIPLIER=1.5
+                echo "  Note: Increased ZRAM to 1.5x RAM due to HDD being slow"
+            fi
+            ;;
+
+        "MINIMAL")
+            # Minimal logic: Resource efficiency
+            if [[ $TOTAL_MEM_GB -lt 4 ]]; then
                 USE_ZRAM=true
                 USE_SWAPFILE=true
-                ZRAM_MULTIPLIER=1
-                if [[ $TOTAL_MEM_GB -lt 8 ]]; then
-                    SWAP_SIZE_GB=$((TOTAL_MEM_GB + 2))
-                elif [[ $TOTAL_MEM_GB -lt 32 ]]; then
-                    SWAP_SIZE_GB=$TOTAL_MEM_GB
+                ZRAM_MULTIPLIER=2
+                SWAP_SIZE_GB=2
+                SWAP_STRATEGY="MINIMAL_LOW_RAM"
+                echo "Strategy: Minimal installation with low RAM (${TOTAL_MEM_GB}GB) - ZRAM + small swapfile"
+                echo "  - ZRAM: 2x RAM ($(echo "$TOTAL_MEM_GB * 2" | bc)GB) to avoid OOM"
+                echo "  - Swapfile: 2GB minimal safety net"
+            elif [[ $TOTAL_MEM_GB -lt 16 ]]; then
+                if [[ $IS_SSD -eq 1 ]]; then
+                    USE_ZRAM=true
+                    ZRAM_MULTIPLIER=1
+                    SWAP_STRATEGY="MINIMAL_OPTIMAL"
+                    echo "Strategy: Minimal installation on SSD (${TOTAL_MEM_GB}GB RAM) - ZRAM Only"
+                    echo "  - ZRAM: 1x RAM (${TOTAL_MEM_GB}GB) efficient performance"
+                    echo "  - Swapfile: Disabled (saves disk space)"
                 else
-                    SWAP_SIZE_GB=8
-                fi
-                SWAP_STRATEGY="DESKTOP_HIBERNATION"
-                echo "Strategy: Desktop - ZRAM + Swapfile (hibernation support)"
-                echo "  - ZRAM: 1x RAM (${TOTAL_MEM_GB}GB) for daily performance"
-                echo "  - Swapfile: ${SWAP_SIZE_GB}GB for hibernation support"
-
-                # HDD gets larger swapfile
-                if [[ $IS_SSD -eq 0 ]]; then
-                    ZRAM_MULTIPLIER=1.5
-                    echo "  Note: Increased ZRAM to 1.5x RAM due to HDD being slow"
-                fi
-                ;;
-
-            "MINIMAL")
-                # Minimal logic: Resource efficiency
-                if [[ $TOTAL_MEM_GB -lt 4 ]]; then
                     USE_ZRAM=true
                     USE_SWAPFILE=true
-                    ZRAM_MULTIPLIER=2
+                    ZRAM_MULTIPLIER=1
                     SWAP_SIZE_GB=2
-                    SWAP_STRATEGY="MINIMAL_LOW_RAM"
-                    echo "Strategy: Minimal installation with low RAM (${TOTAL_MEM_GB}GB) - ZRAM + small swapfile"
-                    echo "  - ZRAM: 2x RAM ($(echo "$TOTAL_MEM_GB * 2" | bc)GB) to avoid OOM"
-                    echo "  - Swapfile: 2GB minimal safety net"
-                elif [[ $TOTAL_MEM_GB -lt 16 ]]; then
-                    if [[ $IS_SSD -eq 1 ]]; then
-                        USE_ZRAM=true
-                        ZRAM_MULTIPLIER=1
-                        SWAP_STRATEGY="MINIMAL_OPTIMAL"
-                        echo "Strategy: Minimal installation on SSD (${TOTAL_MEM_GB}GB RAM) - ZRAM Only"
-                        echo "  - ZRAM: 1x RAM (${TOTAL_MEM_GB}GB) efficient performance"
-                        echo "  - Swapfile: Disabled (saves disk space)"
-                    else
-                        USE_ZRAM=true
-                        USE_SWAPFILE=true
-                        ZRAM_MULTIPLIER=1
-                        SWAP_SIZE_GB=2
-                        SWAP_STRATEGY="MINIMAL_HDD"
-                        echo "Strategy: Minimal installation on HDD (${TOTAL_MEM_GB}GB RAM) - ZRAM + small swapfile"
-                        echo "  - ZRAM: 1x RAM (${TOTAL_MEM_GB}GB) for performance"
-                        echo "  - Swapfile: 2GB minimal HDD backup"
-                    fi
-                else
-                    # Minimal with >= 16GB RAM
-                    USE_ZRAM=true
-                    ZRAM_MULTIPLIER=0.5
-                    SWAP_STRATEGY="MINIMAL_HIGH_RAM"
-                    echo "Strategy: Minimal installation with high RAM (${TOTAL_MEM_GB}GB) - Minimal ZRAM"
-                    echo "  - ZRAM: 0.5x RAM ($(echo "$TOTAL_MEM_GB * 0.5" | bc)GB) just in case"
-                    echo "  - Swapfile: Disabled (RAM more than sufficient)"
+                    SWAP_STRATEGY="MINIMAL_HDD"
+                    echo "Strategy: Minimal installation on HDD (${TOTAL_MEM_GB}GB RAM) - ZRAM + small swapfile"
+                    echo "  - ZRAM: 1x RAM (${TOTAL_MEM_GB}GB) for performance"
+                    echo "  - Swapfile: 2GB minimal HDD backup"
                 fi
-                ;;
+            else
+                # Minimal with >= 16GB RAM
+                USE_ZRAM=true
+                ZRAM_MULTIPLIER=0.5
+                SWAP_STRATEGY="MINIMAL_HIGH_RAM"
+                echo "Strategy: Minimal installation with high RAM (${TOTAL_MEM_GB}GB) - Minimal ZRAM"
+                echo "  - ZRAM: 0.5x RAM ($(echo "$TOTAL_MEM_GB * 0.5" | bc)GB) just in case"
+                echo "  - Swapfile: Disabled (RAM more than sufficient)"
+            fi
+            ;;
         esac
     fi
 
@@ -1600,30 +1600,30 @@ do_btrfs() {
     # Mount remaining subvolumes in their respective directories
     for z in "${SUBVOLUMES[@]:1}"; do
         case "$z" in
-            "@docker")
-                w="var/lib/docker"
-                ;;
-            "@flatpak")
-                w="var/lib/flatpak"
-                ;;
-            "@snapshots")
-                w=".snapshots"
-                ;;
-            "@swap")
-                w="swap"
-                ;;
-            "@var_cache")
-                w="var/cache"
-                ;;
-            "@var_log")
-                w="var/log"
-                ;;
-            "@var_tmp")
-                w="var/tmp"
-                ;;
-            *)
-                w="${z//@/}"
-                ;;
+        "@docker")
+            w="var/lib/docker"
+            ;;
+        "@flatpak")
+            w="var/lib/flatpak"
+            ;;
+        "@snapshots")
+            w=".snapshots"
+            ;;
+        "@swap")
+            w="swap"
+            ;;
+        "@var_cache")
+            w="var/cache"
+            ;;
+        "@var_log")
+            w="var/log"
+            ;;
+        "@var_tmp")
+            w="var/tmp"
+            ;;
+        *)
+            w="${z//@/}"
+            ;;
         esac
 
         mkdir -p /mnt/"${w}"

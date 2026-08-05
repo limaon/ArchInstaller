@@ -122,16 +122,16 @@ function multiselect {
 
         # user key control
         case $(key_input) in
-            space) toggle_option selected $active ;;
-            enter) break ;;
-            up)
-                ((active--))
-                if [ $active -lt 0 ]; then active=$((${#options[@]} - 1)); fi
-                ;;
-            down)
-                ((active++))
-                if [ $active -ge ${#options[@]} ]; then active=0; fi
-                ;;
+        space) toggle_option selected $active ;;
+        enter) break ;;
+        up)
+            ((active--))
+            if [ $active -lt 0 ]; then active=$((${#options[@]} - 1)); fi
+            ;;
+        down)
+            ((active++))
+            if [ $active -ge ${#options[@]} ]; then active=0; fi
+            ;;
         esac
     done
 
@@ -285,24 +285,24 @@ select_option() {
     while true; do
         print_options_multicol "$active_col" "$active_row"
         case "$(key_input)" in
-            enter) break ;;
-            up)
-                ((active_row--))
-                [[ $active_row -lt 0 ]] && active_row=0
-                ;;
-            down)
-                ((active_row++))
-                local max_row=$(((${#local_options[@]} - 1) / colmax))
-                [[ $active_row -gt $max_row ]] && active_row=$max_row
-                ;;
-            left)
-                ((active_col--))
-                [[ $active_col -lt 0 ]] && active_col=0
-                ;;
-            right)
-                ((active_col++))
-                [[ $active_col -ge colmax ]] && active_col=$((colmax - 1))
-                ;;
+        enter) break ;;
+        up)
+            ((active_row--))
+            [[ $active_row -lt 0 ]] && active_row=0
+            ;;
+        down)
+            ((active_row++))
+            local max_row=$(((${#local_options[@]} - 1) / colmax))
+            [[ $active_row -gt $max_row ]] && active_row=$max_row
+            ;;
+        left)
+            ((active_col--))
+            [[ $active_col -lt 0 ]] && active_col=0
+            ;;
+        right)
+            ((active_col++))
+            [[ $active_col -ge colmax ]] && active_col=$((colmax - 1))
+            ;;
         esac
     done
 
@@ -467,41 +467,41 @@ select_option_with_search() {
     while true; do
         local input=$(key_input_search)
         case "$input" in
-            enter) break ;;
-            search)
-                search_mode=true
-                search_query=""
+        enter) break ;;
+        search)
+            search_mode=true
+            search_query=""
+            draw
+            cursor_to $prompt_row $((9 + ${#search_query}))
+            ;;
+        backspace)
+            if $search_mode; then
+                [[ ${#search_query} -gt 0 ]] && search_query="${search_query:0:${#search_query}-1}" || search_mode=false
+                filter_apply
                 draw
-                cursor_to $prompt_row $((9 + ${#search_query}))
-                ;;
-            backspace)
-                if $search_mode; then
-                    [[ ${#search_query} -gt 0 ]] && search_query="${search_query:0:${#search_query}-1}" || search_mode=false
-                    filter_apply
-                    draw
-                fi
-                ;;
-            char:*)
-                if $search_mode; then
-                    local ch="${input#char:}"
-                    search_query+="$ch"
-                    filter_apply
-                    draw
-                fi
-                ;;
-            up)
-                ((active_index--))
-                [[ $active_index -lt 0 ]] && active_index=0
-                [[ $active_index -lt $top_index ]] && top_index=$active_index
+            fi
+            ;;
+        char:*)
+            if $search_mode; then
+                local ch="${input#char:}"
+                search_query+="$ch"
+                filter_apply
                 draw
-                ;;
-            down)
-                ((active_index++))
-                local total=${#filtered_list[@]}
-                [[ $active_index -ge $total ]] && active_index=$((total - 1))
-                while [[ $active_index -ge $((top_index + viewport_rows)) ]]; do ((top_index++)); done
-                draw
-                ;;
+            fi
+            ;;
+        up)
+            ((active_index--))
+            [[ $active_index -lt 0 ]] && active_index=0
+            [[ $active_index -lt $top_index ]] && top_index=$active_index
+            draw
+            ;;
+        down)
+            ((active_index++))
+            local total=${#filtered_list[@]}
+            [[ $active_index -ge $total ]] && active_index=$((total - 1))
+            while [[ $active_index -ge $((top_index + viewport_rows)) ]]; do ((top_index++)); done
+            draw
+            ;;
         esac
     done
 

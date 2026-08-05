@@ -196,9 +196,9 @@ detect_vm() {
     if [[ -f /sys/class/dmi/id/product_name ]]; then
         local product_name=$(cat /sys/class/dmi/id/product_name 2>/dev/null)
         case "$product_name" in
-            *VirtualBox* | *VMware* | *QEMU* | *KVM* | *Bochs*)
-                return 0
-                ;;
+        *VirtualBox* | *VMware* | *QEMU* | *KVM* | *Bochs*)
+            return 0
+            ;;
         esac
     fi
 
@@ -233,8 +233,8 @@ detect_gpu() {
 detect_hybrid_graphics() {
     local gpu_info=$(lspci | grep -iE "VGA|3D|Display" 2>/dev/null)
 
-    if echo "$gpu_info" | grep -iE "NVIDIA|GeForce" &>/dev/null \
-        && echo "$gpu_info" | grep -iE "Intel.*Graphics|Integrated Graphics Controller" &>/dev/null; then
+    if echo "$gpu_info" | grep -iE "NVIDIA|GeForce" &>/dev/null &&
+        echo "$gpu_info" | grep -iE "Intel.*Graphics|Integrated Graphics Controller" &>/dev/null; then
         return 0
     fi
 
@@ -282,16 +282,16 @@ get_nvidia_driver_choice() {
 
     if [[ "$supports_open" == true ]]; then
         case $choice in
-            0) echo "proprietary" ;;
-            1) echo "open-dkms" ;;
-            2) echo "nouveau" ;;
-            *) echo "proprietary" ;;
+        0) echo "proprietary" ;;
+        1) echo "open-dkms" ;;
+        2) echo "nouveau" ;;
+        *) echo "proprietary" ;;
         esac
     else
         case $choice in
-            0) echo "proprietary" ;;
-            1) echo "nouveau" ;;
-            *) echo "proprietary" ;;
+        0) echo "proprietary" ;;
+        1) echo "nouveau" ;;
+        *) echo "proprietary" ;;
         esac
     fi
 }
@@ -441,18 +441,18 @@ graphics_install() {
 
     # 4. Handle AMD/Intel (automatic)
     case "$detected_gpu" in
-        amd)
-            echo "AMD GPU detected - installing AMD drivers"
-            install_gpu_from_json "amd" ""
-            ;;
-        intel)
-            echo "Intel GPU detected - installing Intel drivers"
-            install_gpu_from_json "intel" ""
-            ;;
-        *)
-            echo "Unknown or no GPU detected - installing fallback drivers"
-            install_gpu_from_json "fallback" ""
-            ;;
+    amd)
+        echo "AMD GPU detected - installing AMD drivers"
+        install_gpu_from_json "amd" ""
+        ;;
+    intel)
+        echo "Intel GPU detected - installing Intel drivers"
+        install_gpu_from_json "intel" ""
+        ;;
+    *)
+        echo "Unknown or no GPU detected - installing fallback drivers"
+        install_gpu_from_json "fallback" ""
+        ;;
     esac
 }
 

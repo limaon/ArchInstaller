@@ -43,4 +43,3 @@ jobs:
           VALIDATE_BASH: true
           VALIDATE_SHELL_SHFMT: true
           FILTER_REGEX_EXCLUDE: "^(docs/|packages/.*\\.md)$"
-          SHELL_SHFMT_ARGS: "-i 4 -ci -bn"

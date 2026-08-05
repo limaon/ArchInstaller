@@ -194,20 +194,20 @@ Please Select your file system for both boot and root
     select_option $? 1 "${options[@]}"
 
     case $? in
-        0)
-            set_btrfs
-            set_option FS btrfs
-            ;;
-        1) set_option FS ext4 ;;
-        2)
-            set_password "LUKS_PASSWORD"
-            set_option FS luks
-            ;;
-        3) exit ;;
-        *)
-            echo "Wrong option please select again"
-            filesystem
-            ;;
+    0)
+        set_btrfs
+        set_option FS btrfs
+        ;;
+    1) set_option FS ext4 ;;
+    2)
+        set_password "LUKS_PASSWORD"
+        set_option FS luks
+        ;;
+    3) exit ;;
+    *)
+        echo "Wrong option please select again"
+        filesystem
+        ;;
     esac
 }
 
@@ -287,8 +287,8 @@ timezone() {
         local rel_tz="${tz_path#/usr/share/zoneinfo/}"
         timezones+=("$rel_tz")
     done < <(find /usr/share/zoneinfo -type f \
-        ! -name "*.tab" ! -name "*.list" ! -name "*.zi" ! -name "*.leap" \
-        | grep -v "/posix/" | grep -v "/right/" | sort)
+        ! -name "*.tab" ! -name "*.list" ! -name "*.zi" ! -name "*.leap" |
+        grep -v "/posix/" | grep -v "/right/" | sort)
 
     if [[ ${#timezones[@]} -eq 0 ]]; then
         echo "Error: No timezones found in /usr/share/zoneinfo"
@@ -406,75 +406,75 @@ Do you want to redo any step? Select an option below, or press Enter to proceed:
         fi
 
         case $choice in
-            1) user_info ;;
-            2)
-                install_type
-                # Reload INSTALL_TYPE after change
-                # shellcheck disable=SC1090
-                # Reason: CONFIG_FILE path is dynamically set, ShellCheck can't follow it
-                if [[ -f "$CONFIG_FILE" ]] && grep -q "^INSTALL_TYPE=" "$CONFIG_FILE"; then
-                    source "$CONFIG_FILE"
-                fi
-                ;;
-            3)
-                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
-                    aur_helper
-                else
-                    disk_select
-                fi
-                ;;
-            4)
-                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
-                    desktop_environment
-                else
-                    filesystem
-                fi
-                ;;
-            5)
-                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
-                    disk_select
-                else
-                    timezone
-                fi
-                ;;
-            6)
-                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
-                    filesystem
-                else
-                    locale_selection
-                fi
-                ;;
-            7)
-                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
-                    timezone
-                else
-                    keymap
-                fi
-                ;;
-            8)
-                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
-                    locale_selection
-                else
-                    echo "Invalid option. Please try again."
-                fi
-                ;;
-            9)
-                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
-                    keymap
-                else
-                    echo "Invalid option. Please try again."
-                fi
-                ;;
-            10)
-                if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
-                    filesystem
-                else
-                    echo "Invalid option. Please try again."
-                fi
-                ;;
-            *)
+        1) user_info ;;
+        2)
+            install_type
+            # Reload INSTALL_TYPE after change
+            # shellcheck disable=SC1090
+            # Reason: CONFIG_FILE path is dynamically set, ShellCheck can't follow it
+            if [[ -f "$CONFIG_FILE" ]] && grep -q "^INSTALL_TYPE=" "$CONFIG_FILE"; then
+                source "$CONFIG_FILE"
+            fi
+            ;;
+        3)
+            if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                aur_helper
+            else
+                disk_select
+            fi
+            ;;
+        4)
+            if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                desktop_environment
+            else
+                filesystem
+            fi
+            ;;
+        5)
+            if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                disk_select
+            else
+                timezone
+            fi
+            ;;
+        6)
+            if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                filesystem
+            else
+                locale_selection
+            fi
+            ;;
+        7)
+            if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                timezone
+            else
+                keymap
+            fi
+            ;;
+        8)
+            if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                locale_selection
+            else
                 echo "Invalid option. Please try again."
-                ;;
+            fi
+            ;;
+        9)
+            if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                keymap
+            else
+                echo "Invalid option. Please try again."
+            fi
+            ;;
+        10)
+            if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                filesystem
+            else
+                echo "Invalid option. Please try again."
+            fi
+            ;;
+        *)
+            echo "Invalid option. Please try again."
+            ;;
         esac
     done
 }
