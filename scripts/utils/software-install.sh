@@ -428,8 +428,8 @@ graphics_install() {
         install_gpu_from_json "intel" ""
         ;;
     *)
-        echo "Unknown or no GPU detected - installing fallback drivers"
-        install_gpu_from_json "fallback" ""
+        echo "No GPU detected - skipping graphics driver installation"
+        return 0
         ;;
     esac
 }
