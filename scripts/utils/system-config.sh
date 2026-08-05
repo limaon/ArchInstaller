@@ -446,7 +446,9 @@ EOF
 
         arch-chroot /mnt systemctl enable systemd-zram-setup@zram0.service
 
-        echo "ZRAM configured: ${ZRAM_MULTIPLIER}x RAM (${TOTAL_MEM_GB}GB → $((TOTAL_MEM_GB * ZRAM_MULTIPLIER))GB compressed swap)"
+        local zram_size_gb
+        zram_size_gb=$(awk "BEGIN {printf \"%.1f\", ${TOTAL_MEM_GB} * ${ZRAM_MULTIPLIER}}")
+        echo "ZRAM configured: ${ZRAM_MULTIPLIER}x RAM (${TOTAL_MEM_GB}GB -> ${zram_size_gb}GB compressed swap)"
     fi
 
     # =========================================================================
