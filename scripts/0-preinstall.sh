@@ -20,7 +20,7 @@ else
 fi
 timedatectl set-ntp true
 pacman -Sy --noconfirm --color=always archlinux-keyring # update keyrings to latest to prevent packages failing to install
-pacman -Sy --noconfirm --needed --color=always pacman-contrib reflector rsync grub
+pacman -Sy --noconfirm --needed --color=always pacman-contrib rate-mirrors rsync grub
 sed -i \
     -e '/^#ParallelDownloads/s/^#//' \
     -e '/^ParallelDownloads/s/=.*/= 6/' \

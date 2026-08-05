@@ -7,7 +7,7 @@
 # @stderror Output routed to install.log
 
 
-# @description Update mirrorlist to improve download speeds using rankmirrors if reflector is unavailable
+# @description Update mirrorlist to improve download speeds using rate-mirrors
 # @noargs
 mirrorlist_update() {
     # shellcheck disable=SC1009,SC1073
@@ -15,58 +15,27 @@ mirrorlist_update() {
 
     cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
 
-    # Use reflector if available and working, otherwise fall back to rankmirrors
-    if command -v reflector &> /dev/null; then
-        echo -ne "
--------------------------------------------------------------------------
-                    Setting up mirrors for faster downloads (reflector)
--------------------------------------------------------------------------
-"
-        # Set default country if iso variable is empty
-        local country="${iso:-US}"
-        echo "Using country code: $country"
+    # Set default country if iso variable is empty
+    local country="${iso:-US}"
 
-        # Try to use reflector with error handling
-        # Capture stderr to see actual error messages
-        if reflector_error=$(reflector -a 48 -c "$country" -f 5 -l 20 --sort rate --save /etc/pacman.d/mirrorlist 2>&1); then
-            echo "Mirror list updated successfully using reflector"
-        else
-            echo "Warning: reflector failed with error:"
-            echo "$reflector_error"
-            echo "Falling back to rankmirrors"
-            mirrorlist_rankmirrors_fallback
-        fi
-    else
-        echo "Warning: reflector not found, using rankmirrors"
-        mirrorlist_rankmirrors_fallback
-    fi
-}
-
-
-# @description Fallback method using rankmirrors when reflector is unavailable
-# @noargs
-mirrorlist_rankmirrors_fallback() {
     echo -ne "
 -------------------------------------------------------------------------
-                    Setting up mirrors using rankmirrors
+            Setting up mirrors for faster downloads (rate-mirrors)
 -------------------------------------------------------------------------
 "
-    # Get mirror list and rank by speed
-    curl -s 'https://archlinux.org/mirrorlist/?country=US&country=BR&country=DE&protocol=https&ip_version=4&ip_version=6' > /tmp/mirrorlist.new
+    echo "Using country code: $country"
 
-    # Uncomment servers and rank them
-    sed -i 's/^#Server/Server/' /tmp/mirrorlist.new
-
-    if command -v rankmirrors &> /dev/null; then
-        echo "Testing mirrors and ranking by speed..."
-        rankmirrors -n 10 -m 5 -v -w /tmp/mirrorlist.new > /etc/pacman.d/mirrorlist
+    # Use rate-mirrors to find and rank fastest mirrors
+    # --entry-country: starting country for geographic search
+    # --disable-comments: output only Server lines (clean mirrorlist)
+    # --save: write mirrorlist to file
+    # --allow-root: allow running as root
+    if rate-mirrors --entry-country "$country" --disable-comments --save /etc/pacman.d/mirrorlist --allow-root arch 2>/dev/null; then
+        echo "Mirror list updated successfully using rate-mirrors"
     else
-        # If rankmirrors is also not available, just use the new list
-        mv /tmp/mirrorlist.new /etc/pacman.d/mirrorlist
+        echo "Warning: rate-mirrors failed, keeping existing mirrorlist"
+        cp /etc/pacman.d/mirrorlist.backup /etc/pacman.d/mirrorlist
     fi
-
-    rm -f /tmp/mirrorlist.new
-    echo "Mirror list updated using rankmirrors"
 }
 
 
