@@ -2,7 +2,6 @@
   "minimal": {
     "pacman": [
       { "package": "acpi" },
-      { "package": "alsa-utils" },
       { "package": "autorandr" },
       { "package": "brightnessctl" },
       { "package": "dmenu" },
