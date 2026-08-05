@@ -51,10 +51,8 @@ else
 fi
 mount_check
 
-
 # Function to install the Arch base system using pacstrap on 'software-install.sh'
 arch_install
-
 
 # Configure GPG, copies necessary files to a mounted Arch Linux installation, and generates the filesystem table (fstab).
 echo -e "\n Adding keyserver to gpg.conf"
@@ -71,7 +69,7 @@ cp "/etc/pacman.conf" "/mnt/etc/pacman.conf"
 
 echo -e "\n Generating fstab"
 # genfstab -L /mnt >>/mnt/etc/fstab
-genfstab -U /mnt >> /mnt/etc/fstab
+genfstab -U /mnt >>/mnt/etc/fstab
 sed -i 's/subvolid=.*,//' /mnt/etc/fstab
 
 echo "
@@ -79,14 +77,11 @@ echo "
 "
 cat /mnt/etc/fstab
 
-
 # Install the bootloader for the Arch base system, this function is located on 'software-install.sh'
 bootloader_install
 
-
 # Configure swap memory settings for systems with limited resources, function is located on 'system-config.sh'
 low_memory_config
-
 
 echo -ne "
 -------------------------------------------------------------------------
