@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 ##############################################################################
 # ArchInstaller Logging Module (Simplified)
