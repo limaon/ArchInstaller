@@ -591,12 +591,6 @@ user_theming() {
                 cp -r ~/archinstaller/configs/i3-wm/. /
             fi
 
-            # Make i3blocks scripts executable
-            if [[ -d /etc/skel/.config/i3blocks/scripts ]]; then
-                chmod +x /etc/skel/.config/i3blocks/scripts/*.sh 2>/dev/null || true
-                echo "i3blocks scripts made executable"
-            fi
-
             # Configure i3 wallpaper/background with solid color for all installation types
             I3_CONFIG_FILE="/etc/skel/.config/i3/config"
             if [[ -f "$I3_CONFIG_FILE" ]]; then

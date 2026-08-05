@@ -31,7 +31,7 @@ set $menu i3-dmenu-desktop
 # set $menu rofi -modi drun,run -show drun
 
 # Audio control (PipeWire/PulseAudio)
-set $refresh_i3blocks killall -SIGUSR1 i3blocks
+set $refresh_i3status killall -SIGUSR1 i3status
 
 # Navigation keys (Vim style: hjkl)
 set $left h
@@ -69,11 +69,11 @@ tiling_drag modifier titlebar
 ##  AUDIO CONTROL (PIPEWIRE/PULSEAUDIO)                                      ##
 ################################################################################
 
-# Use pactl to adjust volume in PipeWire/PulseAudio and refresh i3blocks
-bindsym XF86AudioRaiseVolume exec --no-startup-id pactl set-sink-volume @DEFAULT_SINK@ +10% && $refresh_i3blocks
-bindsym XF86AudioLowerVolume exec --no-startup-id pactl set-sink-volume @DEFAULT_SINK@ -10% && $refresh_i3blocks
-bindsym XF86AudioMute exec --no-startup-id pactl set-sink-mute @DEFAULT_SINK@ toggle && $refresh_i3blocks
-bindsym XF86AudioMicMute exec --no-startup-id pactl set-source-mute @DEFAULT_SOURCE@ toggle && $refresh_i3blocks
+# Use pactl to adjust volume in PipeWire/PulseAudio and refresh i3status
+bindsym XF86AudioRaiseVolume exec --no-startup-id pactl set-sink-volume @DEFAULT_SINK@ +10% && $refresh_i3status
+bindsym XF86AudioLowerVolume exec --no-startup-id pactl set-sink-volume @DEFAULT_SINK@ -10% && $refresh_i3status
+bindsym XF86AudioMute exec --no-startup-id pactl set-sink-mute @DEFAULT_SINK@ toggle && $refresh_i3status
+bindsym XF86AudioMicMute exec --no-startup-id pactl set-source-mute @DEFAULT_SOURCE@ toggle && $refresh_i3status
 
 ################################################################################
 ##  BASIC KEY BINDINGS                                                       ##
@@ -233,7 +233,7 @@ bindsym $mod+r mode "resize"
 ##  I3BAR CONFIGURATION                                                      ##
 ################################################################################
 
-# Start i3bar to display a workspace bar (plus the system information i3blocks
+# Start i3bar to display a workspace bar (plus the system information i3status
 # finds out, if available)
 bar {
     status_command i3status

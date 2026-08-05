@@ -12,12 +12,11 @@
       { "package": "gnome-keyring" },
       { "package": "gnome-themes-extra" },
       { "package": "i3-wm" },
-      { "package": "i3blocks" },
       { "package": "i3lock" },
       { "package": "i3status" },
       { "package": "ibus" },
       { "package": "jq" },
-      { "package": "xterm" },
+      { "package": "kitty" },
       { "package": "kvantum" },
       { "package": "kvantum-qt5" },
       { "package": "libnotify" },
@@ -39,7 +38,7 @@
       { "package": "xss-lock" },
       { "package": "xwallpaper" }
     ],
-    "aur": [{ "package": "xautocfg" }, { "package": "pop-icon-theme" }]
+    "aur": [{ "package": "pop-icon-theme" }]
   },
   "full": {
     "pacman": [
@@ -48,7 +47,6 @@
       { "package": "gvfs" },
       { "package": "gvfs-smb" },
       { "package": "hsetroot" },
-      { "package": "ibus-kkc" },
       { "package": "imagemagick" },
       { "package": "pass" },
       { "package": "lf" },
