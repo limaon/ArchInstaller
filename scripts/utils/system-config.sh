@@ -168,21 +168,18 @@ create_filesystems() {
 # @description Detect if system is running in a virtual machine/container
 # @noargs
 detect_vm() {
-    # Try systemd-detect-virt first (most reliable)
-    # Inside arch-chroot, systemd-detect-virt returns "container-other" which
-    # is just the chroot environment — not a real VM. Fall through to DMI/lspci.
-    if command -v systemd-detect-virt &>/dev/null; then
-        if systemd-detect-virt -q 2>/dev/null; then
-            VIRT_TYPE=$(systemd-detect-virt 2>/dev/null)
-            # container-* results are chroot/containers, not real VMs for graphics
-            if [[ "$VIRT_TYPE" != container* ]]; then
-                echo "$VIRT_TYPE"
-                return 0
-            fi
+    # systemd-detect-virt is most reliable, but returns "container-other"
+    # inside arch-chroot — that's the chroot, not a real VM.
+    if command -v systemd-detect-virt &>/dev/null && systemd-detect-virt -q 2>/dev/null; then
+        local virt_type
+        virt_type=$(systemd-detect-virt 2>/dev/null)
+        if [[ "$virt_type" != container* ]]; then
+            echo "$virt_type"
+            return 0
         fi
     fi
 
-    # Fallback: check DMI product name
+    # DMI product name for hypervisors that expose it
     if [[ -f /sys/class/dmi/id/product_name ]]; then
         local product_name
         product_name=$(cat /sys/class/dmi/id/product_name 2>/dev/null)
@@ -194,7 +191,7 @@ detect_vm() {
         esac
     fi
 
-    # Fallback: check lspci for virtual graphics
+    # lspci catches virtual GPU devices
     if lspci 2>/dev/null | grep -iE "VirtualBox|VMware|QEMU|Virtio" &>/dev/null; then
         echo "virtual"
         return 0
