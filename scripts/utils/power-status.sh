@@ -32,7 +32,7 @@ show_power_status() {
 
     echo ""
     echo "Manual commands:"
-    echo "  • systemctl suspend          - Force suspend"
-    echo "  • systemctl hibernate        - Force hibernate"
-    echo "  • systemd-inhibit -who='Working' -what='sleep' -why='Working' sleep 3600  - Prevent sleep"
+    echo "  - systemctl suspend          - Force suspend"
+    echo "  - systemctl hibernate        - Force hibernate"
+    echo "  - systemd-inhibit -who='Working' -what='sleep' -why='Working' sleep 3600  - Prevent sleep"
 }

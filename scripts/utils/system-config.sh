@@ -169,7 +169,7 @@ create_filesystems() {
 # @noargs
 detect_vm() {
     # systemd-detect-virt is most reliable, but returns "container-other"
-    # inside arch-chroot — that's the chroot, not a real VM.
+    # inside arch-chroot -- that's the chroot, not a real VM.
     if command -v systemd-detect-virt &>/dev/null && systemd-detect-virt -q 2>/dev/null; then
         local virt_type
         virt_type=$(systemd-detect-virt 2>/dev/null)

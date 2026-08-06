@@ -361,7 +361,7 @@ install_gpu_from_json() {
         set_option NVIDIA_DRIVER_TYPE "$driver_variant"
     fi
 
-    echo "✓ GPU drivers installed successfully"
+    echo "[OK] GPU drivers installed successfully"
     return 0
 }
 
@@ -873,7 +873,7 @@ EOF
 
     # Restart logind to apply changes
     sudo systemctl restart systemd-logind
-    echo "✓  Power management configured"
+    echo "[OK] Power management configured"
 
     # Configure i3-wm key bindings
     echo "Configuring i3-wm key bindings..."
@@ -903,7 +903,7 @@ EOF
         fi
     fi
 
-    echo "✓  i3-wm key bindings configured"
+    echo "[OK] i3-wm key bindings configured"
 
     # Check swap and hibernation capability
     echo ""
@@ -912,9 +912,9 @@ EOF
     RAM_SIZE=$(free -k | awk '/^Mem:/ {print $2}')
 
     if [[ $SWAP_SIZE -gt 0 && $SWAP_SIZE -ge $RAM_SIZE ]]; then
-        echo "✓  Swap sufficient for hibernation ($((SWAP_SIZE / 1024 / 1024))GB >= $((RAM_SIZE / 1024 / 1024))GB)"
+        echo "[OK] Swap sufficient for hibernation ($((SWAP_SIZE / 1024 / 1024))GB >= $((RAM_SIZE / 1024 / 1024))GB)"
     else
-        echo "⚠  Warning: Insufficient swap for hibernation"
+        echo "[!] Warning: Insufficient swap for hibernation"
         echo "  Current swap: $((SWAP_SIZE / 1024 / 1024))GB, Required: $((RAM_SIZE / 1024 / 1024))GB"
         echo "  System will suspend instead of hibernating on battery"
         echo "  To enable hibernation: sudo systemctl edit systemd-logind and set:"
@@ -923,13 +923,13 @@ EOF
     fi
 
     echo ""
-    echo "✓  Power management configuration complete!"
+    echo "[OK] Power management configuration complete!"
     echo ""
     echo "Available commands:"
-    echo "  • systemctl suspend          - Force immediate suspend"
-    echo "  • systemctl hibernate        - Force immediate hibernate"
-    echo "  • systemd-inhibit -who='Working' -what='sleep' -why='Working' sleep 3600  - Prevent sleep"
-    echo "  • acpi -b                    - Check battery status"
+    echo "  - systemctl suspend          - Force immediate suspend"
+    echo "  - systemctl hibernate        - Force immediate hibernate"
+    echo "  - systemd-inhibit -who='Working' -what='sleep' -why='Working' sleep 3600  - Prevent sleep"
+    echo "  - acpi -b                    - Check battery status"
     echo ""
     echo "System will automatically suspend after 30 minutes of inactivity"
     echo "Press $mod+Control+Delete to suspend, $mod+Control+BackSpace to hibernate"
