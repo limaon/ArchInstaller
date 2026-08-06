@@ -169,11 +169,16 @@ create_filesystems() {
 # @noargs
 detect_vm() {
     # Try systemd-detect-virt first (most reliable)
+    # Inside arch-chroot, systemd-detect-virt returns "container-other" which
+    # is just the chroot environment — not a real VM. Fall through to DMI/lspci.
     if command -v systemd-detect-virt &>/dev/null; then
         if systemd-detect-virt -q 2>/dev/null; then
             VIRT_TYPE=$(systemd-detect-virt 2>/dev/null)
-            echo "$VIRT_TYPE"
-            return 0
+            # container-* results are chroot/containers, not real VMs for graphics
+            if [[ "$VIRT_TYPE" != container* ]]; then
+                echo "$VIRT_TYPE"
+                return 0
+            fi
         fi
     fi
 
