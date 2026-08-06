@@ -7,6 +7,7 @@ general {
 order += "cpu_usage"
 order += "memory"
 order += "disk /"
+order += "volume master"
 order += "wireless _first_"
 order += "ethernet _first_"
 order += "battery all"
@@ -26,6 +27,14 @@ memory {
 
 disk "/" {
     format = " DISK %avail"
+}
+
+volume master {
+    format = " VOL %volume"
+    format_muted = " VOL muted"
+    device = "master"
+    mixer = "Master"
+    mixer_idx = 0
 }
 
 wireless _first_ {
