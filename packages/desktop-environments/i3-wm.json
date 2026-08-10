@@ -15,7 +15,6 @@
       { "package": "i3status" },
       { "package": "ibus" },
       { "package": "jq" },
-      { "package": "kitty" },
       { "package": "kvantum" },
       { "package": "kvantum-qt5" },
       { "package": "libnotify" },
@@ -34,7 +33,8 @@
       { "package": "udiskie" },
       { "package": "webkit2gtk-4.1" },
       { "package": "xarchiver" },
-      { "package": "xss-lock" }
+      { "package": "xss-lock" },
+      { "package": "xterm" }
     ],
     "aur": [{ "package": "pop-icon-theme" }]
   },
