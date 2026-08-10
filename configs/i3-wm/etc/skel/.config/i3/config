@@ -27,8 +27,6 @@ set $terminal i3-sensible-terminal
 
 # Application launcher
 set $menu i3-dmenu-desktop
-# Alternative: rofi
-# set $menu rofi -modi drun,run -show drun
 
 # Audio control (PipeWire/PulseAudio)
 set $refresh_i3status killall -SIGUSR1 i3status
@@ -196,11 +194,30 @@ bindsym $mod+Shift+c reload
 # Restart i3 inplace (preserves your layout/session, can be used to upgrade i3)
 bindsym $mod+Shift+r restart
 
-# Exit i3 (logs you out of your X session)
-bindsym --release $mod+Shift+e exec "i3-nagbar -t warning -m 'You pressed the exit shortcut. Do you really want to exit i3? This will end your X session.' -B 'Yes, exit i3' 'i3-msg exit'"
+################################################################################
+##  SYSTEM MENU                                                               ##
+################################################################################
+
+# System menu (lock, logout, suspend, hibernate, reboot, poweroff, restart i3)
+bindsym $mod+Shift+e mode "$mode_system"
+
+set $mode_system  [L]OCK  LOG[O]UT  [S]USPEND  [H]IBERNATE  [R]EBOOT  [P]OWEROFF  RESTART[I]3
+mode "$mode_system" {
+    bindsym l exec --no-startup-id i3lock -c 111111, mode "default"
+    bindsym o exec --no-startup-id loginctl terminate-session $XDG_SESSION_ID, mode "default"
+    bindsym s exec --no-startup-id systemctl suspend, mode "default"
+    bindsym h exec --no-startup-id systemctl hibernate, mode "default"
+    bindsym r exec --no-startup-id systemctl reboot, mode "default"
+    bindsym p exec --no-startup-id systemctl poweroff, mode "default"
+    bindsym i exec --no-startup-id i3-msg restart, mode "default"
+
+    # back to normal: Enter or Escape
+    bindsym Return mode "default"
+    bindsym Escape mode "default"
+}
 
 ################################################################################
-##  RESIZE MODE (VIM STYLE: hjkl)                                           ##
+##  RESIZE MODE (VIM STYLE: hjkl)                                             ##
 ################################################################################
 
 # Resize window (you can also use the mouse for that)
@@ -239,15 +256,6 @@ bar {
     status_command i3status
     position bottom
     font pango:Terminess Nerd Font, Terminus, DejaVu Sans Mono, Noto Color Emoji, Noto Emoji $font_size
-#     colors {
-#         background #2D2D2D
-#         statusline #FFFFFF
-#         separator #5E5C64
-#         focused_workspace #3584E4 #3584E4 #FFFFFF
-#         active_workspace #26A269 #26A269 #FFFFFF
-#         inactive_workspace #5E5C64 #5E5C64 #FFFFFF
-#         urgent_workspace #C01C28 #C01C28 #FFFFFF
-#     }
 }
 
 ################################################################################
@@ -260,9 +268,6 @@ exec --no-startup-id picom --config ~/.config/picom/picom.conf
 # Load Wallpaper (configured dynamically in user_theming function)
 # This will be replaced by installation script based on INSTALL_TYPE
 exec --no-startup-id xsetroot -solid '#073642'
-
-# Start xautocfg service
-exec --no-startup-id systemctl start --user xautocfg.service
 
 # xss-lock grabs a logind suspend inhibit lock and will use i3lock to lock the
 # screen before suspend. Use loginctl lock-session to lock your screen.
