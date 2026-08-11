@@ -10,7 +10,7 @@
 # Find the name of the folder the scripts are in
 set -a
 
-SCRIPT_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
 SCRIPTS_DIR="${SCRIPT_DIR}/scripts"
 CONFIGS_DIR="${SCRIPT_DIR}/configs"
 
@@ -27,12 +27,11 @@ set +a
 [[ -f "$LOG_FILE" ]] && rm -f "$LOG_FILE"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
-
 # Load utility scripts
 for filename in "$SCRIPTS_DIR"/utils/*.sh; do
-  [ -e "$filename" ] || continue
-  # shellcheck source=${SCRIPTS_DIR}/utils/*.sh
-  source "$filename"
+    [ -e "$filename" ] || continue
+    # shellcheck source=${SCRIPTS_DIR}/utils/*.sh
+    source "$filename"
 done
 
 # Initialize logging system
