@@ -1047,7 +1047,16 @@ grub_config() {
  -------------------------------------------------------------------------
 "
     if [[ "${FS}" == "luks" ]]; then
-        sed -i "s%GRUB_CMDLINE_LINUX_DEFAULT=\"%GRUB_CMDLINE_LINUX_DEFAULT=\"cryptdevice=UUID=${ENCRYPTED_PARTITION_UUID}:ROOT root=/dev/mapper/ROOT %g" /etc/default/grub
+        # For LUKS with sd-encrypt hook (systemd-based):
+        # - Use rd.luks.name= for sd-encrypt hook (not cryptdevice=)
+        # - GRUB_ENABLE_CRYPTODISK=y allows GRUB to unlock /boot (if on encrypted partition)
+        # - The sd-encrypt hook reads from /etc/crypttab to know which device to unlock
+        # See: https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system#LUKS_on_a_partition
+        sed -i "s%GRUB_CMDLINE_LINUX_DEFAULT=\"%GRUB_CMDLINE_LINUX_DEFAULT=\"rd.luks.name=${ENCRYPTED_PARTITION_UUID}=ROOT root=/dev/mapper/ROOT %g" /etc/default/grub
+        sed -i 's/^#GRUB_ENABLE_CRYPTODISK=.*/GRUB_ENABLE_CRYPTODISK=y/' /etc/default/grub
+        if ! grep -q "^GRUB_ENABLE_CRYPTODISK=y" /etc/default/grub; then
+            echo "GRUB_ENABLE_CRYPTODISK=y" >> /etc/default/grub
+        fi
     fi
     sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="[^"]*/& splash /' /etc/default/grub
     sed -i 's/^#GRUB_DISABLE_OS_PROBER=.*/GRUB_DISABLE_OS_PROBER=true/' /etc/default/grub
@@ -1064,7 +1073,15 @@ grub_config() {
     fi
 
     echo -e "\nUpdating GRUB configuration..."
+    mkdir -p /boot/grub
     grub-mkconfig -o /boot/grub/grub.cfg
+
+    # Fix duplicate root= parameter for LUKS+btrfs
+    # grub-mkconfig auto-generates root=UUID=... for btrfs which conflicts with root=/dev/mapper/ROOT
+    if [[ "${FS}" == "luks" ]]; then
+        sed -i 's/root=UUID=[^ ]* //' /boot/grub/grub.cfg
+    fi
+
     echo "GRUB configuration complete."
 }
 
@@ -1581,11 +1598,11 @@ do_btrfs() {
         exit 1
     fi
 
-    echo -e "Mounting $2 on $MOUNTPOINT \\n"
-    mount -t btrfs "$2" "$MOUNTPOINT"
+    echo -e "Mounting $2 on /mnt \\n"
+    mount -t btrfs "$2" /mnt
 
     if [[ $? -ne 0 ]]; then
-        echo "ERROR: Failed to mount $2 on $MOUNTPOINT"
+        echo "ERROR: Failed to mount $2 on /mnt"
         exit 1
     fi
 
@@ -1599,18 +1616,18 @@ do_btrfs() {
 
     for x in "${SUBVOLUMES[@]}"; do
         echo "Creating subvolume: $x"
-        if ! btrfs subvolume create "$MOUNTPOINT"/"${x}" 2>/dev/null; then
+        if ! btrfs subvolume create /mnt/"${x}" 2>/dev/null; then
             echo "ERROR: Failed to create subvolume $x"
-            umount "$MOUNTPOINT"
+            umount /mnt
             exit 1
         fi
     done
 
-    umount "$MOUNTPOINT"
+    umount /mnt
 
     # Mount root subvolume (@) to mountpoint
     echo "Mounting root subvolume (@)..."
-    mount -o "$MOUNT_OPTION",subvol=@ "$2" "$MOUNTPOINT"
+    mount -o "$MOUNT_OPTION",subvol=@ "$2" /mnt
 
     if [[ $? -ne 0 ]]; then
         echo "ERROR: Failed to mount root subvolume"
