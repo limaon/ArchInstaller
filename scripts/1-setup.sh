@@ -69,14 +69,16 @@ fi
 # home directory and assign to groups 'system-config.sh'
 add_user
 
-# Check if the filesystem is LUKS; if so, update mkinitcpio
-# configuratn to include encryption support
+# Check if the filesystem is LUKS; if so, add sd-encrypt hook and rebuild initramfs
+# According to Arch Wiki, use sd-encrypt (systemd-based) with systemd initramfs
+# https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system#LUKS_on_a_partition
 if [[ "${FS}" == "luks" ]]; then
-    # Making sure to edit mkinitcpio conf if luks is selected
-    # add encrypt in mkinitcpio.conf before filesystems in hooks
-    sed -i 's/filesystems/encrypt &/g' /etc/mkinitcpio.conf
-    # making mkinitcpio with linux kernel
+    echo "Adding sd-encrypt hook to mkinitcpio for LUKS..."
+    # Add sd-encrypt hook BEFORE filesystems in HOOKS array
+    sed -i 's/\(block\) filesystems/\1 sd-encrypt filesystems/' /etc/mkinitcpio.conf
+    echo "Rebuilding initramfs for LUKS..."
     mkinitcpio -p linux
+    mkinitcpio -p linux-lts
 fi
 
 echo -ne "
