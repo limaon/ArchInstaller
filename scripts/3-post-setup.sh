@@ -21,6 +21,28 @@ echo -ne "
   GRUB Bootloader Install & Check
 "
 
+# Function to configure and theme the GRUB boot menu, including setting
+# kernel parameters and installing the some theme, function from 'system-config.sh'
+# This must be called BEFORE grub-install when using LUKS encryption
+grub_config
+
+# Configure crypttab for LUKS if needed
+if [[ "${FS}" == "luks" ]]; then
+    echo "Configuring /etc/crypttab for LUKS..."
+    cat > /etc/crypttab << EOF
+# Configuration for encrypted block devices.
+# See crypttab(5) for details.
+
+# <name>       <device>                                     <password>              <options>
+ROOT          UUID=${ENCRYPTED_PARTITION_UUID}             none                    luks,discard
+EOF
+    echo "crypttab configured successfully"
+
+    # Remove duplicate root= parameter from GRUB_CMDLINE_LINUX_DEFAULT
+    # btrfs auto-generates root=UUID=... which conflicts with root=/dev/mapper/ROOT
+    sed -i 's/root=UUID=[^ ]* //' /etc/default/grub
+fi
+
 # Install GRUB bootloader based on system type (UEFI or Legacy BIOS)
 if [[ -d "/sys/firmware/efi" ]]; then
     # UEFI system: Install GRUB for EFI
@@ -31,10 +53,6 @@ else
     echo "Installing GRUB for Legacy BIOS system..."
     grub-install --target=i386-pc "${DISK}"
 fi
-
-# Function to configure and theme the GRUB boot menu, including setting
-# kernel parameters and installing the some theme, function from 'system-config.sh'
-grub_config
 
 # Function to enable and theme the appropriate display manager
 # based on the selected desktop environment function from 'system-config.sh'
