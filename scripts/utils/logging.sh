@@ -2,7 +2,7 @@
 
 ##############################################################################
 # ArchInstaller Logging Module (Simplified)
-# Sistema de logging conciso e limpo
+# Concise and clean logging system
 #
 # Function Call Order (as used in archinstall.sh):
 # 1. log_init
@@ -22,7 +22,7 @@ log_init() {
     # Create log files
     touch "$LOG_FILE" "$SWAP_LOG"
 
-    # Write header
+    # Write header to main log file
     cat <<EOF >"$LOG_FILE"
 ===============================================================================
                 ArchInstaller Installation Log
@@ -113,8 +113,8 @@ log_finish() {
 # @param $1 Log level: INFO|WARN|ERROR|SUCCESS|DEBUG|SWAP
 # @param $2+ Message to log
 # @param $3 Log file (optional, defaults to $LOG_FILE)
-# Usage: log ERROR "Erro ao criar swapfile"
-#        log SWAP "Swapfile criado com sucesso"
+# Usage: log ERROR "Failed to create swapfile"
+#        log SWAP "Swapfile created successfully"
 log() {
     local level="$1"
     shift
@@ -123,7 +123,7 @@ log() {
     local timestamp
     timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 
-    # Determine color
+    # Determine color based on log level
     local color nc_color
     case "$level" in
     INFO) color='\033[0;34m' nc_color='[INFO]   ' ;;
@@ -135,13 +135,13 @@ log() {
     *) color='\033[0m' nc_color='[LOG]    ' ;;
     esac
 
-    # Log to file
+    # Write to log file
     echo "[$timestamp] $nc_color $message" >>"$log_file"
 
-    # Also log to swap file if SWAP level
+    # Also write to swap log file if SWAP level
     [[ "$level" == "SWAP" ]] && echo "[$timestamp] $nc_color $message" >>"$SWAP_LOG"
 
-    # Console output (with color)
+    # Print to console with color
     [[ "${DEBUG:-false}" == "true" || "$level" != "DEBUG" ]] &&
         echo -e "${color}[$level]${nc_color} $message"
 }
@@ -151,7 +151,7 @@ log() {
 # @param $2 Command to execute
 # @param $3 Description of command
 # @param $4 Log file (optional)
-# Usage: log_exec SWAP "swapon /swap/swapfile" "Ativando swapfile"
+# Usage: log_exec SWAP "swapon /swap/swapfile" "Activating swapfile"
 log_exec() {
     local level="$1"
     local cmd="$2"
@@ -162,7 +162,7 @@ log_exec() {
     log "$level" "Executing: $desc" "$log_file"
     [[ "${DEBUG:-false}" == "true" ]] && log "$level" "Command: $cmd" "$log_file"
 
-    # Execute and capture
+    # Execute command and capture output
     output=$(eval "$cmd" 2>&1)
     exit_code=$?
 
@@ -172,7 +172,7 @@ log_exec() {
         log "$level" "ERROR: $desc (exit: $exit_code)" "$log_file"
     fi
 
-    # Log output if not empty or if error
+    # Log output if not empty or if command failed
     if [[ -n "$output" || $exit_code -ne 0 ]]; then
         echo "$output" | while IFS= read -r line; do
             log "$level" "  $line" "$log_file"
