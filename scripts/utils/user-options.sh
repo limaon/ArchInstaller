@@ -248,7 +248,7 @@ timezone() {
 
     local detected_tz=""
     if command -v curl &>/dev/null; then
-        detected_tz="$(curl --fail --max-time 3 https://ipapi.co/timezone 2>/dev/null || echo "")"
+        detected_tz="$(curl --fail --max-time 3 "http://ip-api.com/json/" 2>/dev/null | grep -oP '"timezone":"\K[^"]*' || echo "")"
     fi
 
     if [[ -n "$detected_tz" ]] && [[ -f "/usr/share/zoneinfo/$detected_tz" ]]; then
