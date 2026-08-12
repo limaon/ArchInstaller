@@ -5,18 +5,15 @@
 # @brief Contains the functions used to facilitate the installer
 # @stdout Output routed to install.log
 # @stderror Output routed to install.log
-
-# @description Exits script if previous command fails
-# @arg $1 string Exit code of previous command
-# @arg $2 string Previous command
-exit_on_error() {
-    exit_code=$1
-    last_command=${*:2}
-    if [ "$exit_code" -ne 0 ]; then
-        echo >&2 "\"${last_command}\" command failed with exit code ${exit_code}."
-        exit "$exit_code"
-    fi
-}
+#
+# Function Call Order (as used in archinstall.sh):
+# 1. show_logo
+# 2. source_file
+# 3. run_installation_phases
+# 4. end_script
+# 5. exit_on_error (error handling)
+# 6. multiselect, select_option, select_option_with_search (interactive UI)
+# 7. set_option (configuration)
 
 # @description display archinstaller logo
 # @noargs
@@ -31,6 +28,89 @@ show_logo() {
 
         SCRIPTHOME: $SCRIPT_DIR
 "
+}
+
+# @description Sources file to be used by the script
+# @arg $1 File to source
+# shellcheck disable=SC1090
+source_file() {
+    if [[ -f "$1" ]]; then
+        source "$1" || {
+            echo "ERROR! Failed to source file: $1"
+            exit 1
+        }
+    else
+        echo "ERROR! Missing file: $1"
+        exit 1
+    fi
+}
+
+# @description Run all installation phases (0-3)
+# @noargs
+run_installation_phases() {
+    . "$SCRIPTS_DIR"/0-preinstall.sh
+    arch-chroot /mnt "$HOME"/archinstaller/scripts/1-setup.sh
+    if [[ ! "$INSTALL_TYPE" == SERVER ]]; then
+        arch-chroot /mnt /usr/bin/runuser -u "$USERNAME" -- /home/"$USERNAME"/archinstaller/scripts/2-user.sh
+    fi
+    arch-chroot /mnt "$HOME"/archinstaller/scripts/3-post-setup.sh
+}
+
+# @description Copy logs to installed system and user home, copy verification script
+# @noargs
+end_script() {
+    echo "Copying logs"
+    if [[ "$(find /mnt/var/log -type d | wc -l)" -ne 0 ]]; then
+        cp -v "$LOG_FILE" /mnt/var/log/install.log
+    else
+        echo -ne "ERROR! Log directory not found"
+        exit 0
+    fi
+
+    # Copy logs and verification script to user home (if USERNAME is set)
+    if [[ -n "${USERNAME:-}" ]] && [[ -d "/mnt/home/$USERNAME" ]]; then
+        echo "Copying logs and verification script to user home"
+        mkdir -p "/mnt/home/$USERNAME/.archinstaller"
+
+        # Copy installation log
+        cp -v "$LOG_FILE" "/mnt/home/$USERNAME/.archinstaller/install.log"
+
+        # Copy swap fix script
+        if [[ -f "${SCRIPT_DIR}/scripts/fix-swap.sh" ]]; then
+            cp -v "${SCRIPT_DIR}/scripts/fix-swap.sh" "/mnt/home/$USERNAME/.archinstaller/fix-swap.sh"
+            chmod +x "/mnt/home/$USERNAME/.archinstaller/fix-swap.sh"
+        fi
+
+        # Copy config file (without password)
+        if [[ -f "$CONFIG_FILE" ]]; then
+            grep -v "^PASSWORD=" "$CONFIG_FILE" >"/mnt/home/$USERNAME/.archinstaller/setup.conf" || true
+        fi
+
+        # Set ownership using arch-chroot (user exists in installed system)
+        if arch-chroot /mnt id "$USERNAME" &>/dev/null; then
+            arch-chroot /mnt chown -R "$USERNAME:$USERNAME" "/home/$USERNAME/.archinstaller"
+            echo "Files copied to /home/$USERNAME/.archinstaller/"
+        else
+            echo "Warning: User $USERNAME not found in installed system, skipping chown"
+            echo "Files copied to /home/$USERNAME/.archinstaller/ (ownership will be set on first login)"
+        fi
+    fi
+}
+
+# ============================================================================
+# Error Handling & Helper Functions
+# ============================================================================
+
+# @description Exits script if previous command fails
+# @arg $1 string Exit code of previous command
+# @arg $2 string Previous command
+exit_on_error() {
+    exit_code=$1
+    last_command=${*:2}
+    if [ "$exit_code" -ne 0 ]; then
+        echo >&2 "\"${last_command}\" command failed with exit code ${exit_code}."
+        exit "$exit_code"
+    fi
 }
 
 # @description Select multiple options
@@ -141,17 +221,6 @@ function multiselect {
     cursor_blink_on
 
     eval "$retval"='("${selected[@]}")'
-}
-
-# @description Run all installation phases (0-3)
-# @noargs
-run_installation_phases() {
-    . "$SCRIPTS_DIR"/0-preinstall.sh
-    arch-chroot /mnt "$HOME"/archinstaller/scripts/1-setup.sh
-    if [[ ! "$INSTALL_TYPE" == SERVER ]]; then
-        arch-chroot /mnt /usr/bin/runuser -u "$USERNAME" -- /home/"$USERNAME"/archinstaller/scripts/2-user.sh
-    fi
-    arch-chroot /mnt "$HOME"/archinstaller/scripts/3-post-setup.sh
 }
 
 # @description set options in setup.conf
@@ -518,58 +587,4 @@ select_option_with_search() {
     return $original_index
 }
 
-# @description Sources file to be used by the script
-# @arg $1 File to source
-# shellcheck disable=SC1090
-source_file() {
-    if [[ -f "$1" ]]; then
-        source "$1" || {
-            echo "ERROR! Failed to source file: $1"
-            exit 1
-        }
-    else
-        echo "ERROR! Missing file: $1"
-        exit 1
-    fi
-}
 
-# @description Copy logs to installed system and user home, copy verification script
-# @noargs
-end_script() {
-    echo "Copying logs"
-    if [[ "$(find /mnt/var/log -type d | wc -l)" -ne 0 ]]; then
-        cp -v "$LOG_FILE" /mnt/var/log/install.log
-    else
-        echo -ne "ERROR! Log directory not found"
-        exit 0
-    fi
-
-    # Copy logs and verification script to user home (if USERNAME is set)
-    if [[ -n "${USERNAME:-}" ]] && [[ -d "/mnt/home/$USERNAME" ]]; then
-        echo "Copying logs and verification script to user home"
-        mkdir -p "/mnt/home/$USERNAME/.archinstaller"
-
-        # Copy installation log
-        cp -v "$LOG_FILE" "/mnt/home/$USERNAME/.archinstaller/install.log"
-
-        # Copy swap fix script
-        if [[ -f "${SCRIPT_DIR}/scripts/fix-swap.sh" ]]; then
-            cp -v "${SCRIPT_DIR}/scripts/fix-swap.sh" "/mnt/home/$USERNAME/.archinstaller/fix-swap.sh"
-            chmod +x "/mnt/home/$USERNAME/.archinstaller/fix-swap.sh"
-        fi
-
-        # Copy config file (without password)
-        if [[ -f "$CONFIG_FILE" ]]; then
-            grep -v "^PASSWORD=" "$CONFIG_FILE" >"/mnt/home/$USERNAME/.archinstaller/setup.conf" || true
-        fi
-
-        # Set ownership using arch-chroot (user exists in installed system)
-        if arch-chroot /mnt id "$USERNAME" &>/dev/null; then
-            arch-chroot /mnt chown -R "$USERNAME:$USERNAME" "/home/$USERNAME/.archinstaller"
-            echo "Files copied to /home/$USERNAME/.archinstaller/"
-        else
-            echo "Warning: User $USERNAME not found in installed system, skipping chown"
-            echo "Files copied to /home/$USERNAME/.archinstaller/ (ownership will be set on first login)"
-        fi
-    fi
-}

@@ -3,6 +3,14 @@
 ##############################################################################
 # ArchInstaller Logging Module (Simplified)
 # Sistema de logging conciso e limpo
+#
+# Function Call Order (as used in archinstall.sh):
+# 1. log_init
+# 2. log_info
+# 3. log_finish
+# 4. log (internal)
+# 5. log_exec (internal)
+# 6. log_swap, log_swap_exec (shortcuts)
 ##############################################################################
 
 # @description Initialize logging system
@@ -36,6 +44,70 @@ EOF
 
     export LOG_FILE SWAP_LOG
 }
+
+# @description Unified system info logger
+# @param $1 Type: SYSTEM|FILESYSTEM|SWAP
+# @usage log_info SYSTEM
+#        log_info FILESYSTEM
+#        log_info SWAP
+log_info() {
+    local type="$1"
+    local timestamp
+    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+
+    case "$type" in
+    SYSTEM)
+        log INFO "=== System Information ==="
+        log INFO "Hostname: $(hostname 2>/dev/null || echo unknown)"
+        log INFO "Kernel: $(uname -r 2>/dev/null || echo unknown)"
+        log INFO "RAM: $(free -h 2>/dev/null | awk '/^Mem:/ {print $2}')"
+        log INFO "Swap: $(free -h 2>/dev/null | awk '/^Swap:/ {print $2}')"
+        ;;
+
+    FILESYSTEM)
+        log INFO "=== Filesystem Information ==="
+        if [[ -d /sys/fs/btrfs ]]; then
+            log INFO "Filesystem: Btrfs"
+            command -v btrfs &>/dev/null && log INFO "Btrfs subvolumes listed"
+        else
+            log INFO "Filesystem: $(findmnt -n -o FSTYPE / 2>/dev/null || echo unknown)"
+        fi
+        ;;
+
+    SWAP)
+        log SWAP "=== Swap Information ==="
+        log SWAP "Devices:"
+        swapon --show 2>/dev/null | while IFS= read -r line; do log SWAP "  $line"; done
+        log SWAP "Summary: Total: $(free -h | awk '/^Swap:/ {print $2}') Used: $(free -h | awk '/^Swap:/ {print $3}')"
+        lsmod | grep -q zram && log SWAP "ZRAM module loaded"
+        [[ -f /swap/swapfile ]] && log SWAP "Swapfile exists: /swap/swapfile"
+        ;;
+    esac
+}
+
+# @description Finalize logging and copy to installed system
+# @param $1 Mount point (default: /mnt)
+log_finish() {
+    local mount_point="${1:-/mnt}"
+
+    # Copy logs
+    mkdir -p "${mount_point}/var/log/archinstaller"
+    cp "$LOG_FILE" "${mount_point}/var/log/archinstaller/install.log" 2>/dev/null &&
+        log SUCCESS "Logs copied to ${mount_point}/var/log/archinstaller/"
+
+    [[ -f "$SWAP_LOG" ]] && cp "$SWAP_LOG" "${mount_point}/var/log/archinstaller/swap.log" 2>/dev/null
+
+    chmod -R 755 "${mount_point}/var/log/archinstaller" 2>/dev/null
+
+    log INFO "=== Installation Complete ==="
+    log INFO "Logs: $LOG_FILE, $SWAP_LOG"
+    echo ""
+    echo "Logs saved to: $LOG_FILE"
+}
+
+# ============================================================================
+# Internal/Helper Functions (called by public functions above)
+# ============================================================================
 
 # @description Unified log function (replaces log, log_swap)
 # @param $1 Log level: INFO|WARN|ERROR|SUCCESS|DEBUG|SWAP
@@ -113,66 +185,6 @@ log_exec() {
 # @brief Swap-specific shortcuts (aliases)
 log_swap() { log SWAP "$@"; }
 log_swap_exec() { log_exec SWAP "$@"; }
-
-# @description Unified system info logger
-# @param $1 Type: SYSTEM|FILESYSTEM|SWAP
-# @usage log_info SYSTEM
-#        log_info FILESYSTEM
-#        log_info SWAP
-log_info() {
-    local type="$1"
-    local timestamp
-    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-
-    case "$type" in
-    SYSTEM)
-        log INFO "=== System Information ==="
-        log INFO "Hostname: $(hostname 2>/dev/null || echo unknown)"
-        log INFO "Kernel: $(uname -r 2>/dev/null || echo unknown)"
-        log INFO "RAM: $(free -h 2>/dev/null | awk '/^Mem:/ {print $2}')"
-        log INFO "Swap: $(free -h 2>/dev/null | awk '/^Swap:/ {print $2}')"
-        ;;
-
-    FILESYSTEM)
-        log INFO "=== Filesystem Information ==="
-        if [[ -d /sys/fs/btrfs ]]; then
-            log INFO "Filesystem: Btrfs"
-            command -v btrfs &>/dev/null && log INFO "Btrfs subvolumes listed"
-        else
-            log INFO "Filesystem: $(findmnt -n -o FSTYPE / 2>/dev/null || echo unknown)"
-        fi
-        ;;
-
-    SWAP)
-        log SWAP "=== Swap Information ==="
-        log SWAP "Devices:"
-        swapon --show 2>/dev/null | while IFS= read -r line; do log SWAP "  $line"; done
-        log SWAP "Summary: Total: $(free -h | awk '/^Swap:/ {print $2}') Used: $(free -h | awk '/^Swap:/ {print $3}')"
-        lsmod | grep -q zram && log SWAP "ZRAM module loaded"
-        [[ -f /swap/swapfile ]] && log SWAP "Swapfile exists: /swap/swapfile"
-        ;;
-    esac
-}
-
-# @description Finalize logging and copy to installed system
-# @param $1 Mount point (default: /mnt)
-log_finish() {
-    local mount_point="${1:-/mnt}"
-
-    # Copy logs
-    mkdir -p "${mount_point}/var/log/archinstaller"
-    cp "$LOG_FILE" "${mount_point}/var/log/archinstaller/install.log" 2>/dev/null &&
-        log SUCCESS "Logs copied to ${mount_point}/var/log/archinstaller/"
-
-    [[ -f "$SWAP_LOG" ]] && cp "$SWAP_LOG" "${mount_point}/var/log/archinstaller/swap.log" 2>/dev/null
-
-    chmod -R 755 "${mount_point}/var/log/archinstaller" 2>/dev/null
-
-    log INFO "=== Installation Complete ==="
-    log INFO "Logs: $LOG_FILE, $SWAP_LOG"
-    echo ""
-    echo "Logs saved to: $LOG_FILE"
-}
 
 # Export functions
 export -f log log_exec log_swap log_swap_exec log_info log_finish
