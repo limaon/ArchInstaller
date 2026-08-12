@@ -27,23 +27,26 @@ set +a
 [[ -f "$LOG_FILE" ]] && rm -f "$LOG_FILE"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
+
 # Load utility scripts
 for filename in "$SCRIPTS_DIR"/utils/*.sh; do
     [ -e "$filename" ] || continue
     source "$filename"
 done
 
+
 # Initialize logging system
 log_init "$LOG_FILE"
 log_info SYSTEM
 log_info FILESYSTEM
+
 
 # Actual install sequence
 setfont ter-v18b
 show_logo
 source "${SCRIPTS_DIR}/configuration.sh"
 source_file "$CONFIG_FILE"
-sequence
+run_installation_phases
 
 echo -ne "
             Done - Please Eject Install Media and Reboot

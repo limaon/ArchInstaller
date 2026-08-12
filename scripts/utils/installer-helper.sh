@@ -143,9 +143,9 @@ function multiselect {
     eval "$retval"='("${selected[@]}")'
 }
 
-# @description Sequence to call scripts
+# @description Run all installation phases (0-3)
 # @noargs
-sequence() {
+run_installation_phases() {
     . "$SCRIPTS_DIR"/0-preinstall.sh
     arch-chroot /mnt "$HOME"/archinstaller/scripts/1-setup.sh
     if [[ ! "$INSTALL_TYPE" == SERVER ]]; then
