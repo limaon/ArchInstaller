@@ -156,8 +156,33 @@ create_filesystems() {
 
     elif [[ "${FS}" == "luks" ]]; then
         echo "Configuring LUKS on ${root_partition}"
-        echo -n "${LUKS_PASSWORD}" | cryptsetup -y -v luksFormat "${root_partition}" -
+
+        # Clear existing filesystem signatures to avoid conflicts
+        echo "Wiping existing filesystem signatures from ${root_partition}..."
+        wipefs -af "${root_partition}" 2>/dev/null || true
+
+        # Create LUKS2 with modern security parameters
+        # --type luks2: Modern LUKS format (32 keyslots vs 8)
+        # --pbkdf argon2id: GPU/ASIC resistant key derivation
+        # --iter-time 4000: 4 seconds for key derivation (security vs speed)
+        # --cipher aes-xts-plain64: AES-XTS with 512-bit key
+        # --key-size 512: 256-bit key + 256-bit tweak for XTS
+        echo -n "${LUKS_PASSWORD}" | cryptsetup -y -v \
+            --type luks2 \
+            --pbkdf argon2id \
+            --iter-time 4000 \
+            --cipher aes-xts-plain64 \
+            --key-size 512 \
+            luksFormat "${root_partition}" -
+
         echo -n "${LUKS_PASSWORD}" | cryptsetup open "${root_partition}" ROOT -
+
+        # Backup LUKS header (CRITICAL for recovery)
+        mkdir -p /root/luks-backups
+        cryptsetup luksHeaderBackup "${root_partition}" \
+            --header-backup-file "/root/luks-backups/${root_partition##*/}-header.img"
+        echo "LUKS header backed up to /root/luks-backups/"
+
         do_btrfs "ROOT" "/dev/mapper/ROOT"
         echo ENCRYPTED_PARTITION_UUID="$(blkid -s UUID -o value "${root_partition}")" >>"$CONFIGS_DIR"/setup.conf
     fi
@@ -1589,7 +1614,7 @@ do_btrfs() {
 
     # Clear existing filesystem signatures to avoid "superblock magic doesn't match" error
     echo "Wiping existing filesystem signatures from $2..."
-    wipefs -a "$2" 2>/dev/null || true
+    wipefs -af "$2" 2>/dev/null || true
 
     mkfs.btrfs -L "$1" "$2" -f
 
