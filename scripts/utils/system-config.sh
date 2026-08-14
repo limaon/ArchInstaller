@@ -1374,12 +1374,12 @@ greeter-setup-script=/usr/bin/xset -b" >/etc/lightdm/lightdm.conf
     fi
 }
 
-# @description Configure snapper default setup
+# @description Configure snapper default setup for Btrfs or LUKS filesystems
 # @noargs
 snapper_config() {
     echo -ne "
 -------------------------------------------------------------------------
-                    Creating Snapper Config
+                     Creating Snapper Config
 -------------------------------------------------------------------------
 "
 
@@ -1393,11 +1393,35 @@ snapper_config() {
 
     sed -i "s/ALLOW_USERS=\".*\"/ALLOW_USERS=\"$(whoami)\"/" /etc/snapper/configs/root
     sed -i "s/ALLOW_GROUPS=\".*\"/ALLOW_GROUPS=\"$(whoami)\"/" /etc/snapper/configs/root
-    systemctl enable snapper-timeline.timer
-    systemctl enable snapper-cleanup.timer
-    systemctl enable grub-btrfsd.service
-    snapper -c root create --description "Initial snapshot"
-    chown :users /.snapshots
+
+    # Enable snapper timeline and cleanup timers
+    if systemctl list-unit-files | grep -q "snapper-timeline.timer"; then
+        systemctl enable snapper-timeline.timer
+    else
+        echo "Warning: snapper-timeline.timer not found, skipping enable"
+    fi
+
+    if systemctl list-unit-files | grep -q "snapper-cleanup.timer"; then
+        systemctl enable snapper-cleanup.timer
+    else
+        echo "Warning: snapper-cleanup.timer not found, skipping enable"
+    fi
+
+    # Enable grub-btrfsd.service only if it exists (Btrfs-specific)
+    if systemctl list-unit-files | grep -q "grub-btrfsd.service"; then
+        systemctl enable grub-btrfsd.service
+    else
+        echo "Warning: grub-btrfsd.service not found, skipping enable (expected for non-Btrfs systems)"
+    fi
+
+    # Create initial snapshot
+    if command -v snapper &>/dev/null; then
+        snapper -c root create --description "Initial snapshot"
+        chown :users /.snapshots
+    else
+        echo "Error: snapper command not found. Ensure snapper package is installed."
+        return 1
+    fi
 }
 
 # @description Configures TLP for power management on laptops.

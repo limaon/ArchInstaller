@@ -505,15 +505,15 @@ desktop_environment_install() {
     )
 }
 
-# @description Installs btrfs packages
+# @description Installs btrfs and snapper packages for Btrfs or LUKS filesystems
 # @noargs
 btrfs_install() {
     echo -ne "
 -------------------------------------------------------------------------
-                    Installing Btrfs Packages
+                    Installing Btrfs and Snapper Packages
 -------------------------------------------------------------------------
 "
-    if [[ "$FS" == btrfs ]]; then
+    if [[ "$FS" == "btrfs" || "$FS" == "luks" ]]; then
         # JQ filters
         PACMAN_FILTER=".pacman[].package"
         AUR_FILTER=$([ "$AUR_HELPER" != NONE ] && echo ", .aur[].package" || echo "")
@@ -676,23 +676,14 @@ essential_services() {
         ufw allow in 80/tcp  # HTTP
         ufw allow in 443/tcp # HTTPS
 
-        # Allow local sharing (home network)
-        ufw allow in 5353/udp # mDNS (Avahi)
-        ufw allow in 631/tcp  # Printers (CUPS)
+         # Allow local sharing (home network)
+         ufw allow in 5353/udp # mDNS (Avahi)
 
         echo "Enabling UFW"
         ufw --force enable
         echo -e "UFW configured and enabled \n"
 
-        # services part of full installation
-        echo "Enabling Cups"
-        if systemctl enable cups.service; then
-            echo -e "  Cups enabled \n"
-        else
-            echo -e "The cups.service not found, skipping. \n"
-        fi
-
-        echo "Syncing time with ntp"
+         echo "Syncing time with ntp"
         ntpd -qg
         echo -e "Time synced \n"
 
@@ -712,14 +703,15 @@ essential_services() {
         systemctl enable cpupower.service
         echo -e "cpupower enabled \n"
 
-        if [[ "${FS}" == "luks" || "${FS}" == "btrfs" ]]; then
-            snapper_config
-            systemctl enable snapper-timeline.timer
-            systemctl status snapper-cleanup.timer
-        fi
-
         plymouth_config
 
+    fi
+
+    # Configure snapshots for all installations with Btrfs/LUKS
+    # Snapshots are important for recovery on FULL and MINIMAL installations
+    # Note: snapper_config() already enables the timers internally
+    if [[ "${FS}" == "luks" || "${FS}" == "btrfs" ]]; then
+        snapper_config
     fi
 }
 
