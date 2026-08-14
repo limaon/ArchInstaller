@@ -76,6 +76,14 @@ configure_xorg_gpu
 # function from 'system-config.sh'
 configure_xorg_display
 
+# Configure Xorg mouse/pointer devices with acceleration settings
+# function from 'system-config.sh'
+configure_xorg_mouse
+
+# Configure Xorg touchpad devices with libinput settings
+# function from 'system-config.sh'
+configure_xorg_touchpad
+
 # If this file run without configuration, ask for basic user info before setting up user
 if ! source "$HOME"/archinstaller/configs/setup.conf; then
     user_info

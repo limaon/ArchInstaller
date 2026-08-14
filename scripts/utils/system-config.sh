@@ -1950,3 +1950,183 @@ EndSection"
         return 1
     fi
 }
+
+# @description Configure Xorg mouse/pointer devices with acceleration settings
+# @noargs
+configure_xorg_mouse() {
+    local mouse_conf="/etc/X11/xorg.conf.d/40-libinput.conf"
+    local mouse_config=""
+
+    echo -ne "
+-------------------------------------------------------------------------
+                    Configuring Xorg Mouse Settings
+-------------------------------------------------------------------------
+"
+
+    if ! command -v xinput &>/dev/null; then
+        echo "Warning: xinput not found, using default mouse configuration"
+        mouse_config="Section \"InputClass\"
+    Identifier \"libinput pointer catchall\"
+    MatchIsPointer \"on\"
+    MatchDevicePath \"/dev/input/event*\"
+    Driver \"libinput\"
+    Option \"AccelProfile\" \"flat\"
+EndSection"
+    else
+        local pointer_count=0
+        pointer_count=$(xinput list 2>/dev/null | grep -i "pointer" | wc -l)
+
+        if [[ $pointer_count -eq 0 ]]; then
+            pointer_count=1
+        fi
+
+        mouse_config="Section \"InputClass\"
+    Identifier \"libinput pointer catchall\"
+    MatchIsPointer \"on\"
+    MatchDevicePath \"/dev/input/event*\"
+    Driver \"libinput\"
+    Option \"AccelProfile\" \"flat\"
+    Option \"AccelerationNumerator\" \"2\"
+    Option \"AccelerationDenominator\" \"1\"
+    Option \"ConstantDeceleration\" \"1\"
+EndSection"
+    fi
+
+    mkdir -p /etc/X11/xorg.conf.d
+
+    if [[ -f "$mouse_conf" ]]; then
+        cat > "$mouse_conf" << 'EOF'
+# Xorg Configuration: Pointer Acceleration Profile
+# Purpose: Sets acceleration profile for all pointer devices (mice, trackballs)
+#
+# Acceleration Profile: "flat"
+#   - No acceleration applied to pointer movement
+#   - Cursor speed matches physical movement 1:1 (linear)
+#   - Preferred for gaming and precision work
+#   - Alternative: "adaptive" for variable acceleration based on speed
+#
+# This configuration applies to all pointer devices via MatchIsPointer.
+# Touchpads are configured separately in 30-touchpad.conf.
+#
+# References:
+#   - Arch Wiki Mouse Acceleration: https://wiki.archlinux.org/title/Mouse_acceleration
+#   - Arch Wiki Libinput: https://wiki.archlinux.org/title/Libinput
+#   - libinput documentation: https://wayland.freedesktop.org/libinput/doc/latest/
+
+Section "InputClass"
+    Identifier "libinput pointer catchall"
+    MatchIsPointer "on"
+    MatchDevicePath "/dev/input/event*"
+    Driver "libinput"
+    Option "AccelProfile" "flat"
+EndSection
+EOF
+
+        echo "Xorg mouse configuration applied"
+        echo "  - Pointer devices detected: $pointer_count"
+        return 0
+    else
+        echo "Warning: Mouse configuration template not found at $mouse_conf"
+        return 1
+    fi
+}
+
+# @description Configure Xorg touchpad devices with libinput settings
+# @noargs
+configure_xorg_touchpad() {
+    local touchpad_conf="/etc/X11/xorg.conf.d/30-touchpad.conf"
+    local touchpad_config=""
+
+    echo -ne "
+-------------------------------------------------------------------------
+                    Configuring Xorg Touchpad Settings
+-------------------------------------------------------------------------
+"
+
+    if ! command -v xinput &>/dev/null; then
+        echo "Warning: xinput not found, using default touchpad configuration"
+        touchpad_config="Section \"InputClass\"
+    Identifier \"touchpad\"
+    Driver \"libinput\"
+    MatchIsTouchpad \"on\"
+    Option \"Tapping\" \"on\"
+    Option \"TappingDrag\" \"on\"
+    Option \"ScrollMethod\" \"twofinger\"
+    Option \"DisableWhileTyping\" \"on\"
+    Option \"AccelSpeed\" \"0.6\"
+    Option \"ScrollPixelDistance\" \"20\"
+    Option \"AccelProfile\" \"adaptive\"
+    Option \"NaturalScrolling\" \"on\"
+    Option \"MiddleEmulation\" \"on\"
+EndSection"
+    else
+        local touchpad_count=0
+        touchpad_count=$(xinput list 2>/dev/null | grep -i "touchpad\|synaptics" | wc -l)
+
+        if [[ $touchpad_count -eq 0 ]]; then
+            touchpad_count=1
+        fi
+
+        touchpad_config="Section \"InputClass\"
+    Identifier \"touchpad\"
+    Driver \"libinput\"
+    MatchIsTouchpad \"on\"
+    Option \"Tapping\" \"on\"
+    Option \"TappingDrag\" \"on\"
+    Option \"ScrollMethod\" \"twofinger\"
+    Option \"DisableWhileTyping\" \"on\"
+    Option \"AccelSpeed\" \"0.6\"
+    Option \"ScrollPixelDistance\" \"20\"
+    Option \"AccelProfile\" \"adaptive\"
+    Option \"NaturalScrolling\" \"on\"
+    Option \"MiddleEmulation\" \"on\"
+EndSection"
+    fi
+
+    mkdir -p /etc/X11/xorg.conf.d
+
+    if [[ -f "$touchpad_conf" ]]; then
+        cat > "$touchpad_conf" << 'EOF'
+# Xorg Configuration: Touchpad Settings (libinput)
+# Purpose: Configures touchpad behavior for improved usability
+#
+# These settings enable common touchpad features for modern laptops:
+#   - Tapping: Single-tap to click (common on modern laptops)
+#   - TappingDrag: Tap-and-drag for selection
+#   - TwoFinger Scrolling: Natural scrolling with two fingers
+#   - DisableWhileTyping: Prevents accidental clicks while typing
+#   - Natural Scrolling: Scroll direction matches finger movement
+#   - MiddleEmulation: Three-finger tap emulates middle mouse button
+#
+# Acceleration Profile: "adaptive" provides smooth, responsive cursor movement
+# that adapts to pointer speed. Alternative: "flat" for no acceleration.
+#
+# References:
+#   - Arch Wiki Libinput: https://wiki.archlinux.org/title/Libinput
+#   - Arch Wiki Mouse Acceleration: https://wiki.archlinux.org/title/Mouse_acceleration
+#   - Arch Wiki Touchpad: https://wiki.archlinux.org/title/Touchpad_Synaptics
+
+Section "InputClass"
+    Identifier "touchpad"
+    Driver "libinput"
+    MatchIsTouchpad "on"
+    Option "Tapping" "on"
+    Option "TappingDrag" "on"
+    Option "ScrollMethod" "twofinger"
+    Option "DisableWhileTyping" "on"
+    Option "AccelSpeed" "0.6"
+    Option "ScrollPixelDistance" "20"
+    Option "AccelProfile" "adaptive"
+    Option "NaturalScrolling" "on"
+    Option "MiddleEmulation" "on"
+EndSection
+EOF
+
+        echo "Xorg touchpad configuration applied"
+        echo "  - Touchpad devices detected: $touchpad_count"
+        return 0
+    else
+        echo "Warning: Touchpad configuration template not found at $touchpad_conf"
+        return 1
+    fi
+}
