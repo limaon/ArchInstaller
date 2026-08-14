@@ -1756,3 +1756,197 @@ do_btrfs() {
         fi
     done
 }
+configure_xorg_gpu() {
+    local gpu_config=""
+    local gpu_type=""
+    local gpu_conf="/etc/X11/xorg.conf.d/10-gpu.conf"
+    local nvidia_count=0
+    local amd_count=0
+    local intel_count=0
+
+    echo -ne "
+-------------------------------------------------------------------------
+                    Configuring Xorg GPU Driver
+-------------------------------------------------------------------------
+"
+
+    if ! command -v lspci &>/dev/null; then
+        echo "Warning: lspci not found, skipping GPU detection"
+        return 1
+    fi
+
+    nvidia_count=$(lspci | grep -ic "NVIDIA\|GeForce\|Quadro\|Tesla")
+    amd_count=$(lspci | grep -ic "AMD\|ATI\|Radeon")
+    intel_count=$(lspci | grep -ic "Intel.*Graphics\|Intel.*Iris")
+
+    if [[ $nvidia_count -gt 0 && $intel_count -gt 0 ]]; then
+        gpu_type="NVIDIA Optimus (Intel + NVIDIA)"
+        gpu_config="Section \"OutputClass\"
+    Identifier \"intel\"
+    MatchDriver \"i915\"
+    Driver \"modesetting\"
+EndSection
+
+Section \"OutputClass\"
+    Identifier \"nvidia\"
+    MatchDriver \"nvidia-drm\"
+    Driver \"nvidia\"
+    Option \"AllowEmptyInitialConfiguration\"
+    Option \"PrimaryGPU\" \"yes\"
+    ModulePath \"/usr/lib/nvidia/xorg\"
+    ModulePath \"/usr/lib/xorg/modules\"
+EndSection"
+
+    elif [[ $nvidia_count -gt 0 ]]; then
+        gpu_type="NVIDIA (proprietary driver)"
+        gpu_config="Section \"OutputClass\"
+    Identifier \"nvidia\"
+    MatchDriver \"nvidia-drm\"
+    Driver \"nvidia\"
+    Option \"AllowEmptyInitialConfiguration\"
+    Option \"ForceFullCompositionPipeline\" \"on\"
+    Option \"TripleBuffer\" \"on\"
+    Option \"AllowIndirectGLXProtocol\" \"off\"
+    ModulePath \"/usr/lib/nvidia/xorg\"
+    ModulePath \"/usr/lib/xorg/modules\"
+EndSection"
+
+    elif [[ $amd_count -gt 0 && $intel_count -gt 0 ]]; then
+        gpu_type="AMD Hybrid (Intel + AMD)"
+        gpu_config="Section \"OutputClass\"
+    Identifier \"amd\"
+    MatchDriver \"amdgpu\"
+    Driver \"amdgpu\"
+    Option \"TearFree\" \"on\"
+    Option \"DRI\" \"3\"
+EndSection
+
+Section \"OutputClass\"
+    Identifier \"intel\"
+    MatchDriver \"i915\"
+    Driver \"modesetting\"
+EndSection"
+
+    elif [[ $amd_count -gt 0 ]]; then
+        gpu_type="AMD (amdgpu driver)"
+        gpu_config="Section \"OutputClass\"
+    Identifier \"amd\"
+    MatchDriver \"amdgpu\"
+    Driver \"amdgpu\"
+    Option \"TearFree\" \"on\"
+    Option \"DRI\" \"3\"
+EndSection"
+
+    elif [[ $intel_count -gt 0 ]]; then
+        gpu_type="Intel Graphics"
+        gpu_config="Section \"Device\"
+    Identifier \"Intel GPU\"
+    Driver \"modesetting\"
+    Option \"TearFree\" \"true\"
+EndSection"
+
+    else
+        gpu_type="Generic (modesetting driver)"
+        gpu_config="Section \"Device\"
+    Identifier \"Generic GPU\"
+    Driver \"modesetting\"
+EndSection"
+    fi
+
+    mkdir -p /etc/X11/xorg.conf.d
+
+    if [[ -f "$gpu_conf" ]]; then
+        sed -i "/# GPU_DRIVER_PLACEHOLDER/c\\$gpu_config" "$gpu_conf"
+
+        echo "Xorg GPU driver configured: $gpu_type"
+        echo "  - NVIDIA GPUs detected: $nvidia_count"
+        echo "  - AMD GPUs detected: $amd_count"
+        echo "  - Intel GPUs detected: $intel_count"
+    else
+        echo "Warning: GPU configuration template not found at $gpu_conf"
+        return 1
+    fi
+}
+
+configure_xorg_display() {
+    local monitor_config=""
+    local monitor_conf="/etc/X11/xorg.conf.d/50-monitor.conf"
+    local monitor_count=0
+
+    echo -ne "
+-------------------------------------------------------------------------
+                    Configuring Xorg Display Settings
+-------------------------------------------------------------------------
+"
+
+    if ! command -v xrandr &>/dev/null; then
+        echo "Warning: xrandr not found, using default display configuration"
+        monitor_config="Section \"Monitor\"
+    Identifier \"Primary\"
+    Option \"Primary\" \"true\"
+EndSection
+
+Section \"Screen\"
+    Identifier \"Screen0\"
+    Monitor \"Primary\"
+    DefaultDepth 24
+    SubSection \"Display\"
+        Depth 24
+    EndSubSection
+EndSection"
+    else
+        monitor_count=$(xrandr --query 2>/dev/null | grep -c " connected")
+
+        if [[ $monitor_count -eq 0 ]]; then
+            monitor_count=1
+        fi
+
+        if [[ $monitor_count -eq 1 ]]; then
+            monitor_config="Section \"Monitor\"
+    Identifier \"Primary\"
+    Option \"Primary\" \"true\"
+EndSection
+
+Section \"Screen\"
+    Identifier \"Screen0\"
+    Monitor \"Primary\"
+    DefaultDepth 24
+    SubSection \"Display\"
+        Depth 24
+    EndSubSection
+EndSection"
+
+        else
+            monitor_config="Section \"Monitor\"
+    Identifier \"Primary\"
+    Option \"Primary\" \"true\"
+EndSection
+
+Section \"Monitor\"
+    Identifier \"Secondary\"
+    Option \"RightOf\" \"Primary\"
+EndSection
+
+Section \"Screen\"
+    Identifier \"Screen0\"
+    Monitor \"Primary\"
+    DefaultDepth 24
+    SubSection \"Display\"
+        Depth 24
+    EndSubSection
+EndSection"
+        fi
+    fi
+
+    mkdir -p /etc/X11/xorg.conf.d
+
+    if [[ -f "$monitor_conf" ]]; then
+        sed -i "/# MONITOR_CONFIGURATION_PLACEHOLDER/c\\$monitor_config" "$monitor_conf"
+
+        echo "Xorg display configuration applied"
+        echo "  - Monitors detected: $monitor_count"
+    else
+        echo "Warning: Monitor configuration template not found at $monitor_conf"
+        return 1
+    fi
+}

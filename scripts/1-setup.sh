@@ -68,6 +68,14 @@ configure_xorg_base
 # function from 'system-config.sh'
 configure_xorg_keyboard
 
+# Configure Xorg GPU driver based on detected hardware
+# function from 'system-config.sh'
+configure_xorg_gpu
+
+# Configure Xorg monitor and display settings
+# function from 'system-config.sh'
+configure_xorg_display
+
 # If this file run without configuration, ask for basic user info before setting up user
 if ! source "$HOME"/archinstaller/configs/setup.conf; then
     user_info
