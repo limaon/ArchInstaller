@@ -1005,6 +1005,81 @@ configure_xorg_base() {
     fi
 }
 
+# @description Configure Xorg keyboard layout based on KEYMAP selection
+# Maps console KEYMAP (e.g., us, br-abnt2) to Xorg XkbLayout and XkbVariant
+# Generates /etc/X11/xorg.conf.d/00-keyboard.conf with appropriate settings
+# @noargs
+configure_xorg_keyboard() {
+    local xkb_layout=""
+    local xkb_variant=""
+    local keyboard_conf="/etc/X11/xorg.conf.d/00-keyboard.conf"
+
+    echo -ne "
+-------------------------------------------------------------------------
+                    Configuring Xorg Keyboard Layout
+-------------------------------------------------------------------------
+"
+
+    if [[ -z "$KEYMAP" ]]; then
+        echo "Warning: KEYMAP not set, skipping Xorg keyboard configuration"
+        return 1
+    fi
+
+    case "$KEYMAP" in
+        us) xkb_layout="us" ;;
+        br-abnt2) xkb_layout="br"; xkb_variant="abnt2" ;;
+        by) xkb_layout="by" ;;
+        ca) xkb_layout="ca" ;;
+        cf) xkb_layout="ca"; xkb_variant="fr" ;;
+        cz) xkb_layout="cz" ;;
+        de) xkb_layout="de" ;;
+        dk) xkb_layout="dk" ;;
+        es) xkb_layout="es" ;;
+        et) xkb_layout="ee" ;;
+        fa) xkb_layout="ir" ;;
+        fi) xkb_layout="fi" ;;
+        fr) xkb_layout="fr" ;;
+        gr) xkb_layout="gr" ;;
+        hu) xkb_layout="hu" ;;
+        il) xkb_layout="il" ;;
+        it) xkb_layout="it" ;;
+        lt) xkb_layout="lt" ;;
+        lv) xkb_layout="lv" ;;
+        mk) xkb_layout="mk" ;;
+        nl) xkb_layout="nl" ;;
+        no) xkb_layout="no" ;;
+        pl) xkb_layout="pl" ;;
+        ro) xkb_layout="ro" ;;
+        ru) xkb_layout="ru" ;;
+        sg) xkb_layout="ch"; xkb_variant="sg" ;;
+        ua) xkb_layout="ua" ;;
+        uk) xkb_layout="gb" ;;
+        *)
+            echo "Warning: Unknown KEYMAP '$KEYMAP', using default (us)"
+            xkb_layout="us"
+            ;;
+    esac
+
+    mkdir -p /etc/X11/xorg.conf.d
+
+    if [[ -f "$keyboard_conf" ]]; then
+        sed -i "s/XKBLAYOUT_PLACEHOLDER/$xkb_layout/g" "$keyboard_conf"
+
+        if [[ -z "$xkb_variant" ]]; then
+            sed -i '/Option "XkbVariant"/d' "$keyboard_conf"
+        else
+            sed -i "s/XKBVARIANT_PLACEHOLDER/$xkb_variant/g" "$keyboard_conf"
+        fi
+
+        sed -i '/Option "XkbOptions" ""/d' "$keyboard_conf"
+
+        echo "Xorg keyboard layout configured: $xkb_layout${xkb_variant:+ (variant: $xkb_variant)}"
+    else
+        echo "Warning: Keyboard configuration template not found at $keyboard_conf"
+        return 1
+    fi
+}
+
 # @description Configure LightDM to disable system bell on startup
 # Adds greeter-setup-script=/usr/bin/xset -b to lightdm.conf
 # Prevents audible beep on invalid input (e.g., Backspace in empty fields)

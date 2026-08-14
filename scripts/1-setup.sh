@@ -64,6 +64,10 @@ configure_base_skel
 # function from 'system-config.sh'
 configure_xorg_base
 
+# Configure Xorg keyboard layout based on KEYMAP selection
+# function from 'system-config.sh'
+configure_xorg_keyboard
+
 # If this file run without configuration, ask for basic user info before setting up user
 if ! source "$HOME"/archinstaller/configs/setup.conf; then
     user_info
