@@ -97,7 +97,7 @@ log_finish() {
 
     [[ -f "$SWAP_LOG" ]] && cp "$SWAP_LOG" "${mount_point}/var/log/archinstaller/swap.log" 2>/dev/null
 
-    chmod -R 755 "${mount_point}/var/log/archinstaller" 2>/dev/null
+    chmod -R 750 "${mount_point}/var/log/archinstaller" 2>/dev/null
 
     log INFO "=== Installation Complete ==="
     log INFO "Logs: $LOG_FILE, $SWAP_LOG"
