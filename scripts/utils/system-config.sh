@@ -14,7 +14,6 @@ mirrorlist_update() {
 
     cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
 
-    # Set default country if iso variable is empty
     local country="${iso:-US}"
 
     echo -ne "
@@ -68,18 +67,19 @@ format_disk() {
         sgdisk -n 1::+1G --typecode=1:ef00 --change-name=1:"EFIBOOT" "${DISK}"
         echo -e "\nCreating ROOT partition (${disk_percent}% of disk)"
 
-        # Use percentage instead of -0
         if [[ "$disk_percent" -eq 100 ]]; then
-            # Use all remaining disk space (original behavior)
             sgdisk -n 2::-0 --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
         else
             # Calculate size based on percentage
             # Get total disk size in bytes
             disk_size_bytes=$(blockdev --getsize64 "${DISK}")
+
             # EFI partition is 1GB = 1024MB = 1024 * 1024 * 1024 bytes
             efi_size_bytes=$((1024 * 1024 * 1024))
+
             # Calculate available space after EFI partition
             available_bytes=$((disk_size_bytes - efi_size_bytes))
+
             # Calculate root partition size based on percentage of available space
             root_size_mb=$(((available_bytes * disk_percent) / 100 / 1024 / 1024))
             sgdisk -n 2::+${root_size_mb}M --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
@@ -95,10 +95,13 @@ format_disk() {
             # Calculate size based on percentage
             # Get total disk size in bytes
             disk_size_bytes=$(blockdev --getsize64 "${DISK}")
+
             # BIOS Boot partition is 256MB = 256 * 1024 * 1024 bytes
             bios_boot_size_bytes=$((256 * 1024 * 1024))
+
             # Calculate available space after BIOS Boot partition
             available_bytes=$((disk_size_bytes - bios_boot_size_bytes))
+
             # Calculate root partition size based on percentage of available space
             root_size_mb=$(((available_bytes * disk_percent) / 100 / 1024 / 1024))
             sgdisk -n 2::+${root_size_mb}M --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
@@ -489,7 +492,6 @@ swap-priority = 100
 compression-algorithm = zstd
 EOF
 
-        # Load zram module in live environment
         modprobe zram 2>/dev/null || true
 
         arch-chroot /mnt systemctl enable systemd-zram-setup@zram0.service
@@ -521,10 +523,8 @@ EOF
     # =========================================================================
     mkdir -p /mnt/etc/sysctl.d
     if [[ "$USE_ZRAM" == true ]]; then
-        # ZRAM has priority, lower swappiness to prefer RAM
         echo "vm.swappiness=10" >/mnt/etc/sysctl.d/99-swap.conf
     else
-        # Swap file only, moderate swappiness
         echo "vm.swappiness=60" >/mnt/etc/sysctl.d/99-swap.conf
     fi
 
@@ -564,7 +564,6 @@ _create_btrfs_swapfile() {
     log_swap "Swap size: ${SWAP_SIZE_GB}GB"
     echo "Swap size: ${SWAP_SIZE_GB}GB"
 
-    # Check if @swap subvolume directory exists
     if [[ ! -d "$SWAP_MOUNT" ]]; then
         log_swap "WARNING: @swap mount point $SWAP_MOUNT does not exist"
         log_swap "Creating directory and attempting to mount @swap subvolume..."
@@ -573,7 +572,6 @@ _create_btrfs_swapfile() {
         mkdir -p "$SWAP_MOUNT"
     fi
 
-    # Check if @swap subvolume is mounted (by checking if it's a different mount from /mnt)
     local SWAP_MOUNTED=false
     if mountpoint -q "$SWAP_MOUNT" 2>/dev/null; then
         SWAP_MOUNTED=true
@@ -583,7 +581,6 @@ _create_btrfs_swapfile() {
         log_swap "INFO: @swap subvolume not mounted, attempting to mount..."
         echo "@swap subvolume not mounted, attempting to mount..."
 
-        # Get the root device
         local ROOT_DEV=""
         if [[ "${FS_TYPE:-}" == "luks" ]]; then
             ROOT_DEV="/dev/mapper/ROOT"
@@ -595,7 +592,6 @@ _create_btrfs_swapfile() {
         echo "Root device: ${ROOT_DEV:-not found}"
 
         if [[ -n "$ROOT_DEV" ]] && [[ -b "$ROOT_DEV" ]]; then
-            # Mount @swap subvolume with nodatacow (required for swap)
             log_swap "Executing: mount -o subvol=@swap,noatime,nodatacow $ROOT_DEV $SWAP_MOUNT"
             if mount -o subvol=@swap,noatime,nodatacow "$ROOT_DEV" "$SWAP_MOUNT"; then
                 SWAP_MOUNTED=true
@@ -613,7 +609,6 @@ _create_btrfs_swapfile() {
         fi
     fi
 
-    # If @swap is not mounted, fall back to standard method
     if [[ "$SWAP_MOUNTED" != true ]]; then
         log_swap "WARNING: @swap is not mounted, falling back to standard method"
         log_swap "This may cause snapshot issues with Snapper"
@@ -686,11 +681,9 @@ _create_btrfs_swapfile() {
             }
         fi
 
-        # Set permissions
         log_swap "Setting permissions 600 on /swap/swapfile..."
         arch-chroot /mnt chmod 600 /swap/swapfile
 
-        # Format as swap
         log_swap "Formatting /swap/swapfile as swap..."
         arch-chroot /mnt mkswap -U clear /swap/swapfile || {
             log_swap "ERROR: mkswap failed"
@@ -704,7 +697,6 @@ _create_btrfs_swapfile() {
         echo "Swap file created using manual method"
     fi
 
-    # Verify swap file was created and has correct size
     log_swap "Verifying swap file creation..."
     if arch-chroot /mnt test -f /swap/swapfile; then
         local SWAP_ACTUAL_SIZE=$(arch-chroot /mnt stat -c%s /swap/swapfile 2>/dev/null || echo "0")
@@ -720,11 +712,9 @@ _create_btrfs_swapfile() {
             echo "Warning: Swap file size ($SWAP_ACTUAL_SIZE bytes) is smaller than expected ($SWAP_EXPECTED_SIZE bytes)"
         fi
 
-        # Set correct permissions (ensure 600)
         log_swap "Ensuring permissions 600 on /swap/swapfile..."
         arch-chroot /mnt chmod 600 /swap/swapfile
 
-        # Try to activate swap file
         log_swap "Attempting to activate swap file..."
         if arch-chroot /mnt swapon /swap/swapfile; then
             log_swap "SUCCESS: Swap file activated successfully"
@@ -799,7 +789,6 @@ _create_btrfs_swapfile() {
 _create_standard_swapfile() {
     echo "Using standard swap file creation method (ext4/other)"
 
-    # Verify SWAP_SIZE_GB is set
     if [[ -z "${SWAP_SIZE_GB:-}" ]] || [[ "${SWAP_SIZE_GB}" -lt 1 ]]; then
         echo "Error: SWAP_SIZE_GB not set or invalid (value: ${SWAP_SIZE_GB:-unset})"
         echo "Defaulting to 4GB"
@@ -808,19 +797,15 @@ _create_standard_swapfile() {
 
     echo "Creating swap file at /swapfile (${SWAP_SIZE_GB}GB)..."
 
-    # Method 1: Use mkswap --file (modern method, mkswap >= 2.36)
     echo "Trying mkswap --file method..."
     if arch-chroot /mnt mkswap -U clear --size ${SWAP_SIZE_GB}G --file /swapfile; then
         echo "Swap file created using mkswap --file"
     else
-        # Method 2: Traditional method (fallocate + mkswap)
         echo "mkswap --file failed, using traditional method..."
 
-        # Try fallocate first (faster)
         if arch-chroot /mnt fallocate -l ${SWAP_SIZE_GB}G /swapfile; then
             echo "Space allocated with fallocate"
         else
-            # Fallback to dd (slower but more compatible)
             echo "fallocate failed, using dd (this may take a while)..."
             arch-chroot /mnt dd if=/dev/zero of=/swapfile bs=1M count=$((SWAP_SIZE_GB * 1024)) status=progress || {
                 echo "Error: Could not create swap file"
@@ -828,10 +813,8 @@ _create_standard_swapfile() {
             }
         fi
 
-        # Set permissions before mkswap
         arch-chroot /mnt chmod 600 /swapfile
 
-        # Format as swap
         arch-chroot /mnt mkswap -U clear /swapfile || {
             echo "Error: mkswap failed"
             arch-chroot /mnt rm -f /swapfile
@@ -841,27 +824,22 @@ _create_standard_swapfile() {
         echo "Swap file created using traditional method"
     fi
 
-    # Verify swap file was created
     if arch-chroot /mnt test -f /swapfile; then
         echo "Swap file created: $(arch-chroot /mnt ls -lh /swapfile | awk '{print $5}')"
 
-        # Set correct permissions
         arch-chroot /mnt chmod 600 /swapfile
 
-        # Activate swap file
         if arch-chroot /mnt swapon /swapfile; then
             echo "Swap file activated successfully"
         else
             echo "Note: Swap file will be activated on first boot"
         fi
 
-        # Clean up any conflicting systemd units
         arch-chroot /mnt systemctl stop swapfile.swap 2>/dev/null || true
         arch-chroot /mnt systemctl disable swapfile.swap 2>/dev/null || true
         arch-chroot /mnt rm -f /etc/systemd/system/swapfile.swap 2>/dev/null || true
         arch-chroot /mnt systemctl daemon-reload 2>/dev/null || true
 
-        # Update fstab
         arch-chroot /mnt sed -i '/\/swapfile/d' /etc/fstab
 
         if [[ "$USE_ZRAM" == true ]]; then
@@ -903,7 +881,6 @@ locale_config() {
                     Setting Locale, Timezone, and Keymap
 -------------------------------------------------------------------------
 "
-    # Enable selected locale and create /etc/locale.conf file with complete settings
     sed -i "s/^#\(${LOCALE}.*\)/\1/" /etc/locale.gen
     {
         echo "LANG=${LOCALE}"
@@ -925,19 +902,16 @@ locale_config() {
     localectl --no-ask-password set-locale LANG="${LOCALE}" LC_TIME="${LOCALE}"
     echo "Locales generated successfully."
 
-    # Configure timezone and synchronize hours
     timedatectl --no-ask-password set-timezone "${TIMEZONE}"
     timedatectl --no-ask-password set-ntp 1
     ln -sf /usr/share/zoneinfo/"${TIMEZONE}" /etc/localtime
     hwclock --systohc
     echo "Timezone configured: ${TIMEZONE}"
 
-    # Configure keymap and remap keys
     pacman -S --noconfirm --needed --color=always kbd xkeyboard-config
     localectl --no-ask-password set-keymap "${KEYMAP}"
     echo "Keymap configured: ${KEYMAP}"
 
-    # Create /etc/vconsole.conf for console keymap configuration
     echo -e "KEYMAP=${KEYMAP}\nFONT=Lat2-Terminus16\nFONT_MAP=" >/etc/vconsole.conf
 
     echo -ne "
@@ -982,16 +956,12 @@ configure_base_skel() {
                     Configuring Base Skel Directory
 -------------------------------------------------------------------------
 "
-    # Copy base skel configurations to /etc/skel/ if they exist
     if [[ -d "$HOME"/archinstaller/configs/base/etc/skel ]]; then
         SKEL_CONFIG_DIR="$HOME"/archinstaller/configs/base/etc/skel
 
-        # Copy everything from base skel to /etc/skel/ recursively
-        # Using cp -a to preserve permissions and copy directories recursively
         if cp -a "$SKEL_CONFIG_DIR"/. /etc/skel/ 2>/dev/null; then
             echo "Base skel configurations copied to /etc/skel/"
 
-            # List copied files for verification
             if [[ -f /etc/skel/.nanorc ]]; then
                 echo "  - .nanorc configured"
             fi
@@ -1024,7 +994,6 @@ configure_xorg_base() {
         if cp -a "$XORG_CONFIG_DIR"/. /etc/X11/ 2>/dev/null; then
             echo "Xorg configurations copied to /etc/X11/"
 
-            # List copied files for verification
             if [[ -f /etc/X11/xorg.conf.d/99-disable-bell.conf ]]; then
                 echo "  - System bell disabled globally"
             fi
@@ -1033,6 +1002,24 @@ configure_xorg_base() {
         fi
     else
         echo "Xorg configuration directory not found, skipping"
+    fi
+}
+
+# @description Configure LightDM to disable system bell on startup
+# Adds greeter-setup-script=/usr/bin/xset -b to lightdm.conf
+# Prevents audible beep on invalid input (e.g., Backspace in empty fields)
+# @noargs
+configure_lightdm_bell() {
+    local lightdm_conf="/etc/lightdm/lightdm.conf"
+
+    mkdir -p /etc/lightdm
+
+    if [[ ! -f "$lightdm_conf" ]]; then
+        return 0
+    fi
+
+    if ! grep -q "^greeter-setup-script=/usr/bin/xset -b" "$lightdm_conf"; then
+        sed -i '/\[Seat:\*\]/a greeter-setup-script=/usr/bin/xset -b' "$lightdm_conf"
     fi
 }
 
@@ -1045,19 +1032,16 @@ add_user() {
 -------------------------------------------------------------------------
 "
     if [ "$(whoami)" = "root" ]; then
-        # Create groups
         for group in libvirt vboxusers gamemode docker; do
             groupadd -f "$group"
         done
 
-        # Add new user and full name
         if ! useradd -m -G wheel,libvirt,vboxusers,gamemode,docker -s /bin/bash -c "$REAL_NAME" "$USERNAME"; then
             echo "ERROR! Failed to create user $USERNAME."
             exit 1
         fi
         echo "$USERNAME created with full name '$REAL_NAME', added to groups."
 
-        # Define a user's password
         if echo "$USERNAME:$PASSWORD" | chpasswd; then
             echo "$USERNAME password set."
         else
@@ -1065,7 +1049,6 @@ add_user() {
             exit 1
         fi
 
-        # Copies the installation directory to home directory.
         if cp -R "$HOME/archinstaller" /home/"$USERNAME"/; then
             chown -R "$USERNAME":"$USERNAME" /home/"$USERNAME"/archinstaller
             echo "archinstaller copied to home directory."
@@ -1074,11 +1057,9 @@ add_user() {
             exit 1
         fi
 
-        # Define hostname
         echo "$NAME_OF_MACHINE" >/etc/hostname
         echo "Hostname set to $NAME_OF_MACHINE."
 
-        # Setup hosts file
         cat >>/etc/hosts <<EOF
 127.0.0.1  localhost
 ::1        localhost ip6-localhost ip6-loopback
@@ -1131,8 +1112,6 @@ grub_config() {
     mkdir -p /boot/grub
     grub-mkconfig -o /boot/grub/grub.cfg
 
-    # Fix duplicate root= parameter for LUKS+btrfs
-    # grub-mkconfig auto-generates root=UUID=... for btrfs which conflicts with root=/dev/mapper/ROOT
     if [[ "${FS}" == "luks" ]]; then
         sed -i 's/root=UUID=[^ ]* //' /boot/grub/grub.cfg
     fi
@@ -1145,7 +1124,6 @@ grub_config() {
 _configure_hibernation() {
     local swap_path=""
 
-    # Check both paths: /swap/swapfile (btrfs @swap) and /swapfile (ext4)
     [[ -f /swap/swapfile ]] && swap_path="/swap/swapfile"
     [[ -f /swapfile ]] && swap_path="/swapfile"
 
@@ -1208,13 +1186,11 @@ display_manager() {
         systemctl enable lxdm.service
 
     elif [[ "${DESKTOP_ENV}" == "openbox" ]]; then
-        # Check if lightdm is installed, install if not
         if ! pacman -Qi lightdm &>/dev/null; then
             echo "LightDM not found, installing..."
             pacman -S --noconfirm --needed --color=always lightdm lightdm-webkit2-greeter
         fi
 
-        # Check if lightdm service exists before enabling
         if systemctl list-unit-files | grep -q "lightdm.service"; then
             systemctl enable lightdm.service
         else
@@ -1222,7 +1198,6 @@ display_manager() {
             return 1
         fi
 
-        # Create lightdm config directory if it doesn't exist
         mkdir -p /etc/lightdm
 
         # Create lightdm.conf if it doesn't exist
@@ -1230,10 +1205,8 @@ display_manager() {
             echo "[Seat:*]
 greeter-session=lightdm-webkit2-greeter
 greeter-setup-script=/usr/bin/xset -b" >/etc/lightdm/lightdm.conf
-        fi
-
-        if ! grep -q "^greeter-setup-script=/usr/bin/xset -b" /etc/lightdm/lightdm.conf; then
-            sed -i '/\[Seat:\*\]/a greeter-setup-script=/usr/bin/xset -b' /etc/lightdm/lightdm.conf
+        else
+            configure_lightdm_bell
         fi
 
         if [[ "${INSTALL_TYPE}" == "FULL" ]]; then
@@ -1253,13 +1226,11 @@ greeter-setup-script=/usr/bin/xset -b" >/etc/lightdm/lightdm.conf
         fi
 
     elif [[ "${DESKTOP_ENV}" == "awesome" ]]; then
-        # Check if lightdm is installed, install if not
         if ! pacman -Qi lightdm &>/dev/null; then
             echo "LightDM not found, installing..."
             pacman -S --noconfirm --needed --color=always lightdm lightdm-slick-greeter
         fi
 
-        # Check if lightdm service exists before enabling
         if systemctl list-unit-files | grep -q "lightdm.service"; then
             systemctl enable lightdm.service
         else
@@ -1267,23 +1238,18 @@ greeter-setup-script=/usr/bin/xset -b" >/etc/lightdm/lightdm.conf
             return 1
         fi
 
-        # Create lightdm config directory if it doesn't exist
         mkdir -p /etc/lightdm
 
-        # Create lightdm.conf if it doesn't exist
         if [[ ! -f /etc/lightdm/lightdm.conf ]]; then
             echo "[Seat:*]
 greeter-session=lightdm-slick-greeter
 greeter-setup-script=/usr/bin/xset -b" >/etc/lightdm/lightdm.conf
-        fi
-
-        if ! grep -q "^greeter-setup-script=/usr/bin/xset -b" /etc/lightdm/lightdm.conf; then
-            sed -i '/\[Seat:\*\]/a greeter-setup-script=/usr/bin/xset -b' /etc/lightdm/lightdm.conf
+        else
+            configure_lightdm_bell
         fi
 
         if [[ "${INSTALL_TYPE}" == "FULL" ]]; then
             echo -e "Setting LightDM Theme..."
-            # Copy config file or create if it doesn't exist
             if [[ -f ~/archinstaller/configs/awesome/etc/lightdm/slick-greeter.conf ]]; then
                 cp ~/archinstaller/configs/awesome/etc/lightdm/slick-greeter.conf /etc/lightdm/slick-greeter.conf
             else
@@ -1299,13 +1265,11 @@ greeter-setup-script=/usr/bin/xset -b" >/etc/lightdm/lightdm.conf
         fi
 
     elif [[ "${DESKTOP_ENV}" == "i3-wm" ]]; then
-        # Check if lightdm is installed, install if not
         if ! pacman -Qi lightdm &>/dev/null; then
             echo "LightDM not found, installing..."
             pacman -S --noconfirm --needed --color=always lightdm lightdm-gtk-greeter
         fi
 
-        # Check if lightdm service exists before enabling
         if systemctl list-unit-files | grep -q "lightdm.service"; then
             systemctl enable lightdm.service
         else
@@ -1315,35 +1279,27 @@ greeter-setup-script=/usr/bin/xset -b" >/etc/lightdm/lightdm.conf
 
         echo -e "Configuring LightDM for i3-wm..."
 
-        # Create lightdm config directory if it doesn't exist
         mkdir -p /etc/lightdm
 
-        # Create lightdm.conf if it doesn't exist
         if [[ ! -f /etc/lightdm/lightdm.conf ]]; then
             echo "[Seat:*]
 greeter-session=lightdm-gtk-greeter
 greeter-setup-script=/usr/bin/xset -b" >/etc/lightdm/lightdm.conf
         else
-            # Set lightdm greeter to lightdm-gtk-greeter
             sed -i 's/#greeter-session=example.*/greeter-session=lightdm-gtk-greeter/g' /etc/lightdm/lightdm.conf
-            # Ensure it's set even if not commented
             if ! grep -q "^greeter-session=lightdm-gtk-greeter" /etc/lightdm/lightdm.conf; then
                 sed -i '/\[Seat:\*\]/a greeter-session=lightdm-gtk-greeter' /etc/lightdm/lightdm.conf
             fi
-            if ! grep -q "^greeter-setup-script=/usr/bin/xset -b" /etc/lightdm/lightdm.conf; then
-                sed -i '/\[Seat:\*\]/a greeter-setup-script=/usr/bin/xset -b' /etc/lightdm/lightdm.conf
-            fi
+            configure_lightdm_bell
         fi
 
         CONFIG_FILE="/etc/lightdm/lightdm-gtk-greeter.conf"
 
-        # Create config file if it doesn't exist
         if [[ ! -f "$CONFIG_FILE" ]]; then
             touch "$CONFIG_FILE"
             echo "[greeter]" >>"$CONFIG_FILE"
         fi
 
-        # Base configuration (always applied)
         declare -A base_greeter_config=(
             ["font-name"]="Ubuntu 12"
             ["xft-antialias"]="true"
@@ -1374,20 +1330,15 @@ greeter-setup-script=/usr/bin/xset -b" >/etc/lightdm/lightdm.conf
         base_greeter_config["background"]="#073642"
         base_greeter_config["user-background"]="false"
         base_greeter_config["draw-user-backgrounds"]="false"
-        # Dark theme configuration (using Adwaita-dark theme)
         base_greeter_config["icon-theme-name"]="Pop"
         base_greeter_config["cursor-theme-name"]="Adwaita"
         base_greeter_config["theme-name"]="Adwaita-dark"
 
-        # Apply configuration: remove existing entries first, then add new ones
         for key in "${!base_greeter_config[@]}"; do
-            # Remove existing entry (commented or not)
             sed -i "/^#*${key}=/d" "$CONFIG_FILE"
         done
 
-        # Add all configurations
         for key in "${!base_greeter_config[@]}"; do
-            # Skip empty values
             if [[ -n "${base_greeter_config[$key]}" ]]; then
                 echo "${key}=${base_greeter_config[$key]}" >>"$CONFIG_FILE"
             fi
@@ -1395,7 +1346,6 @@ greeter-setup-script=/usr/bin/xset -b" >/etc/lightdm/lightdm.conf
 
         echo "LightDM GTK greeter configured with dark theme for i3-wm"
 
-    # If none of the above, use lightdm as fallback
     else
         if [[ ! "${INSTALL_TYPE}" == "SERVER" ]]; then
             pacman -S --noconfirm --needed --color=always lightdm lightdm-gtk-greeter
@@ -1424,7 +1374,6 @@ snapper_config() {
     sed -i "s/ALLOW_USERS=\".*\"/ALLOW_USERS=\"$(whoami)\"/" /etc/snapper/configs/root
     sed -i "s/ALLOW_GROUPS=\".*\"/ALLOW_GROUPS=\"$(whoami)\"/" /etc/snapper/configs/root
 
-    # Enable snapper timeline and cleanup timers
     if systemctl list-unit-files | grep -q "snapper-timeline.timer"; then
         systemctl enable snapper-timeline.timer
     else
@@ -1437,14 +1386,12 @@ snapper_config() {
         echo "Warning: snapper-cleanup.timer not found, skipping enable"
     fi
 
-    # Enable grub-btrfsd.service only if it exists (Btrfs-specific)
     if systemctl list-unit-files | grep -q "grub-btrfsd.service"; then
         systemctl enable grub-btrfsd.service
     else
         echo "Warning: grub-btrfsd.service not found, skipping enable (expected for non-Btrfs systems)"
     fi
 
-    # Create initial snapshot
     if command -v snapper &>/dev/null; then
         snapper -c root create --description "Initial snapshot"
         chown :users /.snapshots
@@ -1467,7 +1414,6 @@ configure_tlp() {
         sudo systemctl mask systemd-rfkill.service
         sudo systemctl mask systemd-rfkill.socket
 
-        # Apply recommended configurations
         TLP_CONF="/etc/tlp.conf"
 
         # Configure TLP to manage power settings for specific disks:
@@ -1513,19 +1459,19 @@ plymouth_config() {
 -------------------------------------------------------------------------
 "
     PLYMOUTH_THEMES_DIR="$HOME"/archinstaller/configs/base/usr/share/plymouth/themes
-    PLYMOUTH_THEME="arch-glow" # can grab from config later if we allow selection
+    PLYMOUTH_THEME="arch-glow"
     mkdir -p "/usr/share/plymouth/themes"
 
     echo -e "Installing Plymouth theme... \n"
 
     cp -rf "${PLYMOUTH_THEMES_DIR}"/"${PLYMOUTH_THEME}" /usr/share/plymouth/themes
     if [[ "${FS}" == "luks" ]]; then
-        sed -i 's/HOOKS=(base udev*/& plymouth/' /etc/mkinitcpio.conf             # add plymouth after base udev
-        sed -i 's/HOOKS=(base udev \(.*block\) /&plymouth-/' /etc/mkinitcpio.conf # create plymouth-encrypt after block hook
+        sed -i 's/HOOKS=(base udev*/& plymouth/' /etc/mkinitcpio.conf
+        sed -i 's/HOOKS=(base udev \(.*block\) /&plymouth-/' /etc/mkinitcpio.conf
     else
-        sed -i 's/HOOKS=(base udev*/& plymouth/' /etc/mkinitcpio.conf # add plymouth after base udev
+        sed -i 's/HOOKS=(base udev*/& plymouth/' /etc/mkinitcpio.conf
     fi
-    plymouth-set-default-theme -R arch-glow # sets the theme and runs mkinitcpio
+    plymouth-set-default-theme -R arch-glow
 
     echo -e "\n Plymouth theme installed"
 }
@@ -1538,15 +1484,11 @@ configure_pam_faillock() {
                     Configuring PAM Password Attempts
 -------------------------------------------------------------------------
 "
-    # Configure faillock to allow 5 attempts before lockout
     FAILLOCK_CONF="/etc/security/faillock.conf"
 
-    # Create or update faillock.conf
     mkdir -p /etc/security/
 
-    # Check if faillock.conf exists
     if [[ ! -f "$FAILLOCK_CONF" ]]; then
-        # Create default faillock.conf with 5 attempts
         cat >"$FAILLOCK_CONF" <<'EOF'
 # faillock configuration file
 # This file is parsed by faillock(8).
@@ -1564,21 +1506,16 @@ unlock_time = 600
 EOF
         echo "Created $FAILLOCK_CONF with 5 attempts configuration"
     else
-        # Update existing faillock.conf
-        # First, remove all existing deny lines to avoid duplicates
         sed -i '/^deny\s*=/d' "$FAILLOCK_CONF"
 
         # Add deny = 5 after the header comments (after first non-empty, non-comment section)
         # Find a good place to insert: after comments but before other config lines
         # If we find a line like "fail_interval" or "unlock_time", add before it
         if grep -q "^fail_interval\|^unlock_time" "$FAILLOCK_CONF"; then
-            # Insert before first config line (fail_interval or unlock_time)
             sed -i '/^fail_interval\|^unlock_time/i deny = 5' "$FAILLOCK_CONF"
         elif grep -q "^[^#[:space:]]" "$FAILLOCK_CONF"; then
-            # File has non-comment, non-empty lines, add before first one
             sed -i '/^[^#[:space:]]/i deny = 5' "$FAILLOCK_CONF"
         else
-            # File has only comments/empty lines, add at the end
             echo "" >>"$FAILLOCK_CONF"
             echo "deny = 5" >>"$FAILLOCK_CONF"
         fi
@@ -1596,7 +1533,7 @@ EOF
 # @description Configure PipeWire as audio server and remove PulseAudio if present
 # @noargs
 configure_pipewire() {
-    # Only configure for graphical installations (not SERVER)
+
     if [[ "${INSTALL_TYPE:-}" == "SERVER" ]]; then
         return 0
     fi
@@ -1607,7 +1544,6 @@ configure_pipewire() {
 -------------------------------------------------------------------------
 "
 
-    # Check if PipeWire is installed
     if ! pacman -Qi pipewire &>/dev/null; then
         echo "Warning: PipeWire is not installed, skipping configuration"
         return 1
@@ -1615,7 +1551,6 @@ configure_pipewire() {
 
     echo "PipeWire is installed, configuring audio server..."
 
-    # Remove PulseAudio if installed (obsolete)
     if pacman -Qi pulseaudio &>/dev/null; then
         echo "Removing obsolete PulseAudio packages..."
         pacman -Rns --noconfirm pulseaudio pulseaudio-alsa pulseaudio-bluetooth pulseaudio-equalizer pulseaudio-jack 2>/dev/null || true
@@ -1624,7 +1559,6 @@ configure_pipewire() {
         echo "PulseAudio not found (already using PipeWire)"
     fi
 
-    # Ensure PulseAudio is masked to prevent it from being installed as dependency
     echo "Masking PulseAudio to prevent conflicts..."
     systemctl --user mask pulseaudio.service pulseaudio.socket 2>/dev/null || true
 
@@ -1658,7 +1592,6 @@ do_btrfs() {
 -------------------------------------------------------------------------
 "
 
-    # Set default subvolumes if not defined (setup.conf not yet sourced)
     if [[ -z "${SUBVOLUMES+x}" ]] || ! declare -p SUBVOLUMES 2>/dev/null | grep -q "declare -a"; then
         echo "WARNING: SUBVOLUMES not set, using default subvolumes"
         SUBVOLUMES=(@ @docker @flatpak @home @opt @snapshots @swap @var_cache @var_log @var_tmp)
@@ -1666,7 +1599,6 @@ do_btrfs() {
 
     echo -e "Creating btrfs device $1 on $2 \\n"
 
-    # Clear existing filesystem signatures to avoid "superblock magic doesn't match" error
     echo "Wiping existing filesystem signatures from $2..."
     wipefs -af "$2" 2>/dev/null || true
 
@@ -1687,7 +1619,6 @@ do_btrfs() {
 
     echo "Creating subvolumes and directories"
 
-    # Validate SUBVOLUMES is an array before iterating
     if ! declare -p SUBVOLUMES 2>/dev/null | grep -q "declare -a"; then
         echo "ERROR: SUBVOLUMES is not an array"
         exit 1
@@ -1704,7 +1635,6 @@ do_btrfs() {
 
     umount /mnt
 
-    # Mount root subvolume (@) to mountpoint
     echo "Mounting root subvolume (@)..."
     mount -o "$MOUNT_OPTION",subvol=@ "$2" /mnt
 
@@ -1713,7 +1643,6 @@ do_btrfs() {
         exit 1
     fi
 
-    # Mount remaining subvolumes in their respective directories
     for z in "${SUBVOLUMES[@]:1}"; do
         case "$z" in
         "@docker")
@@ -1746,7 +1675,6 @@ do_btrfs() {
         echo -e "\\nMounting subvolume $z at /mnt/${w}"
         mount -o "$MOUNT_OPTION",subvol="${z}" "$2" "/mnt/${w}"
 
-        # Disable CoW for subvolumes that benefit from it (logs, cache, tmp, swap)
         if [[ "$z" == "@var_cache" || "$z" == "@var_log" || "$z" == "@var_tmp" || "$z" == "@swap" ]]; then
             echo "Disabling copy-on-write on /mnt/${w}"
             chattr +C "/mnt/${w}"
