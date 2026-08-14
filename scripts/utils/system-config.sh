@@ -1006,6 +1006,36 @@ configure_base_skel() {
     fi
 }
 
+# @description Configure system-wide Xorg settings from base configurations
+# Copies Xorg configuration files to /etc/X11/xorg.conf.d/
+# Applies to all desktop environments
+# @noargs
+configure_xorg_base() {
+    echo -ne "
+-------------------------------------------------------------------------
+                    Configuring System Xorg Settings
+-------------------------------------------------------------------------
+"
+    if [[ -d "$HOME"/archinstaller/configs/base/etc/X11 ]]; then
+        XORG_CONFIG_DIR="$HOME"/archinstaller/configs/base/etc/X11
+
+        mkdir -p /etc/X11
+
+        if cp -a "$XORG_CONFIG_DIR"/. /etc/X11/ 2>/dev/null; then
+            echo "Xorg configurations copied to /etc/X11/"
+
+            # List copied files for verification
+            if [[ -f /etc/X11/xorg.conf.d/99-disable-bell.conf ]]; then
+                echo "  - System bell disabled globally"
+            fi
+        else
+            echo "Warning: Failed to copy Xorg configurations"
+        fi
+    else
+        echo "Xorg configuration directory not found, skipping"
+    fi
+}
+
 # @description Adds user that was setup prior to installation
 # @noargs
 add_user() {

@@ -60,6 +60,10 @@ user_theming
 # function from 'system-config.sh'
 configure_base_skel
 
+# Configure system-wide Xorg settings (applies to all desktop environments)
+# function from 'system-config.sh'
+configure_xorg_base
+
 # If this file run without configuration, ask for basic user info before setting up user
 if ! source "$HOME"/archinstaller/configs/setup.conf; then
     user_info
