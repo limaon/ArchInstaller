@@ -75,15 +75,9 @@ end_script() {
         # Copy installation log
         cp -v "$LOG_FILE" "/mnt/home/$USERNAME/.archinstaller/install.log"
 
-        # Copy swap fix script
-        if [[ -f "${SCRIPT_DIR}/scripts/fix-swap.sh" ]]; then
-            cp -v "${SCRIPT_DIR}/scripts/fix-swap.sh" "/mnt/home/$USERNAME/.archinstaller/fix-swap.sh"
-            chmod +x "/mnt/home/$USERNAME/.archinstaller/fix-swap.sh"
-        fi
-
         # Copy config file (without password)
         if [[ -f "$CONFIG_FILE" ]]; then
-            grep -v "^PASSWORD=" "$CONFIG_FILE" >"/mnt/home/$USERNAME/.archinstaller/setup.conf" || true
+            grep -v "^PASSWORD=\|^LUKS_PASSWORD=" "$CONFIG_FILE" >"/mnt/home/$USERNAME/.archinstaller/setup.conf" || true
         fi
 
         # Set ownership using arch-chroot (user exists in installed system)
