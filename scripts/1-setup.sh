@@ -57,31 +57,24 @@ fi
 user_theming
 
 # Configure base skel directory before creating user (so user gets configs automatically)
-# function from 'system-config.sh'
 configure_base_skel
 
 # Configure system-wide Xorg settings (applies to all desktop environments)
-# function from 'system-config.sh'
 configure_xorg_base
 
 # Configure Xorg keyboard layout based on KEYMAP selection
-# function from 'system-config.sh'
 configure_xorg_keyboard
 
 # Configure Xorg GPU driver based on detected hardware
-# function from 'system-config.sh'
 configure_xorg_gpu
 
 # Configure Xorg monitor and display settings
-# function from 'system-config.sh'
 configure_xorg_display
 
 # Configure Xorg mouse/pointer devices with acceleration settings
-# function from 'system-config.sh'
 configure_xorg_mouse
 
 # Configure Xorg touchpad devices with libinput settings
-# function from 'system-config.sh'
 configure_xorg_touchpad
 
 # If this file run without configuration, ask for basic user info before setting up user

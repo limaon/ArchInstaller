@@ -981,27 +981,28 @@ configure_base_skel() {
 # Applies to all desktop environments
 # @noargs
 configure_xorg_base() {
+    local xorg_config_dir="$HOME/archinstaller/configs/base/etc/X11"
+
     echo -ne "
 -------------------------------------------------------------------------
-                    Configuring System Xorg Settings
+                     Configuring System Xorg Settings
 -------------------------------------------------------------------------
 "
-    if [[ -d "$HOME"/archinstaller/configs/base/etc/X11 ]]; then
-        XORG_CONFIG_DIR="$HOME"/archinstaller/configs/base/etc/X11
 
-        mkdir -p /etc/X11
-
-        if cp -a "$XORG_CONFIG_DIR"/. /etc/X11/ 2>/dev/null; then
-            echo "Xorg configurations copied to /etc/X11/"
-
-            if [[ -f /etc/X11/xorg.conf.d/99-disable-bell.conf ]]; then
-                echo "  - System bell disabled globally"
-            fi
-        else
-            echo "Warning: Failed to copy Xorg configurations"
-        fi
-    else
+    if [[ ! -d "$xorg_config_dir" ]]; then
         echo "Xorg configuration directory not found, skipping"
+        return 0
+    fi
+
+    mkdir -p /etc/X11
+
+    if cp -a "$xorg_config_dir"/. /etc/X11/ 2>/dev/null; then
+        echo "Xorg configurations copied to /etc/X11/"
+        [[ -f /etc/X11/xorg.conf.d/99-disable-bell.conf ]] && echo "  - System bell disabled globally"
+        return 0
+    else
+        echo "Warning: Failed to copy Xorg configurations"
+        return 1
     fi
 }
 
@@ -1012,20 +1013,15 @@ configure_xorg_base() {
 configure_xorg_keyboard() {
     local xkb_layout=""
     local xkb_variant=""
-    local keyboard_conf="/etc/X11/xorg.conf.d/00-keyboard.conf"
 
     echo -ne "
 -------------------------------------------------------------------------
-                    Configuring Xorg Keyboard Layout
+                     Configuring Xorg Keyboard Layout
 -------------------------------------------------------------------------
 "
 
-    if [[ -z "$KEYMAP" ]]; then
-        echo "Warning: KEYMAP not set, skipping Xorg keyboard configuration"
-        return 1
-    fi
-
-    case "$KEYMAP" in
+    # Map KEYMAP to Xorg XkbLayout and XkbVariant
+    case "${KEYMAP:-us}" in
         us) xkb_layout="us" ;;
         br-abnt2) xkb_layout="br"; xkb_variant="abnt2" ;;
         by) xkb_layout="by" ;;
@@ -1062,22 +1058,22 @@ configure_xorg_keyboard() {
 
     mkdir -p /etc/X11/xorg.conf.d
 
-    if [[ -f "$keyboard_conf" ]]; then
-        sed -i "s/XKBLAYOUT_PLACEHOLDER/$xkb_layout/g" "$keyboard_conf"
+    # Generate keyboard configuration directly
+    cat > /etc/X11/xorg.conf.d/00-keyboard.conf << EOF
+# Xorg Configuration: Keyboard Layout
+# Maps console KEYMAP to Xorg XkbLayout and XkbVariant
 
-        if [[ -z "$xkb_variant" ]]; then
-            sed -i '/Option "XkbVariant"/d' "$keyboard_conf"
-        else
-            sed -i "s/XKBVARIANT_PLACEHOLDER/$xkb_variant/g" "$keyboard_conf"
-        fi
+Section "InputClass"
+    Identifier "system-keyboard"
+    MatchIsKeyboard "on"
+    Driver "libinput"
+    Option "XkbLayout" "$xkb_layout"
+$([ -n "$xkb_variant" ] && echo "    Option \"XkbVariant\" \"$xkb_variant\"")
+EndSection
+EOF
 
-        sed -i '/Option "XkbOptions" ""/d' "$keyboard_conf"
-
-        echo "Xorg keyboard layout configured: $xkb_layout${xkb_variant:+ (variant: $xkb_variant)}"
-    else
-        echo "Warning: Keyboard configuration template not found at $keyboard_conf"
-        return 1
-    fi
+    echo "Xorg keyboard layout configured: $xkb_layout${xkb_variant:+ (variant: $xkb_variant)}"
+    return 0
 }
 
 # @description Configure LightDM to disable system bell on startup
@@ -1089,11 +1085,10 @@ configure_lightdm_bell() {
 
     mkdir -p /etc/lightdm
 
-    if [[ ! -f "$lightdm_conf" ]]; then
-        return 0
-    fi
+    [[ ! -f "$lightdm_conf" ]] && return 0
 
-    if ! grep -q "^greeter-setup-script=/usr/bin/xset -b" "$lightdm_conf"; then
+    # Add bell disable script if not already present
+    if ! grep -q "greeter-setup-script=/usr/bin/xset -b" "$lightdm_conf"; then
         sed -i '/\[Seat:\*\]/a greeter-setup-script=/usr/bin/xset -b' "$lightdm_conf"
     fi
 }
@@ -1757,245 +1752,213 @@ do_btrfs() {
     done
 }
 configure_xorg_gpu() {
-    local gpu_config=""
-    local gpu_type=""
-    local gpu_conf="/etc/X11/xorg.conf.d/10-gpu.conf"
+    local gpu_type="Generic (modesetting driver)"
     local nvidia_count=0
     local amd_count=0
     local intel_count=0
 
     echo -ne "
 -------------------------------------------------------------------------
-                    Configuring Xorg GPU Driver
+                     Configuring Xorg GPU Driver
 -------------------------------------------------------------------------
 "
 
     if ! command -v lspci &>/dev/null; then
-        echo "Warning: lspci not found, skipping GPU detection"
-        return 1
-    fi
-
-    nvidia_count=$(lspci | grep -ic "NVIDIA\|GeForce\|Quadro\|Tesla")
-    amd_count=$(lspci | grep -ic "AMD\|ATI\|Radeon")
-    intel_count=$(lspci | grep -ic "Intel.*Graphics\|Intel.*Iris")
-
-    if [[ $nvidia_count -gt 0 && $intel_count -gt 0 ]]; then
-        gpu_type="NVIDIA Optimus (Intel + NVIDIA)"
-        gpu_config="Section \"OutputClass\"
-    Identifier \"intel\"
-    MatchDriver \"i915\"
-    Driver \"modesetting\"
-EndSection
-
-Section \"OutputClass\"
-    Identifier \"nvidia\"
-    MatchDriver \"nvidia-drm\"
-    Driver \"nvidia\"
-    Option \"AllowEmptyInitialConfiguration\"
-    Option \"PrimaryGPU\" \"yes\"
-    ModulePath \"/usr/lib/nvidia/xorg\"
-    ModulePath \"/usr/lib/xorg/modules\"
-EndSection"
-
-    elif [[ $nvidia_count -gt 0 ]]; then
-        gpu_type="NVIDIA (proprietary driver)"
-        gpu_config="Section \"OutputClass\"
-    Identifier \"nvidia\"
-    MatchDriver \"nvidia-drm\"
-    Driver \"nvidia\"
-    Option \"AllowEmptyInitialConfiguration\"
-    Option \"ForceFullCompositionPipeline\" \"on\"
-    Option \"TripleBuffer\" \"on\"
-    Option \"AllowIndirectGLXProtocol\" \"off\"
-    ModulePath \"/usr/lib/nvidia/xorg\"
-    ModulePath \"/usr/lib/xorg/modules\"
-EndSection"
-
-    elif [[ $amd_count -gt 0 && $intel_count -gt 0 ]]; then
-        gpu_type="AMD Hybrid (Intel + AMD)"
-        gpu_config="Section \"OutputClass\"
-    Identifier \"amd\"
-    MatchDriver \"amdgpu\"
-    Driver \"amdgpu\"
-    Option \"TearFree\" \"on\"
-    Option \"DRI\" \"3\"
-EndSection
-
-Section \"OutputClass\"
-    Identifier \"intel\"
-    MatchDriver \"i915\"
-    Driver \"modesetting\"
-EndSection"
-
-    elif [[ $amd_count -gt 0 ]]; then
-        gpu_type="AMD (amdgpu driver)"
-        gpu_config="Section \"OutputClass\"
-    Identifier \"amd\"
-    MatchDriver \"amdgpu\"
-    Driver \"amdgpu\"
-    Option \"TearFree\" \"on\"
-    Option \"DRI\" \"3\"
-EndSection"
-
-    elif [[ $intel_count -gt 0 ]]; then
-        gpu_type="Intel Graphics"
-        gpu_config="Section \"Device\"
-    Identifier \"Intel GPU\"
-    Driver \"modesetting\"
-    Option \"TearFree\" \"true\"
-EndSection"
-
+        echo "Warning: lspci not found, using default GPU configuration"
     else
-        gpu_type="Generic (modesetting driver)"
-        gpu_config="Section \"Device\"
-    Identifier \"Generic GPU\"
-    Driver \"modesetting\"
-EndSection"
+        nvidia_count=$(lspci | grep -ic "NVIDIA\|GeForce\|Quadro\|Tesla")
+        amd_count=$(lspci | grep -ic "AMD\|ATI\|Radeon")
+        intel_count=$(lspci | grep -ic "Intel.*Graphics\|Intel.*Iris")
     fi
 
     mkdir -p /etc/X11/xorg.conf.d
 
-    if [[ -f "$gpu_conf" ]]; then
-        sed -i "/# GPU_DRIVER_PLACEHOLDER/c\\$gpu_config" "$gpu_conf"
+    # Determine GPU type and generate configuration
+    if [[ $nvidia_count -gt 0 && $intel_count -gt 0 ]]; then
+        gpu_type="NVIDIA Optimus (Intel + NVIDIA)"
+        cat > /etc/X11/xorg.conf.d/10-gpu.conf << 'EOF'
+# Xorg Configuration: NVIDIA Optimus (Hybrid GPU)
+Section "OutputClass"
+    Identifier "intel"
+    MatchDriver "i915"
+    Driver "modesetting"
+EndSection
 
-        echo "Xorg GPU driver configured: $gpu_type"
-        echo "  - NVIDIA GPUs detected: $nvidia_count"
-        echo "  - AMD GPUs detected: $amd_count"
-        echo "  - Intel GPUs detected: $intel_count"
+Section "OutputClass"
+    Identifier "nvidia"
+    MatchDriver "nvidia-drm"
+    Driver "nvidia"
+    Option "AllowEmptyInitialConfiguration"
+    Option "PrimaryGPU" "yes"
+    ModulePath "/usr/lib/nvidia/xorg"
+    ModulePath "/usr/lib/xorg/modules"
+EndSection
+EOF
+
+    elif [[ $nvidia_count -gt 0 ]]; then
+        gpu_type="NVIDIA (proprietary driver)"
+        cat > /etc/X11/xorg.conf.d/10-gpu.conf << 'EOF'
+# Xorg Configuration: NVIDIA GPU
+Section "OutputClass"
+    Identifier "nvidia"
+    MatchDriver "nvidia-drm"
+    Driver "nvidia"
+    Option "AllowEmptyInitialConfiguration"
+    Option "ForceFullCompositionPipeline" "on"
+    Option "TripleBuffer" "on"
+    Option "AllowIndirectGLXProtocol" "off"
+    ModulePath "/usr/lib/nvidia/xorg"
+    ModulePath "/usr/lib/xorg/modules"
+EndSection
+EOF
+
+    elif [[ $amd_count -gt 0 && $intel_count -gt 0 ]]; then
+        gpu_type="AMD Hybrid (Intel + AMD)"
+        cat > /etc/X11/xorg.conf.d/10-gpu.conf << 'EOF'
+# Xorg Configuration: AMD Hybrid GPU
+Section "OutputClass"
+    Identifier "amd"
+    MatchDriver "amdgpu"
+    Driver "amdgpu"
+    Option "TearFree" "on"
+    Option "DRI" "3"
+EndSection
+
+Section "OutputClass"
+    Identifier "intel"
+    MatchDriver "i915"
+    Driver "modesetting"
+EndSection
+EOF
+
+    elif [[ $amd_count -gt 0 ]]; then
+        gpu_type="AMD (amdgpu driver)"
+        cat > /etc/X11/xorg.conf.d/10-gpu.conf << 'EOF'
+# Xorg Configuration: AMD GPU
+Section "OutputClass"
+    Identifier "amd"
+    MatchDriver "amdgpu"
+    Driver "amdgpu"
+    Option "TearFree" "on"
+    Option "DRI" "3"
+EndSection
+EOF
+
+    elif [[ $intel_count -gt 0 ]]; then
+        gpu_type="Intel Graphics"
+        cat > /etc/X11/xorg.conf.d/10-gpu.conf << 'EOF'
+# Xorg Configuration: Intel GPU
+Section "Device"
+    Identifier "Intel GPU"
+    Driver "modesetting"
+    Option "TearFree" "true"
+EndSection
+EOF
+
     else
-        echo "Warning: GPU configuration template not found at $gpu_conf"
-        return 1
+        cat > /etc/X11/xorg.conf.d/10-gpu.conf << 'EOF'
+# Xorg Configuration: Generic GPU (modesetting driver)
+Section "Device"
+    Identifier "Generic GPU"
+    Driver "modesetting"
+EndSection
+EOF
     fi
+
+    echo "Xorg GPU driver configured: $gpu_type"
+    echo "  - NVIDIA GPUs detected: $nvidia_count"
+    echo "  - AMD GPUs detected: $amd_count"
+    echo "  - Intel GPUs detected: $intel_count"
+    return 0
 }
 
 configure_xorg_display() {
-    local monitor_config=""
-    local monitor_conf="/etc/X11/xorg.conf.d/50-monitor.conf"
     local monitor_count=0
 
     echo -ne "
 -------------------------------------------------------------------------
-                    Configuring Xorg Display Settings
+                     Configuring Xorg Display Settings
 -------------------------------------------------------------------------
 "
 
-    if ! command -v xrandr &>/dev/null; then
-        echo "Warning: xrandr not found, using default display configuration"
-        monitor_config="Section \"Monitor\"
-    Identifier \"Primary\"
-    Option \"Primary\" \"true\"
-EndSection
-
-Section \"Screen\"
-    Identifier \"Screen0\"
-    Monitor \"Primary\"
-    DefaultDepth 24
-    SubSection \"Display\"
-        Depth 24
-    EndSubSection
-EndSection"
-    else
+    if command -v xrandr &>/dev/null; then
         monitor_count=$(xrandr --query 2>/dev/null | grep -c " connected")
-
-        if [[ $monitor_count -eq 0 ]]; then
-            monitor_count=1
-        fi
-
-        if [[ $monitor_count -eq 1 ]]; then
-            monitor_config="Section \"Monitor\"
-    Identifier \"Primary\"
-    Option \"Primary\" \"true\"
-EndSection
-
-Section \"Screen\"
-    Identifier \"Screen0\"
-    Monitor \"Primary\"
-    DefaultDepth 24
-    SubSection \"Display\"
-        Depth 24
-    EndSubSection
-EndSection"
-
-        else
-            monitor_config="Section \"Monitor\"
-    Identifier \"Primary\"
-    Option \"Primary\" \"true\"
-EndSection
-
-Section \"Monitor\"
-    Identifier \"Secondary\"
-    Option \"RightOf\" \"Primary\"
-EndSection
-
-Section \"Screen\"
-    Identifier \"Screen0\"
-    Monitor \"Primary\"
-    DefaultDepth 24
-    SubSection \"Display\"
-        Depth 24
-    EndSubSection
-EndSection"
-        fi
+        [[ $monitor_count -eq 0 ]] && monitor_count=1
+    else
+        echo "Warning: xrandr not found, using default display configuration"
+        monitor_count=1
     fi
 
     mkdir -p /etc/X11/xorg.conf.d
 
-    if [[ -f "$monitor_conf" ]]; then
-        sed -i "/# MONITOR_CONFIGURATION_PLACEHOLDER/c\\$monitor_config" "$monitor_conf"
+    if [[ $monitor_count -eq 1 ]]; then
+        cat > /etc/X11/xorg.conf.d/50-monitor.conf << 'EOF'
+# Xorg Configuration: Single Monitor Display
+Section "Monitor"
+    Identifier "Primary"
+    Option "Primary" "true"
+EndSection
 
-        echo "Xorg display configuration applied"
-        echo "  - Monitors detected: $monitor_count"
+Section "Screen"
+    Identifier "Screen0"
+    Monitor "Primary"
+    DefaultDepth 24
+    SubSection "Display"
+        Depth 24
+    EndSubSection
+EndSection
+EOF
     else
-        echo "Warning: Monitor configuration template not found at $monitor_conf"
-        return 1
+        cat > /etc/X11/xorg.conf.d/50-monitor.conf << 'EOF'
+# Xorg Configuration: Multi-Monitor Display
+Section "Monitor"
+    Identifier "Primary"
+    Option "Primary" "true"
+EndSection
+
+Section "Monitor"
+    Identifier "Secondary"
+    Option "RightOf" "Primary"
+EndSection
+
+Section "Screen"
+    Identifier "Screen0"
+    Monitor "Primary"
+    DefaultDepth 24
+    SubSection "Display"
+        Depth 24
+    EndSubSection
+EndSection
+EOF
     fi
+
+    echo "Xorg display configuration applied"
+    echo "  - Monitors detected: $monitor_count"
+    return 0
 }
 
 # @description Configure Xorg mouse/pointer devices with acceleration settings
 # @noargs
 configure_xorg_mouse() {
-    local mouse_conf="/etc/X11/xorg.conf.d/40-libinput.conf"
-    local mouse_config=""
+    local pointer_count=0
 
     echo -ne "
 -------------------------------------------------------------------------
-                    Configuring Xorg Mouse Settings
+                     Configuring Xorg Mouse Settings
 -------------------------------------------------------------------------
 "
 
-    if ! command -v xinput &>/dev/null; then
-        echo "Warning: xinput not found, using default mouse configuration"
-        mouse_config="Section \"InputClass\"
-    Identifier \"libinput pointer catchall\"
-    MatchIsPointer \"on\"
-    MatchDevicePath \"/dev/input/event*\"
-    Driver \"libinput\"
-    Option \"AccelProfile\" \"flat\"
-EndSection"
+    if command -v xinput &>/dev/null; then
+        pointer_count=$(xinput list 2>/dev/null | grep -ic "pointer")
+        [[ $pointer_count -eq 0 ]] && pointer_count=1
     else
-        local pointer_count=0
-        pointer_count=$(xinput list 2>/dev/null | grep -i "pointer" | wc -l)
-
-        if [[ $pointer_count -eq 0 ]]; then
-            pointer_count=1
-        fi
-
-        mouse_config="Section \"InputClass\"
-    Identifier \"libinput pointer catchall\"
-    MatchIsPointer \"on\"
-    MatchDevicePath \"/dev/input/event*\"
-    Driver \"libinput\"
-    Option \"AccelProfile\" \"flat\"
-    Option \"AccelerationNumerator\" \"2\"
-    Option \"AccelerationDenominator\" \"1\"
-    Option \"ConstantDeceleration\" \"1\"
-EndSection"
+        echo "Warning: xinput not found, using default mouse configuration"
+        pointer_count=1
     fi
 
     mkdir -p /etc/X11/xorg.conf.d
 
-    if [[ -f "$mouse_conf" ]]; then
-        cat > "$mouse_conf" << 'EOF'
+    cat > /etc/X11/xorg.conf.d/40-libinput.conf << 'EOF'
 # Xorg Configuration: Pointer Acceleration Profile
 # Purpose: Sets acceleration profile for all pointer devices (mice, trackballs)
 #
@@ -2022,20 +1985,16 @@ Section "InputClass"
 EndSection
 EOF
 
-        echo "Xorg mouse configuration applied"
-        echo "  - Pointer devices detected: $pointer_count"
-        return 0
-    else
-        echo "Warning: Mouse configuration template not found at $mouse_conf"
-        return 1
-    fi
+    echo "Xorg mouse configuration applied"
+    echo "  - Pointer devices detected: $pointer_count"
+    return 0
 }
 
 # @description Configure Xorg touchpad devices with libinput settings
 # @noargs
 configure_xorg_touchpad() {
     local touchpad_conf="/etc/X11/xorg.conf.d/30-touchpad.conf"
-    local touchpad_config=""
+    local touchpad_count=0
 
     echo -ne "
 -------------------------------------------------------------------------
@@ -2043,69 +2002,17 @@ configure_xorg_touchpad() {
 -------------------------------------------------------------------------
 "
 
-    if ! command -v xinput &>/dev/null; then
-        echo "Warning: xinput not found, using default touchpad configuration"
-        touchpad_config="Section \"InputClass\"
-    Identifier \"touchpad\"
-    Driver \"libinput\"
-    MatchIsTouchpad \"on\"
-    Option \"Tapping\" \"on\"
-    Option \"TappingDrag\" \"on\"
-    Option \"ScrollMethod\" \"twofinger\"
-    Option \"DisableWhileTyping\" \"on\"
-    Option \"AccelSpeed\" \"0.6\"
-    Option \"ScrollPixelDistance\" \"20\"
-    Option \"AccelProfile\" \"adaptive\"
-    Option \"NaturalScrolling\" \"on\"
-    Option \"MiddleEmulation\" \"on\"
-EndSection"
+    if command -v xinput &>/dev/null; then
+        touchpad_count=$(xinput list 2>/dev/null | grep -ic "touchpad\|synaptics")
+        [[ $touchpad_count -eq 0 ]] && touchpad_count=1
     else
-        local touchpad_count=0
-        touchpad_count=$(xinput list 2>/dev/null | grep -i "touchpad\|synaptics" | wc -l)
-
-        if [[ $touchpad_count -eq 0 ]]; then
-            touchpad_count=1
-        fi
-
-        touchpad_config="Section \"InputClass\"
-    Identifier \"touchpad\"
-    Driver \"libinput\"
-    MatchIsTouchpad \"on\"
-    Option \"Tapping\" \"on\"
-    Option \"TappingDrag\" \"on\"
-    Option \"ScrollMethod\" \"twofinger\"
-    Option \"DisableWhileTyping\" \"on\"
-    Option \"AccelSpeed\" \"0.6\"
-    Option \"ScrollPixelDistance\" \"20\"
-    Option \"AccelProfile\" \"adaptive\"
-    Option \"NaturalScrolling\" \"on\"
-    Option \"MiddleEmulation\" \"on\"
-EndSection"
+        touchpad_count=1
     fi
 
     mkdir -p /etc/X11/xorg.conf.d
 
-    if [[ -f "$touchpad_conf" ]]; then
-        cat > "$touchpad_conf" << 'EOF'
+    cat > "$touchpad_conf" << 'EOF'
 # Xorg Configuration: Touchpad Settings (libinput)
-# Purpose: Configures touchpad behavior for improved usability
-#
-# These settings enable common touchpad features for modern laptops:
-#   - Tapping: Single-tap to click (common on modern laptops)
-#   - TappingDrag: Tap-and-drag for selection
-#   - TwoFinger Scrolling: Natural scrolling with two fingers
-#   - DisableWhileTyping: Prevents accidental clicks while typing
-#   - Natural Scrolling: Scroll direction matches finger movement
-#   - MiddleEmulation: Three-finger tap emulates middle mouse button
-#
-# Acceleration Profile: "adaptive" provides smooth, responsive cursor movement
-# that adapts to pointer speed. Alternative: "flat" for no acceleration.
-#
-# References:
-#   - Arch Wiki Libinput: https://wiki.archlinux.org/title/Libinput
-#   - Arch Wiki Mouse Acceleration: https://wiki.archlinux.org/title/Mouse_acceleration
-#   - Arch Wiki Touchpad: https://wiki.archlinux.org/title/Touchpad_Synaptics
-
 Section "InputClass"
     Identifier "touchpad"
     Driver "libinput"
@@ -2122,11 +2029,6 @@ Section "InputClass"
 EndSection
 EOF
 
-        echo "Xorg touchpad configuration applied"
-        echo "  - Touchpad devices detected: $touchpad_count"
-        return 0
-    else
-        echo "Warning: Touchpad configuration template not found at $touchpad_conf"
-        return 1
-    fi
+    echo "Xorg touchpad configuration applied (devices: $touchpad_count)"
+    return 0
 }
