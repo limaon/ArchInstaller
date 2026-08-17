@@ -299,7 +299,7 @@ install_package() {
     pacman)
         if pacman -Si "$package" &>/dev/null; then
             echo "Installing $package from official repository..."
-            if pacman -S "$package" --noconfirm --needed --color=always; then
+            if sudo pacman -S "$package" --noconfirm --needed --color=always; then
                 echo "[OK] $package installed successfully"
                 return 0
             else
@@ -329,7 +329,7 @@ install_package() {
     auto)
         if pacman -Si "$package" &>/dev/null; then
             echo "Installing $package from official repository..."
-            if pacman -S "$package" --noconfirm --needed --color=always; then
+            if sudo pacman -S "$package" --noconfirm --needed --color=always; then
                 echo "[OK] $package installed successfully"
                 return 0
             else
