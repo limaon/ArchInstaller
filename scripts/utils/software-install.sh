@@ -6,6 +6,10 @@
 # @stdout Output routed to install.log
 # @stderror Output routed to install.log
 
+# Source AUR helpers utilities
+# shellcheck source=./aur-helpers.sh
+source "$HOME"/archinstaller/scripts/utils/aur-helpers.sh
+
 # @description Pacstrap arch linux to install location
 # @noargs
 arch_install() {
@@ -81,57 +85,32 @@ network_install() {
 install_fonts() {
     echo -ne "
 -------------------------------------------------------------------------
-            Installing Fonts for the System
+             Installing Fonts for the System
 -------------------------------------------------------------------------
 "
 
-    # Check if installation type is SERVER
+    # Skip for SERVER installations
     if [[ "$INSTALL_TYPE" == "SERVER" ]]; then
         echo "Skipping font installation (SERVER installation type detected)."
         return 0
     fi
 
-    # Path to the JSON file containing the list of fonts
-    FONTS_LIST_FILE="$HOME/archinstaller/packages/optional/fonts.json"
+    local fonts_json="$HOME/archinstaller/packages/optional/fonts.json"
 
-    # Check if the fonts list file exists
-    if [[ ! -f "$FONTS_LIST_FILE" ]]; then
-        echo "Error: Fonts list file not found at $FONTS_LIST_FILE"
+    if [[ ! -f "$fonts_json" ]]; then
+        echo "Error: Fonts list file not found at $fonts_json"
         return 1
     fi
 
-    # Define JQ filters for pacman and AUR packages
-    PACMAN_FILTER=".pacman[].package"
-    AUR_FILTER=$([ "$AUR_HELPER" != NONE ] && echo ", .aur[].package" || echo "")
+    echo "Installing system fonts..."
 
-    # Parse the JSON file and install the fonts
-    jq --raw-output "${PACMAN_FILTER}${AUR_FILTER}" "$FONTS_LIST_FILE" | while read -r font; do
-        if [[ -n "$font" ]]; then
-            echo "Installing font: $font..."
-            if pacman -Qi "$font" &>/dev/null || [[ "$AUR_HELPER" != NONE && "$(
-                $AUR_HELPER -Qi "$font" &>/dev/null
-                echo $?
-            )" -eq 0 ]]; then
-                echo "Font $font is already installed."
-                continue
-            fi
+    # Install pacman fonts
+    install_packages_from_json "$fonts_json" ".pacman[].package" "pacman"
 
-            if [[ "$AUR_HELPER" != NONE && $(
-                pacman -Si "$font" &>/dev/null
-                echo $?
-            ) -ne 0 ]]; then
-                echo "Installing $font via AUR helper ($AUR_HELPER)..."
-                if ! "$AUR_HELPER" -S "$font" --noconfirm --needed --color=always; then
-                    echo "Error: Failed to install font $font via $AUR_HELPER"
-                fi
-            else
-                echo "Installing $font via pacman..."
-                if ! sudo pacman -S "$font" --noconfirm --needed --color=always; then
-                    echo "Error: Failed to install font $font via pacman"
-                fi
-            fi
-        fi
-    done
+    # Install AUR fonts (if helper configured)
+    if [[ "$AUR_HELPER" != NONE ]]; then
+        install_packages_from_json "$fonts_json" ".aur[].package" "aur"
+    fi
 }
 
 # @description Installs base arch linux system
@@ -280,13 +259,11 @@ get_nvidia_driver_choice() {
 install_package_intelligent() {
     local package="$1"
 
-    # Check if already installed
     if pacman -Qi "$package" &>/dev/null; then
         echo "Package $package is already installed, skipping."
         return 0
     fi
 
-    # Check if package exists in official repositories
     if pacman -Si "$package" &>/dev/null; then
         echo "Installing $package from official repository..."
         if ! pacman -S "$package" --noconfirm --needed --color=always; then
@@ -298,6 +275,144 @@ install_package_intelligent() {
         echo "Warning: Package $package not found in repositories"
         return 1
     fi
+}
+
+# @description Install a package from official repo or AUR with intelligent fallback
+# @arg $1 Package name
+# @arg $2 Source (pacman|aur|auto) - default: auto
+# @return 0 on success, 1 on failure
+install_package() {
+    local package="$1"
+    local source="${2:-auto}"
+
+    if [[ -z "$package" ]]; then
+        echo "Error: Package name cannot be empty"
+        return 1
+    fi
+
+    if pacman -Qi "$package" &>/dev/null; then
+        echo "Package $package is already installed, skipping."
+        return 0
+    fi
+
+    case "$source" in
+    pacman)
+        if pacman -Si "$package" &>/dev/null; then
+            echo "Installing $package from official repository..."
+            if pacman -S "$package" --noconfirm --needed --color=always; then
+                echo "[OK] $package installed successfully"
+                return 0
+            else
+                echo "Error: Failed to install $package via pacman"
+                return 1
+            fi
+        else
+            echo "Error: Package $package not found in official repositories"
+            return 1
+        fi
+        ;;
+    aur)
+        if [[ "$AUR_HELPER" == NONE ]]; then
+            echo "Error: AUR helper not configured, cannot install $package from AUR"
+            return 1
+        fi
+
+        echo "Installing $package from AUR via $AUR_HELPER..."
+        if "$AUR_HELPER" -S "$package" --noconfirm --needed --color=always; then
+            echo "[OK] $package installed successfully from AUR"
+            return 0
+        else
+            echo "Error: Failed to install $package via $AUR_HELPER"
+            return 1
+        fi
+        ;;
+    auto)
+        if pacman -Si "$package" &>/dev/null; then
+            echo "Installing $package from official repository..."
+            if pacman -S "$package" --noconfirm --needed --color=always; then
+                echo "[OK] $package installed successfully"
+                return 0
+            else
+                echo "Error: Failed to install $package via pacman"
+                return 1
+            fi
+        elif [[ "$AUR_HELPER" != NONE ]]; then
+            echo "Installing $package from AUR via $AUR_HELPER..."
+            if "$AUR_HELPER" -S "$package" --noconfirm --needed --color=always; then
+                echo "[OK] $package installed successfully from AUR"
+                return 0
+            else
+                echo "Error: Failed to install $package via $AUR_HELPER"
+                return 1
+            fi
+        else
+            echo "Error: Package $package not found in official repositories and no AUR helper configured"
+            return 1
+        fi
+        ;;
+    *)
+        echo "Error: Invalid source '$source'. Use 'pacman', 'aur', or 'auto'"
+        return 1
+        ;;
+    esac
+}
+
+# @description Install packages from JSON file using JQ filter
+# @arg $1 JSON file path
+# @arg $2 JQ filter (e.g., ".minimal.pacman[].package")
+# @arg $3 Source (pacman|aur|auto) - default: auto
+# @return 0 on success, 1 if any package failed
+install_packages_from_json() {
+    local json_file="$1"
+    local jq_filter="$2"
+    local source="${3:-auto}"
+
+    if [[ -z "$json_file" ]]; then
+        echo "Error: JSON file path cannot be empty"
+        return 1
+    fi
+
+    if [[ ! -f "$json_file" ]]; then
+        echo "Error: JSON file not found at $json_file"
+        return 1
+    fi
+
+    if [[ -z "$jq_filter" ]]; then
+        echo "Error: JQ filter cannot be empty"
+        return 1
+    fi
+
+    if ! jq empty "$json_file" 2>/dev/null; then
+        echo "Error: Invalid JSON in $json_file"
+        return 1
+    fi
+
+    echo "Installing packages from $json_file (filter: $jq_filter)"
+
+    local failed=0
+    local count=0
+
+    jq --raw-output "$jq_filter" "$json_file" | while read -r package; do
+        # Skip empty lines
+        if [[ -z "$package" ]]; then
+            continue
+        fi
+
+        ((count++))
+
+        # Install package
+        if ! install_package "$package" "$source"; then
+            ((failed++))
+        fi
+    done
+
+    if [[ $failed -gt 0 ]]; then
+        echo "Warning: $failed package(s) failed to install"
+        return 1
+    fi
+
+    echo "[OK] All packages installed successfully"
+    return 0
 }
 
 # @description Install GPU drivers from JSON file
@@ -463,46 +578,32 @@ desktop_environment_install() {
                     Installing Desktop Environment Software
 -------------------------------------------------------------------------
 "
-    # JQ filters
-    MINIMAL_PACMAN_FILTER=".minimal.pacman[].package"
-    MINIMAL_AUR_FILTER=$([ "$AUR_HELPER" != NONE ] && echo ", .minimal.aur[].package" || echo "")
-    FULL_PACMAN_FILTER=$([ "$INSTALL_TYPE" == "FULL" ] && echo ", .full.pacman[].package" || echo "")
-    FULL_AUR_FILTER=$([ "$AUR_HELPER" != NONE ] && [ "$INSTALL_TYPE" == "FULL" ] && echo ", .full.aur[].package" || echo "")
 
-    # Parse file with JQ to determine packages to install
-    jq --raw-output "${MINIMAL_PACMAN_FILTER}""${MINIMAL_AUR_FILTER}""${FULL_PACMAN_FILTER}""${FULL_AUR_FILTER}" ~/archinstaller/packages/desktop-environments/"${DESKTOP_ENV}".json | (
-        while read -r line; do
-            if [[ -z "$line" ]]; then
-                continue
-            fi
+    local de_json=~/archinstaller/packages/desktop-environments/"${DESKTOP_ENV}".json
 
-            echo "Installing $line"
+    if [[ ! -f "$de_json" ]]; then
+        echo "Error: Desktop environment configuration not found at $de_json"
+        return 1
+    fi
 
-            # Check if package is already installed
-            if pacman -Qi "$line" &>/dev/null; then
-                echo "Package $line is already installed, skipping."
-                continue
-            fi
+    echo "Installing packages for $DESKTOP_ENV..."
 
-            # Determine if package is from official repo or AUR
-            # Check if package exists in official repositories
-            if pacman -Si "$line" &>/dev/null; then
-                echo "Installing $line from official repository..."
-                if ! sudo pacman -S "$line" --noconfirm --needed --color=always; then
-                    echo "Error: Failed to install $line via pacman"
-                fi
-            else
-                if [[ "$AUR_HELPER" != NONE ]]; then
-                    echo "Installing $line from AUR via $AUR_HELPER..."
-                    if ! "$AUR_HELPER" -S "$line" --noconfirm --needed --color=always; then
-                        echo "Error: Failed to install $line via $AUR_HELPER"
-                    fi
-                else
-                    echo "Warning: Package $line not found in official repositories and no AUR helper configured. Skipping."
-                fi
-            fi
-        done
-    )
+    # Build JQ filter based on installation type
+    local pacman_filter=".minimal.pacman[].package"
+    local aur_filter=".minimal.aur[].package"
+
+    if [[ "$INSTALL_TYPE" == "FULL" ]]; then
+        pacman_filter="${pacman_filter}, .full.pacman[].package"
+        aur_filter="${aur_filter}, .full.aur[].package"
+    fi
+
+    # Install pacman packages
+    install_packages_from_json "$de_json" "$pacman_filter" "pacman"
+
+    # Install AUR packages (if helper configured)
+    if [[ "$AUR_HELPER" != NONE ]]; then
+        install_packages_from_json "$de_json" "$aur_filter" "aur"
+    fi
 }
 
 # @description Installs btrfs and snapper packages for Btrfs or LUKS filesystems
@@ -513,44 +614,21 @@ btrfs_install() {
                     Installing Btrfs and Snapper Packages
 -------------------------------------------------------------------------
 "
-    if [[ "$FS" == "btrfs" || "$FS" == "luks" ]]; then
-        # JQ filters
-        PACMAN_FILTER=".pacman[].package"
-        AUR_FILTER=$([ "$AUR_HELPER" != NONE ] && echo ", .aur[].package" || echo "")
 
-        # Parse file with JQ to determine packages to install
-        jq --raw-output "${PACMAN_FILTER}""${AUR_FILTER}" ~/archinstaller/packages/btrfs.json | (
-            while read -r line; do
-                if [[ -z "$line" ]]; then
-                    continue
-                fi
+    # Only install if using btrfs or LUKS
+    if [[ "$FS" != "btrfs" && "$FS" != "luks" ]]; then
+        echo "Filesystem is $FS, skipping btrfs/snapper installation"
+        return 0
+    fi
 
-                echo "Installing $line"
+    echo "Installing btrfs and snapper packages..."
 
-                # Check if package is already installed
-                if pacman -Qi "$line" &>/dev/null; then
-                    echo "Package $line is already installed, skipping."
-                    continue
-                fi
+    # Install pacman packages
+    install_packages_from_json ~/archinstaller/packages/btrfs.json ".pacman[].package" "pacman"
 
-                # Determine if package is from official repo or AUR
-                if pacman -Si "$line" &>/dev/null; then
-                    echo "Installing $line from official repository..."
-                    if ! sudo pacman -S "$line" --noconfirm --needed --color=always; then
-                        echo "Error: Failed to install $line via pacman"
-                    fi
-                else
-                    if [[ "$AUR_HELPER" != NONE ]]; then
-                        echo "Installing $line from AUR via $AUR_HELPER..."
-                        if ! "$AUR_HELPER" -S "$line" --noconfirm --needed --color=always; then
-                            echo "Error: Failed to install $line via $AUR_HELPER"
-                        fi
-                    else
-                        echo "Warning: Package $line not found in official repositories and no AUR helper configured. Skipping."
-                    fi
-                fi
-            done
-        )
+    # Install AUR packages (if helper configured)
+    if [[ "$AUR_HELPER" != NONE ]]; then
+        install_packages_from_json ~/archinstaller/packages/btrfs.json ".aur[].package" "aur"
     fi
 }
 

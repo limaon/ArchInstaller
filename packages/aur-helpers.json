@@ -1,0 +1,79 @@
+{
+  "helpers": {
+    "paru": {
+      "name": "paru",
+      "description": "Feature-rich AUR helper written in Rust",
+      "language": "rust",
+      "dependencies": ["base-devel", "git"],
+      "aur_url": "https://aur.archlinux.org/paru.git",
+      "build_cmd": "makepkg -sirc --noconfirm",
+      "install_cmd": "paru -S {package} --noconfirm --needed --color=always",
+      "query_cmd": "paru -Qi {package}",
+      "enabled": true,
+      "recommended": true
+    },
+    "yay": {
+      "name": "yay",
+      "description": "Yet Another Yogurt - AUR helper written in Go",
+      "language": "go",
+      "dependencies": ["base-devel", "git"],
+      "aur_url": "https://aur.archlinux.org/yay.git",
+      "build_cmd": "makepkg -sirc --noconfirm",
+      "install_cmd": "yay -S {package} --noconfirm --needed --color=always",
+      "query_cmd": "yay -Qi {package}",
+      "enabled": true,
+      "recommended": false
+    },
+    "picaur": {
+      "name": "picaur",
+      "description": "Pacman-like AUR helper written in Python",
+      "language": "python",
+      "dependencies": ["base-devel", "git", "python"],
+      "aur_url": "https://aur.archlinux.org/picaur.git",
+      "build_cmd": "makepkg -sirc --noconfirm",
+      "install_cmd": "picaur -S {package} --noconfirm --needed --color=always",
+      "query_cmd": "picaur -Qi {package}",
+      "enabled": true,
+      "recommended": false
+    },
+    "aura": {
+      "name": "aura",
+      "description": "Secure, multilingual AUR helper written in Rust",
+      "language": "rust",
+      "dependencies": ["base-devel", "git"],
+      "aur_url": "https://aur.archlinux.org/aura.git",
+      "build_cmd": "makepkg -sirc --noconfirm",
+      "install_cmd": "aura -A -S {package} --noconfirm --needed --color=always",
+      "query_cmd": "aura -Qi {package}",
+      "enabled": true,
+      "recommended": false
+    },
+    "trizen": {
+      "name": "trizen",
+      "description": "Lightweight AUR helper written in Perl",
+      "language": "perl",
+      "dependencies": ["base-devel", "git", "perl"],
+      "aur_url": "https://aur.archlinux.org/trizen.git",
+      "build_cmd": "makepkg -sirc --noconfirm",
+      "install_cmd": "trizen -S {package} --noconfirm --needed --color=always",
+      "query_cmd": "trizen -Qi {package}",
+      "enabled": true,
+      "recommended": false
+    },
+    "pacaur": {
+      "name": "pacaur",
+      "description": "Pacman-like AUR helper written in Perl (deprecated)",
+      "language": "perl",
+      "dependencies": ["base-devel", "git", "perl"],
+      "aur_url": "https://aur.archlinux.org/pacaur.git",
+      "build_cmd": "makepkg -sirc --noconfirm",
+      "install_cmd": "pacaur -S {package} --noconfirm --needed --color=always",
+      "query_cmd": "pacaur -Qi {package}",
+      "enabled": false,
+      "recommended": false,
+      "notes": "Deprecated - use paru or yay instead"
+    }
+  },
+  "default": "paru",
+  "fallback": "yay"
+}
