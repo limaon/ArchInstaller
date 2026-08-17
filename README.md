@@ -33,7 +33,7 @@ An automated and interactive Arch Linux installer that transforms the complex ma
 
     ```bash
     # Quick method (single command)
-    bash <(curl -L tinyurl.com/4b3jcbpd)
+    bash <(curl -L https://github.com/limaon/ArchInstaller/releases/download/v1.0.0/curl-install.sh)
 
     # Or manual method
     pacman -Sy git
