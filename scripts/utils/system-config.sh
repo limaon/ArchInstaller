@@ -1093,6 +1093,35 @@ configure_lightdm_bell() {
     fi
 }
 
+# @description Configure LightDM GTK Greeter with custom settings
+# @arg $1 Desktop Environment name (for logging)
+# @arg $2 Associative array name with greeter config (passed by reference)
+configure_lightdm_greeter() {
+    local de_name="$1"
+    local -n config_ref="$2"
+    local config_file="/etc/lightdm/lightdm-gtk-greeter.conf"
+
+    # Create config file if it doesn't exist
+    if [[ ! -f "$config_file" ]]; then
+        touch "$config_file"
+        echo "[greeter]" >>"$config_file"
+    fi
+
+    # Remove old config entries to avoid duplicates
+    for key in "${!config_ref[@]}"; do
+        sed -i "/^#*${key}=/d" "$config_file"
+    done
+
+    # Write new config entries
+    for key in "${!config_ref[@]}"; do
+        if [[ -n "${config_ref[$key]}" ]]; then
+            echo "${key}=${config_ref[$key]}" >>"$config_file"
+        fi
+    done
+
+    echo "LightDM GTK greeter configured for $de_name"
+}
+
 # @description Adds user that was setup prior to installation
 # @noargs
 add_user() {
@@ -1298,7 +1327,7 @@ greeter-setup-script=/usr/bin/xset -b" >/etc/lightdm/lightdm.conf
     elif [[ "${DESKTOP_ENV}" == "awesome" ]]; then
         if ! pacman -Qi lightdm &>/dev/null; then
             echo "LightDM not found, installing..."
-            pacman -S --noconfirm --needed --color=always lightdm lightdm-slick-greeter
+            pacman -S --noconfirm --needed --color=always lightdm lightdm-gtk-greeter
         fi
 
         if systemctl list-unit-files | grep -q "lightdm.service"; then
@@ -1312,27 +1341,22 @@ greeter-setup-script=/usr/bin/xset -b" >/etc/lightdm/lightdm.conf
 
         if [[ ! -f /etc/lightdm/lightdm.conf ]]; then
             echo "[Seat:*]
-greeter-session=lightdm-slick-greeter
+greeter-session=lightdm-gtk-greeter
 greeter-setup-script=/usr/bin/xset -b" >/etc/lightdm/lightdm.conf
         else
             configure_lightdm_bell
         fi
 
-        if [[ "${INSTALL_TYPE}" == "FULL" ]]; then
-            echo -e "Setting LightDM Theme..."
-            if [[ -f ~/archinstaller/configs/awesome/etc/lightdm/slick-greeter.conf ]]; then
-                cp ~/archinstaller/configs/awesome/etc/lightdm/slick-greeter.conf /etc/lightdm/slick-greeter.conf
-            else
-                if [[ ! -f /etc/lightdm/slick-greeter.conf ]]; then
-                    touch /etc/lightdm/slick-greeter.conf
-                    echo "[greeter]" >>/etc/lightdm/slick-greeter.conf
-                fi
-            fi
-            sed -i 's/#greeter-session=example.*/greeter-session=lightdm-slick-greeter/g' /etc/lightdm/lightdm.conf
-            if ! grep -q "^greeter-session=lightdm-slick-greeter" /etc/lightdm/lightdm.conf; then
-                sed -i '/\[Seat:\*\]/a greeter-session=lightdm-slick-greeter' /etc/lightdm/lightdm.conf
-            fi
-        fi
+        # Configure greeter appearance for AwesomeWM
+        declare -A awesome_greeter_config=(
+            ["theme-name"]="Adwaita-dark"
+            ["icon-theme-name"]="Papirus-Dark"
+            ["background"]="#1e1e1e"
+            ["font-name"]="Ubuntu 12"
+            ["xft-dpi"]="96"
+        )
+
+        configure_lightdm_greeter "awesome" awesome_greeter_config
 
     elif [[ "${DESKTOP_ENV}" == "i3-wm" ]]; then
         if ! pacman -Qi lightdm &>/dev/null; then
@@ -1363,14 +1387,8 @@ greeter-setup-script=/usr/bin/xset -b" >/etc/lightdm/lightdm.conf
             configure_lightdm_bell
         fi
 
-        CONFIG_FILE="/etc/lightdm/lightdm-gtk-greeter.conf"
-
-        if [[ ! -f "$CONFIG_FILE" ]]; then
-            touch "$CONFIG_FILE"
-            echo "[greeter]" >>"$CONFIG_FILE"
-        fi
-
-        declare -A base_greeter_config=(
+        # Configure greeter appearance
+        declare -A i3_greeter_config=(
             ["font-name"]="Ubuntu 12"
             ["xft-antialias"]="true"
             ["transition-duration"]="1000"
@@ -1388,33 +1406,16 @@ greeter-setup-script=/usr/bin/xset -b" >/etc/lightdm/lightdm.conf
             ["position"]="50%,center 50%,center"
             ["draw-grid"]="false"
             ["clock-format"]="%H:%M"
-            ["keyboard"]=""
             ["hide-user-image"]="false"
-            ["logo"]=""
-            ["other-monitors-logo"]=""
-            ["battery"]=""
+            ["background"]="#073642"
+            ["user-background"]="false"
+            ["draw-user-backgrounds"]="false"
+            ["icon-theme-name"]="Pop"
+            ["cursor-theme-name"]="Adwaita"
+            ["theme-name"]="Adwaita-dark"
         )
 
-        # Background configuration with solid color for all installation types
-        # Use solid color background #073642 for both FULL and MINIMAL installations
-        base_greeter_config["background"]="#073642"
-        base_greeter_config["user-background"]="false"
-        base_greeter_config["draw-user-backgrounds"]="false"
-        base_greeter_config["icon-theme-name"]="Pop"
-        base_greeter_config["cursor-theme-name"]="Adwaita"
-        base_greeter_config["theme-name"]="Adwaita-dark"
-
-        for key in "${!base_greeter_config[@]}"; do
-            sed -i "/^#*${key}=/d" "$CONFIG_FILE"
-        done
-
-        for key in "${!base_greeter_config[@]}"; do
-            if [[ -n "${base_greeter_config[$key]}" ]]; then
-                echo "${key}=${base_greeter_config[$key]}" >>"$CONFIG_FILE"
-            fi
-        done
-
-        echo "LightDM GTK greeter configured with dark theme for i3-wm"
+        configure_lightdm_greeter "i3-wm" i3_greeter_config
 
     else
         if [[ ! "${INSTALL_TYPE}" == "SERVER" ]]; then

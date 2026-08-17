@@ -640,7 +640,6 @@ user_theming() {
             Theming Desktop Environment ($INSTALL_TYPE)
 -------------------------------------------------------------------------
 "
-    # Theming DE if not user chose SERVER installation
     if [[ ! "$INSTALL_TYPE" == SERVER ]]; then
         if [[ "$DESKTOP_ENV" == "kde" ]]; then
             cp -r ~/archinstaller/configs/kde/home/. ~/

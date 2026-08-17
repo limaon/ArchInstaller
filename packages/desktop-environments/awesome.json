@@ -2,10 +2,11 @@
   "minimal": {
     "pacman": [
       { "package": "lightdm" },
-      { "package": "lightdm-slick-greeter" },
-      { "package": "lxsession" }
+      { "package": "lightdm-gtk-greeter" },
+      { "package": "lxsession" },
+      { "package": "awesome" }
     ],
-    "aur": [{ "package": "awesome-git" }]
+    "aur": []
   },
   "full": {
     "pacman": [
@@ -27,10 +28,12 @@
       { "package": "kio-fuse" },
       { "package": "kio-gdrive" },
       { "package": "kvantum" },
+      { "package": "lightdm-gtk-greeter" },
       { "package": "lxappearance" },
       { "package": "lua-fifo" },
       { "package": "network-manager-applet" },
       { "package": "pavucontrol" },
+      { "package": "picom" },
       { "package": "playerctl" },
       { "package": "polkit-kde-agent" },
       { "package": "qt5ct" },
@@ -55,7 +58,6 @@
       { "package": "lightdm-settings" },
       { "package": "lua-pam-git" },
       { "package": "networkmanager-dmenu-git" },
-      { "package": "picom-git" },
       { "package": "rofi-power-menu" }
     ]
   }

@@ -1,74 +1,79 @@
 return {
-	widget = {
-		email  = {
-			-- Email address
-			address = 'khaneliman12@gmail.com',
-			-- App password
-			app_password = '',
-			-- Imap server
-			imap_server = 'imap.gmail.com',
-			-- Port
-			port = '993'
-		},
+    widget = {
+        email = {
+            -- Email address (configure with your Gmail address)
+            -- Example: "your.email@gmail.com"
+            address = "",
+            -- App password (generate at https://myaccount.google.com/apppasswords)
+            app_password = "",
+            -- Imap server
+            imap_server = "imap.gmail.com",
+            -- Port
+            port = "993",
+        },
 
-		weather = {
-			-- API Key
-			key = '',
-			-- City ID
-			city_id = '5264223',
-			-- Units
-			units = 'imperial',
-			-- Update in N seconds
-			update_interval = 1200
-		},
+        weather = {
+            -- API Key (get from https://openweathermap.org/api)
+            key = "",
+            -- City ID (find at https://openweathermap.org/find)
+            -- Example: "5264223" for Milwaukee, WI
+            city_id = "",
+            -- Units: "metric" or "imperial"
+            units = "metric",
+            -- Update in N seconds
+            update_interval = 1200,
+        },
 
-		network = {
-			-- Wired interface
-			wired_interface = 'enp5s0',
-			-- Wireless interface
-			wireless_interface = ''
-		},
+        network = {
+            -- Wired interface (e.g., "eth0", "enp5s0", "eno1")
+            -- Leave empty to auto-detect or run: ip link show
+            wired_interface = "",
+            -- Wireless interface (e.g., "wlan0", "wlp3s0")
+            -- Leave empty to auto-detect or run: ip link show
+            wireless_interface = "",
+        },
 
-		clock = {
-			-- Clock widget format
-			military_mode = false
-		},
+        clock = {
+            -- Clock widget format
+            military_mode = false,
+        },
 
-		screen_recorder = {
-			-- Default record dimension
-			resolution = '1920x1080',
-			-- X,Y coordinate
-			offset = '0,0',
-			-- Enable audio by default
-			audio = false,
-			-- Recordings directory
-			save_directory = '$(xdg-user-dir VIDEOS)/Recordings/',
-			-- Mic level
-			mic_level = '20',
-			-- FPS
-			fps = '30'
-		}
-	},
+        screen_recorder = {
+            -- Default record dimension (e.g., "1920x1080", "1280x720")
+            -- Leave empty to auto-detect or run: xrandr
+            resolution = "",
+            -- X,Y coordinate (top-left corner of recording area)
+            offset = "0,0",
+            -- Enable audio by default
+            audio = false,
+            -- Recordings directory
+            save_directory = "$(xdg-user-dir VIDEOS)/Recordings/",
+            -- Mic level (0-100)
+            mic_level = "20",
+            -- FPS (frames per second)
+            fps = "30",
+        },
+    },
 
-	module = {
-		auto_start = {
-			-- Will create notification if true
-			debug_mode = true
-		},
+    module = {
+        auto_start = {
+            -- Will create notification if true
+            debug_mode = false,
+        },
 
-		dynamic_wallpaper = {
-			-- Will look for wallpapers here
-			wall_dir = 'theme/wallpapers/',
-			-- Image formats
-			valid_picture_formats = {'jpg', 'png', 'jpeg'},
-			-- Leave this table empty for full auto scheduling
-			wallpaper_schedule = {
-				['00:00:00'] = 'midnight-wallpaper.jpg',
-				['06:22:00'] = 'morning-wallpaper.jpg',
-				['12:00:00'] = 'noon-wallpaper.jpg',
-				['17:58:00'] = 'night-wallpaper.jpg'
-				-- Example of just using auto-scheduling with keywords
-				--[[
+        dynamic_wallpaper = {
+            -- Will look for wallpapers here
+            wall_dir = "theme/wallpapers/",
+            -- Image formats
+            valid_picture_formats = { "jpg", "png", "jpeg" },
+            -- Leave this table empty for full auto scheduling
+            wallpaper_schedule = {
+                ["00:00:00"] = "midnight-wallpaper.jpg",
+                ["06:22:00"] = "morning-wallpaper.jpg",
+                ["12:00:00"] = "noon-wallpaper.jpg",
+                ["17:58:00"] = "night-wallpaper.jpg",
+                -- Example of just using auto-scheduling with keywords
+                --[[
 					'midnight',
 					'morning',
 					'noon',
@@ -76,28 +81,30 @@ return {
 					'evening',
 					'night'
 				--]]
-			},
-			-- Stretch background image across all screens(monitor)
-			stretch = false
-		},
+            },
+            -- Stretch background image across all screens(monitor)
+            stretch = false,
+        },
 
-		lockscreen = {
-			-- Clock format
-			military_clock = false,
-			-- Default password if there's no PAM integration
-			fallback_password = 'toor',
-			-- Capture intruder using webcam
-			capture_intruder = true,
-			-- Intruder image save location (Will create directory if it doesn't exist)
-			face_capture_dir = '$(xdg-user-dir PICTURES)/Intruders/',
-			-- Background directory - Defaults to 'awesome/config/theme/wallpapers/' if null
-			bg_dir = nil,
-			-- Will look for this image file under 'bg_dir'
-			bg_image = 'locksreen-bg.jpg',
-			-- Blur lockscreen background
-			blur_background = false,
-			-- Blurred/filtered background image path (No reason to change this)
-			tmp_wall_dir = '/tmp/awesomewm/' .. os.getenv('USER') .. '/'
-		}
-	}
+        lockscreen = {
+            -- Clock format
+            military_clock = false,
+            -- Default password if there's no PAM integration
+            -- NOTE: PAM authentication is preferred. Only use this as fallback.
+            -- Leave empty to disable fallback password.
+            fallback_password = "",
+            -- Capture intruder using webcam
+            capture_intruder = true,
+            -- Intruder image save location (Will create directory if it doesn't exist)
+            face_capture_dir = "$(xdg-user-dir PICTURES)/Intruders/",
+            -- Background directory - Defaults to 'awesome/config/theme/wallpapers/' if null
+            bg_dir = nil,
+            -- Will look for this image file under 'bg_dir'
+            bg_image = "locksreen-bg.jpg",
+            -- Blur lockscreen background
+            blur_background = false,
+            -- Blurred/filtered background image path (No reason to change this)
+            tmp_wall_dir = "/tmp/awesomewm/" .. os.getenv("USER") .. "/",
+        },
+    },
 }
