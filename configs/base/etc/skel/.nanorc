@@ -9,6 +9,8 @@ set tabstospaces
 set linenumbers
 set numbercolor yellow,normal
 set scrollercolor grey,normal
+set keycolor cyan
+set functioncolor cyan
 set indicator
 set smarthome
 set afterends
@@ -28,10 +30,13 @@ set guidestripe 80
 set trimblanks
 set jumpyscrolling
 set quickblank
+set autoindent
+set noconvert
+
 
 # Options - Backup & Recovery
 set backup
-set backupdir /tmp/nano-backups
+set backupdir /tmp/
 
 # Disabled options
 #set nohelp
