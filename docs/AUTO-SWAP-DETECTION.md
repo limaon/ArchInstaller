@@ -141,18 +141,18 @@ compression-algorithm = zstd
 - Dedicated @swap subvolume (prevents snapshot conflicts)
 - Mount options: `nodatacow` (required for swap)
 - Entry added to `/etc/fstab`:
-  ```
-  UUID=<root_uuid>	/swap	btrfs	<options>,subvol=/@swap,nodatacow	0	0
-  ```
+    ```
+    UUID=<root_uuid>	/swap	btrfs	<options>,subvol=/@swap,nodatacow	0	0
+    ```
 
 **Standard Swapfile** (ext4/others):
 
 - Location: `/swapfile`
 - Permissions: 600
 - Entry added to `/etc/fstab`:
-  ```
-  /swapfile	none	swap	defaults	0	0
-  ```
+    ```
+    /swapfile	none	swap	defaults	0	0
+    ```
 
 **Priority**:
 
@@ -273,42 +273,42 @@ Strategy: Laptop detected - ZRAM + Swapfile (hibernation support)
 
 1. Check if @swap subvolume is mounted:
 
-   ```bash
-   findmnt /swap
-   ```
+    ```bash
+    findmnt /swap
+    ```
 
-   Expected: Should show @swap subvolume
+    Expected: Should show @swap subvolume
 
 2. Check if swapfile exists:
 
-   ```bash
-   ls -lh /swap/swapfile
-   ```
+    ```bash
+    ls -lh /swap/swapfile
+    ```
 
 3. Check fstab entries:
-   ```bash
-   grep -E "(swap|@swap)" /etc/fstab
-   ```
-   Expected: Both @swap mount and swapfile activation entries
+    ```bash
+    grep -E "(swap|@swap)" /etc/fstab
+    ```
+    Expected: Both @swap mount and swapfile activation entries
 
 ### ZRAM Not Active
 
 1. Check if ZRAM module is loaded:
 
-   ```bash
-   lsmod | grep zram
-   ```
+    ```bash
+    lsmod | grep zram
+    ```
 
 2. Check ZRAM configuration:
 
-   ```bash
-   cat /etc/systemd/zram-generator.conf
-   ```
+    ```bash
+    cat /etc/systemd/zram-generator.conf
+    ```
 
 3. Check systemd service:
-   ```bash
-   systemctl status systemd-zram-setup@zram0.service
-   ```
+    ```bash
+    systemctl status systemd-zram-setup@zram0.service
+    ```
 
 ### Need Different Configuration
 
@@ -339,14 +339,3 @@ sudo systemctl disable systemd-zram-setup@zram0.service
 sudo swapoff /dev/zram0
 ```
 
-## Summary
-
-The automatic swap detection eliminates the need for manual configuration while ensuring optimal performance for each system type:
-
-- **VPS/Cloud**: Minimizes I/O costs
-- **Laptops**: Enables hibernation
-- **Servers**: Maximizes performance
-- **Desktops**: Balances performance with hibernation
-- **Minimal**: Efficient resource usage
-
-The system detects hardware and use case, then applies the best configuration automatically.

@@ -1,4 +1,5 @@
 # ArchLinux Installer Script
+
 [![GitHub Super-Linter](https://github.com/limaon/ArchInstaller/workflows/Lint%20Code%20Base/badge.svg)](https://github.com/marketplace/actions/super-linter)
 
 An automated and interactive Arch Linux installer that transforms the complex manual installation process into a guided workflow. Install a complete Arch Linux system with desktop environment, drivers, optimizations, and configurations pre-applied.
@@ -17,7 +18,6 @@ An automated and interactive Arch Linux installer that transforms the complex ma
 - **Post-Installation Verification**: Automatic verification script to check installation success
 - **Complete Logging**: All output logged to `/var/log/install.log` for troubleshooting
 
----
 ## Prerequisites
 
 - Arch Linux ISO downloaded from <https://archlinux.org/download/>
@@ -30,25 +30,26 @@ An automated and interactive Arch Linux installer that transforms the complex ma
 
 1. **Boot Arch ISO** and connect to internet
 2. **Run installer**:
-   ```bash
-   # Quick method (single command)
-   bash <(curl -L tinyurl.com/4b3jcbpd)
 
-   # Or manual method
-   pacman -Sy git
-   git clone --depth=1 https://github.com/limaon/ArchInstaller.git
-   cd ArchInstaller
-   ./archinstall.sh
-   ```
+    ```bash
+    # Quick method (single command)
+    bash <(curl -L tinyurl.com/4b3jcbpd)
+
+    # Or manual method
+    pacman -Sy git
+    git clone --depth=1 https://github.com/limaon/ArchInstaller.git
+    cd ArchInstaller
+    ./archinstall.sh
+    ```
 
 3. **Follow interactive prompts**:
-   - User information (name, username, password)
-   - Installation type (FULL/MINIMAL/SERVER)
-   - Desktop environment (if not SERVER)
-   - Disk selection and usage percentage
-   - Filesystem choice
-   - Timezone (auto-detected with searchable menu)
-   - Locale and keyboard layout
+    - User information (name, username, password)
+    - Installation type (FULL/MINIMAL/SERVER)
+    - Desktop environment (if not SERVER)
+    - Disk selection and usage percentage
+    - Filesystem choice
+    - Timezone (auto-detected with searchable menu)
+    - Locale and keyboard layout
 
 4. **Review configuration** and confirm installation
 
@@ -57,14 +58,9 @@ An automated and interactive Arch Linux installer that transforms the complex ma
 ### After Installation
 
 **Files available in `~/.archinstaller/`**:
+
 - `install.log` - Complete installation log
 - `setup.conf` - Installation configuration (password removed)
-
-## Documentation
-
-- **[Complete Documentation](docs/README.md)** - Overview and index
-- **[Functions Reference](docs/FUNCTIONS-REFERENCE.md)** - Complete function documentation
-- **[Package System](docs/PACKAGE-SYSTEM.md)** - JSON package management
 
 ## Troubleshooting
 
@@ -112,25 +108,27 @@ After unblocking the WiFi, you can connect to it. Go through these 5 steps:
 When reporting issues, please include:
 
 1. **Configuration** (from `~/.archinstaller/setup.conf` - **DO NOT INCLUDE PASSWORDS**):
-   ```bash
-   cat ~/.archinstaller/setup.conf | grep -v PASSWORD
-   ```
+
+    ```bash
+    cat ~/.archinstaller/setup.conf | grep -v PASSWORD
+    ```
 
 2. **Installation log** (relevant error sections):
-   ```bash
-   grep -A 10 -B 10 "ERROR_MESSAGE" ~/.archinstaller/install.log
-   ```
+
+    ```bash
+    grep -A 10 -B 10 "ERROR_MESSAGE" ~/.archinstaller/install.log
+    ```
 
 3. **System information**:
-   - Git commit/branch used
-   - Installation environment (VMWare, VirtualBox, QEMU/KVM, Baremetal)
-   - If VM: RAM, CPU cores, disk size
-   - Hardware specs (if relevant)
+    - Git commit/branch used
+    - Installation environment (VMWare, VirtualBox, QEMU/KVM, Baremetal)
+    - If VM: RAM, CPU cores, disk size
+    - Hardware specs (if relevant)
 
 4. **Error details**:
-   - What step failed
-   - Error messages
-   - Screenshots (if applicable)
+    - What step failed
+    - Error messages
+    - Screenshots (if applicable)
 
 ## Credits
 
