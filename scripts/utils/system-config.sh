@@ -1122,6 +1122,82 @@ configure_lightdm_greeter() {
     echo "LightDM GTK greeter configured for $de_name"
 }
 
+# @description Update configuration file value (uncomment and set value)
+# @arg $1 Configuration file path
+# @arg $2 Configuration key
+# @arg $3 Configuration value
+# @arg $4 Use sudo (optional, default: false)
+update_config_value() {
+    local file="$1"
+    local key="$2"
+    local value="$3"
+    local use_sudo="${4:-false}"
+
+    if [[ ! -f "$file" ]]; then
+        echo "Warning: Config file not found: $file"
+        return 1
+    fi
+
+    if [[ "$use_sudo" == "true" ]]; then
+        sudo sed -i "s/^#\?${key}=.*/${key}=${value}/" "$file"
+    else
+        sed -i "s/^#\?${key}=.*/${key}=${value}/" "$file"
+    fi
+}
+
+# @description Enable systemd unit with validation
+# @arg $1 Unit name (service/timer/socket)
+# @arg $2 Warning message (optional)
+# @arg $3 Return on fail (optional, default: false)
+enable_systemd_unit() {
+    local unit="$1"
+    local warning_msg="${2:-Warning: $unit not found, skipping enable}"
+    local return_on_fail="${3:-false}"
+
+    if systemctl list-unit-files | grep -q "$unit"; then
+        systemctl enable "$unit"
+        echo "Enabled: $unit"
+    else
+        echo "$warning_msg"
+        [[ "$return_on_fail" == "true" ]] && return 1
+    fi
+}
+
+# @description Require command to be available
+# @arg $1 Command name
+# @arg $2 Error message (optional)
+require_command() {
+    local cmd="$1"
+    local error_msg="${2:-Error: $cmd command not found. Ensure $cmd package is installed.}"
+
+    if ! command -v "$cmd" &>/dev/null; then
+        echo "$error_msg"
+        return 1
+    fi
+}
+
+# @description Copy config file with directory creation
+# @arg $1 Source file/directory
+# @arg $2 Destination directory
+copy_config_file() {
+    local src="$1"
+    local dest_dir="$2"
+
+    if [[ ! -f "$src" && ! -d "$src" ]]; then
+        echo "Error: Source not found: $src"
+        return 1
+    fi
+
+    mkdir -p "$dest_dir"
+    cp -rfv "$src" "$dest_dir"
+}
+
+# @description Check if system has battery
+# @noargs
+has_battery() {
+    [[ -d "/sys/class/power_supply/BAT0" ]] || acpi -b &>/dev/null
+}
+
 # @description Adds user that was setup prior to installation
 # @noargs
 add_user() {
@@ -1290,12 +1366,7 @@ display_manager() {
             pacman -S --noconfirm --needed --color=always lightdm lightdm-webkit2-greeter
         fi
 
-        if systemctl list-unit-files | grep -q "lightdm.service"; then
-            systemctl enable lightdm.service
-        else
-            echo "Warning: lightdm.service not found, skipping enable"
-            return 1
-        fi
+        enable_systemd_unit "lightdm.service" "" "true" || return 1
 
         mkdir -p /etc/lightdm
 
@@ -1330,12 +1401,7 @@ greeter-setup-script=/usr/bin/xset -b" >/etc/lightdm/lightdm.conf
             pacman -S --noconfirm --needed --color=always lightdm lightdm-gtk-greeter
         fi
 
-        if systemctl list-unit-files | grep -q "lightdm.service"; then
-            systemctl enable lightdm.service
-        else
-            echo "Warning: lightdm.service not found, skipping enable"
-            return 1
-        fi
+        enable_systemd_unit "lightdm.service" "" "true" || return 1
 
         mkdir -p /etc/lightdm
 
@@ -1364,12 +1430,7 @@ greeter-setup-script=/usr/bin/xset -b" >/etc/lightdm/lightdm.conf
             pacman -S --noconfirm --needed --color=always lightdm lightdm-gtk-greeter
         fi
 
-        if systemctl list-unit-files | grep -q "lightdm.service"; then
-            systemctl enable lightdm.service
-        else
-            echo "Warning: lightdm.service not found, skipping enable"
-            return 1
-        fi
+        enable_systemd_unit "lightdm.service" "" "true" || return 1
 
         echo -e "Configuring LightDM for i3-wm..."
 
@@ -1435,90 +1496,71 @@ snapper_config() {
 "
 
     SNAPPER_CONF="$HOME"/archinstaller/configs/base/etc/snapper/configs/root
-    mkdir -p /etc/snapper/configs/
-    cp -rfv "${SNAPPER_CONF}" /etc/snapper/configs/
-
     SNAPPER_CONF_D="$HOME"/archinstaller/configs/base/etc/conf.d/snapper
-    mkdir -p /etc/conf.d/
-    cp -rfv "${SNAPPER_CONF_D}" /etc/conf.d/
+
+    copy_config_file "${SNAPPER_CONF}" /etc/snapper/configs/
+    copy_config_file "${SNAPPER_CONF_D}" /etc/conf.d/
 
     sed -i "s/ALLOW_USERS=\".*\"/ALLOW_USERS=\"$(whoami)\"/" /etc/snapper/configs/root
     sed -i "s/ALLOW_GROUPS=\".*\"/ALLOW_GROUPS=\"$(whoami)\"/" /etc/snapper/configs/root
 
-    if systemctl list-unit-files | grep -q "snapper-timeline.timer"; then
-        systemctl enable snapper-timeline.timer
-    else
-        echo "Warning: snapper-timeline.timer not found, skipping enable"
-    fi
+    enable_systemd_unit "snapper-timeline.timer"
+    enable_systemd_unit "snapper-cleanup.timer"
+    enable_systemd_unit "grub-btrfsd.service" "Warning: grub-btrfsd.service not found, skipping enable (expected for non-Btrfs systems)"
 
-    if systemctl list-unit-files | grep -q "snapper-cleanup.timer"; then
-        systemctl enable snapper-cleanup.timer
-    else
-        echo "Warning: snapper-cleanup.timer not found, skipping enable"
-    fi
-
-    if systemctl list-unit-files | grep -q "grub-btrfsd.service"; then
-        systemctl enable grub-btrfsd.service
-    else
-        echo "Warning: grub-btrfsd.service not found, skipping enable (expected for non-Btrfs systems)"
-    fi
-
-    if command -v snapper &>/dev/null; then
-        snapper -c root create --description "Initial snapshot"
-        chown :users /.snapshots
-    else
-        echo "Error: snapper command not found. Ensure snapper package is installed."
-        return 1
-    fi
+    require_command "snapper" || return 1
+    snapper -c root create --description "Initial snapshot"
+    chown :users /.snapshots
 }
 
 # @description Configures TLP for power management on laptops.
 # @noargs
 configure_tlp() {
-    if [ -d "/sys/class/power_supply/BAT0" ] || acpi -b &>/dev/null; then
-        echo "Battery detected. Installing and configuring TLP..."
+    if ! has_battery; then
+        echo "No battery detected. Skipping TLP configuration."
+        return 0
+    fi
 
-        sudo pacman -S --noconfirm tlp tlp-rdw
-        sudo systemctl enable tlp.service
-        sudo systemctl enable NetworkManager-dispatcher.service
+    echo "Battery detected. Installing and configuring TLP..."
 
-        sudo systemctl mask systemd-rfkill.service
-        sudo systemctl mask systemd-rfkill.socket
+    sudo pacman -S --noconfirm tlp tlp-rdw
+    enable_systemd_unit "tlp.service" "" "false"
+    enable_systemd_unit "NetworkManager-dispatcher.service" "" "false"
 
-        TLP_CONF="/etc/tlp.conf"
+    sudo systemctl mask systemd-rfkill.service
+    sudo systemctl mask systemd-rfkill.socket
+
+    TLP_CONF="/etc/tlp.conf"
 
         # Configure TLP to manage power settings for specific disks:
         # sets moderate APM level (128) on battery for power saving,
         # and maximum performance (254) on AC; targets nvme0n1 and sda devices.
-        sudo sed -i 's/^#\?DISK_DEVICES=.*/DISK_DEVICES="nvme0n1 sda"/' "$TLP_CONF"
-        sudo sed -i 's/^#\?DISK_APM_LEVEL_ON_BAT=.*/DISK_APM_LEVEL_ON_BAT="128"/' "$TLP_CONF"
-        sudo sed -i 's/^#\?DISK_APM_LEVEL_ON_AC=.*/DISK_APM_LEVEL_ON_AC="254"/' "$TLP_CONF"
+        update_config_value "$TLP_CONF" "DISK_DEVICES" "\"nvme0n1 sda\"" "true"
+        update_config_value "$TLP_CONF" "DISK_APM_LEVEL_ON_BAT" "\"128\"" "true"
+        update_config_value "$TLP_CONF" "DISK_APM_LEVEL_ON_AC" "\"254\"" "true"
 
         # Note: DEVICES_TO_DISABLE_ON_BAT is not set, so bluetooth will remain enabled on battery
         # If you want to disable bluetooth on battery to save power, uncomment the line below:
-        # sudo sed -i 's/^#\?DEVICES_TO_DISABLE_ON_BAT=.*/DEVICES_TO_DISABLE_ON_BAT="bluetooth"/' "$TLP_CONF"
+        # update_config_value "$TLP_CONF" "DEVICES_TO_DISABLE_ON_BAT" "\"bluetooth\"" "true"
 
         # Defines aggressiveness in the scaling of the CPU
-        sudo sed -i 's/^#\?CPU_SCALING_GOVERNOR_ON_BAT=.*/CPU_SCALING_GOVERNOR_ON_BAT=powersave/' "$TLP_CONF"
-        sudo sed -i 's/^#\?CPU_SCALING_GOVERNOR_ON_AC=.*/CPU_SCALING_GOVERNOR_ON_AC=ondemand/' "$TLP_CONF"
+        update_config_value "$TLP_CONF" "CPU_SCALING_GOVERNOR_ON_BAT" "powersave" "true"
+        update_config_value "$TLP_CONF" "CPU_SCALING_GOVERNOR_ON_AC" "ondemand" "true"
 
         # Configure TLP to disable USB autosuspend, enable runtime power management on AC,
         # and set CPU energy/performance policies: balanced performance on AC, balanced power on battery.
-        sudo sed -i 's/^#\?USB_AUTOSUSPEND=.*/USB_AUTOSUSPEND=0/' "$TLP_CONF"
-        sudo sed -i 's/^#\?RUNTIME_PM_ON_AC=.*/RUNTIME_PM_ON_AC=auto/' "$TLP_CONF"
-        sudo sed -i 's/^#\?CPU_ENERGY_PERF_POLICY_ON_AC=.*/CPU_ENERGY_PERF_POLICY_ON_AC=balance_performance/' "$TLP_CONF"
-        sudo sed -i 's/^#\?CPU_ENERGY_PERF_POLICY_ON_BAT=.*/CPU_ENERGY_PERF_POLICY_ON_BAT=balance_power/' "$TLP_CONF"
+        update_config_value "$TLP_CONF" "USB_AUTOSUSPEND" "0" "true"
+        update_config_value "$TLP_CONF" "RUNTIME_PM_ON_AC" "auto" "true"
+        update_config_value "$TLP_CONF" "CPU_ENERGY_PERF_POLICY_ON_AC" "balance_performance" "true"
+        update_config_value "$TLP_CONF" "CPU_ENERGY_PERF_POLICY_ON_BAT" "balance_power" "true"
 
-        # Logind configuration to suspend when closing the lid
-        echo "Configuring lid close behavior via systemd-logind..."
-        sudo sed -i 's/^#\?HandleLidSwitch=.*/HandleLidSwitch=suspend/' /etc/systemd/logind.conf
-        sudo sed -i 's/^#\?HandleLidSwitchDocked=.*/HandleLidSwitchDocked=ignore/' /etc/systemd/logind.conf
+    # Logind configuration to suspend when closing the lid
+    echo "Configuring lid close behavior via systemd-logind..."
+    update_config_value "/etc/systemd/logind.conf" "HandleLidSwitch" "suspend" "true"
+    update_config_value "/etc/systemd/logind.conf" "HandleLidSwitchDocked" "ignore" "true"
 
-        sudo systemctl restart systemd-logind
-        echo "TLP installed and configured successfully."
-    else
-        echo "No battery detected. Skipping TLP configuration."
-    fi
+    sudo systemctl restart systemd-logind
+    echo "TLP installed and configured successfully."
 }
 
 # @description Install plymouth splash
