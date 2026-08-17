@@ -6,9 +6,6 @@
     { "package": "inotify-tools" }
   ],
   "aur": [
-    { "package": "btrfs-assistant" },
-    { "package": "btrfsmaintenance" },
-    { "package": "snapper-tools" },
-    { "package": "snapper-support" }
+    { "package": "btrfsmaintenance" }
   ]
 }
