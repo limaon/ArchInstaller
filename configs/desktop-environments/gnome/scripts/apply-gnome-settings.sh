@@ -1,7 +1,6 @@
 #!/bin/bash
 # Apply GNOME settings on first login
 
-# Wait for GNOME Shell to be ready (max 60s)
 timeout=60
 while ! pgrep -x "gnome-shell" > /dev/null && [[ $timeout -gt 0 ]]; do
     sleep 1
@@ -13,10 +12,9 @@ if [[ $timeout -eq 0 ]]; then
     exit 1
 fi
 
-# Additional buffer for D-Bus
+# D-Bus needs time to initialize after gnome-shell starts
 sleep 3
 
-# Track failures
 failed=0
 
 # Interface
@@ -40,10 +38,8 @@ gsettings set org.gnome.settings-daemon.plugins.power power-button-action 'suspe
 # Favorite Apps
 gsettings set org.gnome.shell favorite-apps "['org.gnome.Nautilus.desktop', 'org.gnome.Console.desktop', 'firefox.desktop']" || ((failed++))
 
-# Report failures
 if [[ $failed -gt 0 ]]; then
     echo "Warning: $failed gsettings commands failed" >&2
 fi
 
-# Remove this script from autostart
 rm -f ~/.config/autostart/apply-gnome-settings.desktop

@@ -59,23 +59,17 @@ user_theming
 # Configure base skel directory before creating user (so user gets configs automatically)
 configure_base_skel
 
-# Configure system-wide Xorg settings (applies to all desktop environments)
-configure_xorg_base
-
-# Configure Xorg keyboard layout based on KEYMAP selection
-configure_xorg_keyboard
-
-# Configure Xorg GPU driver based on detected hardware
-configure_xorg_gpu
-
-# Configure Xorg monitor and display settings
-configure_xorg_display
-
-# Configure Xorg mouse/pointer devices with acceleration settings
-configure_xorg_mouse
-
-# Configure Xorg touchpad devices with libinput settings
-configure_xorg_touchpad
+# Configure system-wide settings based on desktop environment
+if is_wayland_only_desktop "$DESKTOP_ENV"; then
+    echo "Skipping Xorg configuration for Wayland-only desktop: $DESKTOP_ENV"
+else
+    configure_xorg_base
+    configure_xorg_keyboard
+    configure_xorg_gpu
+    configure_xorg_display
+    configure_xorg_mouse
+    configure_xorg_touchpad
+fi
 
 # If this file run without configuration, ask for basic user info before setting up user
 if ! source "$HOME"/archinstaller/configs/setup.conf; then

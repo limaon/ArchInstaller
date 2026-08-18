@@ -2075,3 +2075,24 @@ EOF
     echo "Xorg touchpad configuration applied (devices: $touchpad_count)"
     return 0
 }
+
+# @description Check if desktop environment uses Wayland exclusively
+# Wayland-only desktops don't need Xorg configuration files
+# GNOME 50+ is Wayland-only by default; other DEs still use X11
+# @arg $1 Desktop environment name
+# @return 0 if Wayland-only, 1 if X11-based or hybrid
+is_wayland_only_desktop() {
+    local desktop_env="$1"
+
+    case "$desktop_env" in
+        gnome)
+            # GNOME 50+ is Wayland-only by default
+            return 0
+            ;;
+        *)
+            # All other DEs (i3, awesome, openbox, kde, lxde, xfce, mate, deepin, cinnamon, budgie)
+            # are X11-based or have X11 as primary/fallback option
+            return 1
+            ;;
+    esac
+}
