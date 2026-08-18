@@ -25,6 +25,7 @@
       { "package": "flatpak" },
       { "package": "xdg-desktop-portal-gnome" },
       { "package": "gnome-browser-connector" },
+      { "package": "gnome-control-center" },
       { "package": "gnome-software" },
       { "package": "gnome-calculator" },
       { "package": "gnome-calendar" },
