@@ -45,7 +45,11 @@
       { "package": "baobab" },
       { "package": "file-roller" },
       { "package": "dconf-editor" },
-      { "package": "fastfetch" }
+      { "package": "fastfetch" },
+      { "package": "networkmanager-openvpn" },
+      { "package": "networkmanager-l2tp" },
+      { "package": "strongswan" },
+      { "package": "xl2tpd" }
     ],
     "aur": [
       { "package": "gnome-shell-extension-dash-to-dock" },
