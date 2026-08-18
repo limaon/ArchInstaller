@@ -1,6 +1,10 @@
 {
   "minimal": {
-    "pacman": [{ "package": "gnome" }, { "package": "gnome-tweaks" }],
+    "pacman": [
+      { "package": "gnome" },
+      { "package": "gdm" },
+      { "package": "gnome-tweaks" }
+    ],
     "aur": []
   },
   "full": {
