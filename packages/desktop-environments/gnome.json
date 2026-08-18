@@ -3,7 +3,9 @@
     "pacman": [
       { "package": "gnome" },
       { "package": "gdm" },
-      { "package": "gnome-tweaks" }
+      { "package": "gnome-tweaks" },
+      { "package": "firefox" },
+      { "package": "gnome-terminal" }
     ],
     "aur": []
   },
@@ -22,11 +24,34 @@
       { "package": "papirus-icon-theme" },
       { "package": "flatpak" },
       { "package": "xdg-desktop-portal-gnome" },
-      { "package": "gnome-browser-connector" }
+      { "package": "gnome-browser-connector" },
+      { "package": "gnome-software" },
+      { "package": "gnome-calculator" },
+      { "package": "gnome-calendar" },
+      { "package": "gnome-clocks" },
+      { "package": "gnome-weather" },
+      { "package": "gnome-maps" },
+      { "package": "gnome-music" },
+      { "package": "gnome-photos" },
+      { "package": "evince" },
+      { "package": "eog" },
+      { "package": "totem" },
+      { "package": "gedit" },
+      { "package": "gnome-system-monitor" },
+      { "package": "gnome-disk-utility" },
+      { "package": "gnome-characters" },
+      { "package": "gnome-font-viewer" },
+      { "package": "gnome-logs" },
+      { "package": "baobab" },
+      { "package": "file-roller" },
+      { "package": "dconf-editor" },
+      { "package": "fastfetch" }
     ],
     "aur": [
       { "package": "gnome-shell-extension-dash-to-dock" },
-      { "package": "gnome-shell-extension-gsconnect" }
+      { "package": "gnome-shell-extension-gsconnect" },
+      { "package": "gnome-shell-extension-appindicator" },
+      { "package": "extension-manager" }
     ]
   }
 }
