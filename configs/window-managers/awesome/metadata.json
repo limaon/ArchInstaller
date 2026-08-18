@@ -1,0 +1,37 @@
+{
+  "name": "awesome",
+  "display_name": "Awesome Window Manager",
+  "type": "window-manager",
+  "requires_display_manager": true,
+  "default_display_manager": "lightdm",
+  "deployment": {
+    "config": {
+      "source": "config/",
+      "target": "~/.config/",
+      "permissions": "0755",
+      "description": "Awesome WM configuration files"
+    },
+    "system": {
+      "source": "system/",
+      "target": "/etc/",
+      "permissions": "0644",
+      "requires_root": true,
+      "description": "System-wide Awesome configuration"
+    },
+    "dotfiles": {
+      "source": "dotfiles/",
+      "target": "~/",
+      "permissions": "0644",
+      "description": "X11 dotfiles (.xprofile, .Xresources)"
+    }
+  },
+  "shared_components": ["themes", "terminal"],
+  "features": {
+    "compositor": "picom",
+    "terminal": "kitty"
+  },
+  "dependencies": {
+    "required": ["awesome", "picom", "kitty"],
+    "optional": []
+  }
+}

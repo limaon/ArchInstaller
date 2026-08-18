@@ -1,0 +1,48 @@
+{
+  "name": "i3",
+  "display_name": "i3 Window Manager",
+  "type": "window-manager",
+  "requires_display_manager": true,
+  "default_display_manager": "lightdm",
+  "deployment": {
+    "config": {
+      "source": "config/",
+      "target": "~/.config/",
+      "permissions": "0755",
+      "description": "WM-specific configuration files (i3, i3status, dunst, picom)"
+    },
+    "scripts": {
+      "source": "scripts/",
+      "target": "/usr/local/bin/",
+      "permissions": "0755",
+      "executable": true,
+      "requires_root": true,
+      "description": "Battery management and power scripts"
+    },
+    "system": {
+      "source": "system/",
+      "target": "/etc/",
+      "permissions": "0644",
+      "requires_root": true,
+      "description": "System configuration (systemd, udev rules)"
+    },
+    "dotfiles": {
+      "source": "dotfiles/",
+      "target": "~/",
+      "permissions": "0644",
+      "description": "X11 dotfiles (.xinitrc, .xprofile, .Xresources)"
+    }
+  },
+  "shared_components": ["themes", "terminal", "fonts", "autostart"],
+  "features": {
+    "battery_notifications": true,
+    "auto_suspend": true,
+    "compositor": "picom",
+    "status_bar": "i3status",
+    "notification_daemon": "dunst"
+  },
+  "dependencies": {
+    "required": ["i3-wm", "i3status", "dunst", "picom", "acpi", "libnotify"],
+    "optional": ["xidlehook", "i3lock"]
+  }
+}
