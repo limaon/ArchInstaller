@@ -40,6 +40,28 @@ gsettings set org.gnome.settings-daemon.plugins.power power-button-action 'suspe
 # Favorite Apps
 gsettings set org.gnome.shell favorite-apps "['org.gnome.Nautilus.desktop', 'org.gnome.Console.desktop', 'firefox.desktop']" || ((failed++))
 
+# Terminal Configuration
+# Get default profile UUID
+TERM_UUID=$(gsettings get org.gnome.Terminal.ProfilesList default | tr -d \')
+TERM_PROFILE="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:${TERM_UUID}/"
+
+# Terminal appearance
+gsettings set "$TERM_PROFILE" font 'Ubuntu Mono 12' || ((failed++))
+gsettings set "$TERM_PROFILE" use-theme-colors false || ((failed++))
+gsettings set "$TERM_PROFILE" background-color '#1e1e1e' || ((failed++))
+gsettings set "$TERM_PROFILE" foreground-color '#e0e0e0' || ((failed++))
+
+# Terminal behavior
+gsettings set "$TERM_PROFILE" scrollback-lines 5000 || ((failed++))
+gsettings set "$TERM_PROFILE" scrollbar-policy 'right' || ((failed++))
+gsettings set "$TERM_PROFILE" cursor-blink-mode 'on' || ((failed++))
+gsettings set "$TERM_PROFILE" cursor-shape 'block' || ((failed++))
+gsettings set "$TERM_PROFILE" audible-bell false || ((failed++))
+
+# Terminal text rendering
+gsettings set "$TERM_PROFILE" allow-bold true || ((failed++))
+gsettings set "$TERM_PROFILE" text-blink-mode 'never' || ((failed++))
+
 if [[ $failed -gt 0 ]]; then
     echo "Warning: $failed gsettings commands failed" >&2
 fi
