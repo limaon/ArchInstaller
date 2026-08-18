@@ -10,6 +10,171 @@
 # shellcheck source=./aur-helpers.sh
 source "$HOME"/archinstaller/scripts/utils/aur-helpers.sh
 
+# @description Deploy window manager configuration using metadata.json
+# @arg $1 Window manager name (i3 or awesome)
+# @noargs
+deploy_window_manager() {
+    local wm_name="$1"
+    local wm_dir=~/archinstaller/configs/window-managers/"$wm_name"
+    local metadata_file="$wm_dir/metadata.json"
+
+    if [[ ! -f "$metadata_file" ]]; then
+        echo "Error: Metadata file not found: $metadata_file"
+        return 1
+    fi
+
+    echo "Deploying $wm_name window manager configuration..."
+
+    local display_name=$(jq -r '.display_name' "$metadata_file")
+    echo "Installing: $display_name"
+
+    # Deploy config files
+    if jq -e '.deployment.config' "$metadata_file" >/dev/null 2>&1; then
+        local config_source="$wm_dir/$(jq -r '.deployment.config.source' "$metadata_file")"
+        local config_target=$(jq -r '.deployment.config.target' "$metadata_file" | sed "s|~|$HOME|g")
+        local config_perms=$(jq -r '.deployment.config.permissions' "$metadata_file")
+
+        if [[ -d "$config_source" ]]; then
+            echo "  Deploying config files to $config_target..."
+            mkdir -p "$config_target"
+            cp -r "$config_source"* "$config_target/" 2>/dev/null || true
+            find "$config_target" -type d -exec chmod "$config_perms" {} \; 2>/dev/null || true
+            echo "  [OK] Config files deployed"
+        fi
+    fi
+
+    # Deploy scripts (requires root)
+    if jq -e '.deployment.scripts' "$metadata_file" >/dev/null 2>&1; then
+        local scripts_source="$wm_dir/$(jq -r '.deployment.scripts.source' "$metadata_file")"
+        local scripts_target=$(jq -r '.deployment.scripts.target' "$metadata_file")
+        local scripts_perms=$(jq -r '.deployment.scripts.permissions' "$metadata_file")
+
+        if [[ -d "$scripts_source" ]]; then
+            echo "  Deploying scripts to $scripts_target..."
+            sudo mkdir -p "$scripts_target"
+            sudo cp "$scripts_source"* "$scripts_target/" 2>/dev/null || true
+            sudo chmod "$scripts_perms" "$scripts_target"/* 2>/dev/null || true
+            echo "  [OK] Scripts deployed"
+        fi
+    fi
+
+    # Deploy system files (requires root)
+    if jq -e '.deployment.system' "$metadata_file" >/dev/null 2>&1; then
+        local system_source="$wm_dir/$(jq -r '.deployment.system.source' "$metadata_file")"
+        local system_target=$(jq -r '.deployment.system.target' "$metadata_file")
+
+        if [[ -d "$system_source" ]]; then
+            echo "  Deploying system files to $system_target..."
+            sudo cp -r "$system_source"* "$system_target/" 2>/dev/null || true
+            # Set permissions for specific file types
+            sudo find "$system_target" -name "*.rules" -exec chmod 644 {} \; 2>/dev/null || true
+            sudo find "$system_target" -name "*.conf" -exec chmod 644 {} \; 2>/dev/null || true
+            sudo find "$system_target" -name "*.service" -exec chmod 644 {} \; 2>/dev/null || true
+            sudo find "$system_target" -name "*.timer" -exec chmod 644 {} \; 2>/dev/null || true
+            echo "  [OK] System files deployed"
+        fi
+    fi
+
+    # Deploy dotfiles
+    if jq -e '.deployment.dotfiles' "$metadata_file" >/dev/null 2>&1; then
+        local dotfiles_source="$wm_dir/$(jq -r '.deployment.dotfiles.source' "$metadata_file")"
+        local dotfiles_target=$(jq -r '.deployment.dotfiles.target' "$metadata_file" | sed "s|~|$HOME|g")
+        local dotfiles_perms=$(jq -r '.deployment.dotfiles.permissions' "$metadata_file")
+
+        if [[ -d "$dotfiles_source" ]]; then
+            echo "  Deploying dotfiles to $dotfiles_target..."
+            cp "$dotfiles_source".* "$dotfiles_target/" 2>/dev/null || true
+            chmod "$dotfiles_perms" "$dotfiles_target"/.* 2>/dev/null || true
+            echo "  [OK] Dotfiles deployed"
+        fi
+    fi
+
+    # Deploy shared components
+    apply_shared_components "$wm_name" "$metadata_file"
+
+    echo "[OK] $display_name deployment complete"
+    return 0
+}
+
+# @description Deploy shared components (themes, terminal, fonts, autostart)
+# @arg $1 Window manager name
+# @arg $2 Path to metadata.json
+# @noargs
+apply_shared_components() {
+    local wm_name="$1"
+    local metadata_file="$2"
+    local shared_dir=~/archinstaller/configs/window-managers/shared
+
+    # Get list of shared components from metadata
+    local shared_components=$(jq -r '.shared_components[]' "$metadata_file" 2>/dev/null)
+
+    if [[ -z "$shared_components" ]]; then
+        return 0
+    fi
+
+    echo "  Deploying shared components..."
+
+    for component in $shared_components; do
+        case "$component" in
+            "themes")
+                # Deploy GTK/Qt/Kvantum themes
+                if [[ -d "$shared_dir/themes" ]]; then
+                    echo "    - Deploying themes..."
+                    mkdir -p "$HOME/.config"
+
+                    # GTK themes
+                    [[ -d "$shared_dir/themes/gtk-3.0" ]] && cp -r "$shared_dir/themes/gtk-3.0" "$HOME/.config/" 2>/dev/null || true
+                    [[ -d "$shared_dir/themes/gtk-4.0" ]] && cp -r "$shared_dir/themes/gtk-4.0" "$HOME/.config/" 2>/dev/null || true
+
+                    # Qt themes
+                    [[ -d "$shared_dir/themes/qt5ct" ]] && cp -r "$shared_dir/themes/qt5ct" "$HOME/.config/" 2>/dev/null || true
+                    [[ -d "$shared_dir/themes/qt6ct" ]] && cp -r "$shared_dir/themes/qt6ct" "$HOME/.config/" 2>/dev/null || true
+
+                    # Kvantum themes
+                    [[ -d "$shared_dir/themes/Kvantum" ]] && cp -r "$shared_dir/themes/Kvantum" "$HOME/.config/" 2>/dev/null || true
+                fi
+                ;;
+            "terminal")
+                # Deploy terminal configs (kitty)
+                if [[ -d "$shared_dir/terminal/kitty" ]]; then
+                    echo "    - Deploying terminal config..."
+                    mkdir -p "$HOME/.config"
+                    cp -r "$shared_dir/terminal/kitty" "$HOME/.config/" 2>/dev/null || true
+                fi
+                ;;
+            "fonts")
+                # Deploy font configs
+                if [[ -d "$shared_dir/fonts/fontconfig" ]]; then
+                    echo "    - Deploying font config..."
+                    mkdir -p "$HOME/.config"
+                    cp -r "$shared_dir/fonts/fontconfig" "$HOME/.config/" 2>/dev/null || true
+                fi
+                ;;
+            "autostart")
+                # Deploy autostart applications
+                if [[ -d "$shared_dir/autostart" ]]; then
+                    echo "    - Deploying autostart apps..."
+                    mkdir -p "$HOME/.config"
+
+                    # libfm config
+                    [[ -d "$shared_dir/autostart/libfm" ]] && cp -r "$shared_dir/autostart/libfm" "$HOME/.config/" 2>/dev/null || true
+
+                    # autostart desktop files
+                    [[ -d "$shared_dir/autostart/autostart" ]] && cp -r "$shared_dir/autostart/autostart" "$HOME/.config/" 2>/dev/null || true
+                fi
+                ;;
+        esac
+    done
+
+    # Deploy shared dotfiles
+    if [[ -d "$shared_dir/dotfiles" ]]; then
+        echo "    - Deploying shared dotfiles..."
+        cp "$shared_dir/dotfiles"/.* "$HOME/" 2>/dev/null || true
+    fi
+
+    echo "  [OK] Shared components deployed"
+}
+
 # @description Pacstrap arch linux to install location
 # @noargs
 arch_install() {
@@ -653,46 +818,27 @@ user_theming() {
             ./dotfiles-openbox/install-titus.sh
 
         elif [[ "$DESKTOP_ENV" == "awesome" ]]; then
-            cd ~/archinstaller/ && git submodule update --init
-            cp -r ~/archinstaller/configs/awesome/home/. ~/
-            sudo cp -r ~/archinstaller/configs/awesome/etc/xdg/awesome /etc/xdg/awesome
+            deploy_window_manager "awesome"
+
+            sudo chmod 755 /etc/xdg/awesome 2>/dev/null || true
+            sudo chmod 644 /etc/xdg/awesome/rc.lua 2>/dev/null || true
 
         elif [[ "$DESKTOP_ENV" == "i3-wm" ]]; then
-            # Check if configs directory exists before modifying
-            if [[ -d ~/archinstaller/configs/i3-wm/etc ]]; then
-                chmod -R a+rX ~/archinstaller/configs/i3-wm/etc
-            fi
-
-            # Copy configs if they exist
-            if [[ -d ~/archinstaller/configs/i3-wm ]]; then
-                cp -r ~/archinstaller/configs/i3-wm/. /
-            fi
+            deploy_window_manager "i3"
 
             # Configure i3 wallpaper/background with solid color for all installation types
-            I3_CONFIG_FILE="/etc/skel/.config/i3/config"
+            I3_CONFIG_FILE="$HOME/.config/i3/config"
             if [[ -f "$I3_CONFIG_FILE" ]]; then
                 echo "Configuring i3 background with solid color #073642..."
 
                 # Use xsetroot for solid color (part of xorg-apps, usually installed)
                 # xsetroot sets the root window color, which serves as background
                 if grep -q "xwallpaper\|xsetroot" "$I3_CONFIG_FILE"; then
-                    # Replace existing wallpaper/background command with xsetroot
                     sed -i 's|^exec --no-startup-id xwallpaper.*|exec --no-startup-id xsetroot -solid '"'"'#073642'"'"'|' "$I3_CONFIG_FILE"
                     sed -i 's|^exec --no-startup-id xsetroot.*|exec --no-startup-id xsetroot -solid '"'"'#073642'"'"'|' "$I3_CONFIG_FILE"
                 else
-                    # If no background line exists, add it after "# Load Wallpaper"
                     sed -i '/^# Load Wallpaper/a exec --no-startup-id xsetroot -solid '"'"'#073642'"'"'' "$I3_CONFIG_FILE"
                 fi
-            fi
-
-            # Set permissions for snapper configs if they exist (both source and destination)
-            if [[ -d ~/archinstaller/configs/i3-wm/etc/snapper/configs ]] && [[ -n "$(ls -A ~/archinstaller/configs/i3-wm/etc/snapper/configs 2>/dev/null)" ]]; then
-                chmod ug+r ~/archinstaller/configs/i3-wm/etc/snapper/configs/*
-            fi
-
-            # Also set permissions on the copied files if they exist
-            if [[ -d /etc/snapper/configs ]] && [[ -n "$(ls -A /etc/snapper/configs 2>/dev/null)" ]]; then
-                chmod ug+r /etc/snapper/configs/*
             fi
 
             mkdir -p /usr/share/backgrounds/
@@ -807,8 +953,6 @@ i3wm_battery_notifications() {
 "
 
     # Check if acpi and libnotify are installed (should be via i3-wm.json)
-    # Note: These should already be installed via desktop_environment_install,
-    # but we check anyway
     if ! pacman -Qi acpi &>/dev/null; then
         echo "Warning: acpi not found, battery notifications may not work"
     fi
@@ -817,54 +961,22 @@ i3wm_battery_notifications() {
         echo "Warning: libnotify not found, battery notifications may not work"
     fi
 
-    # Check if battery notification configs exist
-    if [[ ! -d ~/archinstaller/configs/i3-wm/usr/local/bin ]]; then
-        echo "Warning: Battery notification scripts not found, skipping..."
-        return 1
-    fi
+    # Scripts and system files are already deployed by deploy_window_manager()
+    # Just need to configure systemd user units for current user
 
-    # Copy scripts to /usr/local/bin/ (requires sudo)
-    echo "Installing battery notification scripts..."
-    if [[ -d ~/archinstaller/configs/i3-wm/usr/local/bin ]]; then
-        sudo mkdir -p /usr/local/bin/
-        sudo cp ~/archinstaller/configs/i3-wm/usr/local/bin/battery-* /usr/local/bin/ 2>/dev/null || true
-        sudo chmod 755 /usr/local/bin/battery-* 2>/dev/null || true
-        echo "Battery scripts installed to /usr/local/bin/"
-    fi
-
-    # Copy systemd user units to /etc/skel/ for future users (requires sudo)
-    echo "Installing systemd user units..."
-    if [[ -d ~/archinstaller/configs/i3-wm/etc/skel/.config/systemd/user ]]; then
-        sudo mkdir -p /etc/skel/.config/systemd/user/
-        sudo cp ~/archinstaller/configs/i3-wm/etc/skel/.config/systemd/user/* /etc/skel/.config/systemd/user/ 2>/dev/null || true
-        echo "Systemd user units copied to /etc/skel/.config/systemd/user/"
-    fi
-
-    # Copy systemd user units and dunst config to current user's home (no sudo needed)
     if [[ -n "${USERNAME:-}" ]] && [[ -d "$HOME" ]]; then
         echo "Configuring battery notifications for current user..."
-        mkdir -p "$HOME/.config/systemd/user/"
-        if [[ -d /etc/skel/.config/systemd/user ]]; then
-            cp /etc/skel/.config/systemd/user/* "$HOME/.config/systemd/user/" 2>/dev/null || true
-        fi
-        echo "Systemd user units configured for current user"
 
-        # Copy dunst configuration if available
-        if [[ -f /etc/skel/.config/dunst/dunstrc ]]; then
-            echo "Configuring dunst for current user..."
-            mkdir -p "$HOME/.config/dunst/"
-            cp /etc/skel/.config/dunst/dunstrc "$HOME/.config/dunst/dunstrc" 2>/dev/null || true
-            echo "Dunst configuration copied to ~/.config/dunst/dunstrc"
+        mkdir -p "$HOME/.config/systemd/user/"
+        if [[ -d /etc/systemd/user ]]; then
+            cp /etc/systemd/user/battery-alert.* "$HOME/.config/systemd/user/" 2>/dev/null || true
         fi
 
         # Enable timer for current user
-        # Note: systemctl --user enable works even without user session running
-        # It creates symlinks in ~/.config/systemd/user/.../ directories
         echo "Enabling battery notification timer for current user..."
         if systemctl --user enable battery-alert.timer 2>/dev/null; then
             echo "Battery alert timer enabled for current user"
         else
-            # Fallback: manually create symlinks if systemctl fails
             echo "Creating timer symlinks manually..."
             mkdir -p "$HOME/.config/systemd/user/timers.target.wants/"
             ln -sf "$HOME/.config/systemd/user/battery-alert.timer" \
@@ -872,32 +984,19 @@ i3wm_battery_notifications() {
             echo "Timer symlink created"
         fi
 
-        # Reload systemd user daemon if running (optional - will reload on next login)
+        # Reload systemd user daemon if running
         if systemctl --user daemon-reload 2>/dev/null; then
             echo "Systemd user daemon reloaded"
 
-            # Try to start timer if user session is active
             if systemctl --user start battery-alert.timer 2>/dev/null; then
                 echo "Battery alert timer started"
             else
                 echo "Note: Timer will start automatically after first login"
             fi
+
         else
             echo "Note: Systemd user daemon not running - timer will be active after first login"
         fi
-    fi
-
-    # Note: Timer for future users will be enabled via /etc/skel/ on first login
-    # Users can enable it manually with: systemctl --user enable --now battery-alert.timer
-
-    # Copy udev rules (requires sudo)
-    echo "Installing udev rules..."
-    if [[ -d ~/archinstaller/configs/i3-wm/etc/udev/rules.d ]]; then
-        sudo mkdir -p /etc/udev/rules.d/
-        sudo cp ~/archinstaller/configs/i3-wm/etc/udev/rules.d/* /etc/udev/rules.d/ 2>/dev/null || true
-        sudo chmod 644 /etc/udev/rules.d/60-battery-notifications.rules 2>/dev/null || true
-        echo "Udev rules installed"
-        echo "Note: Udev rules will be active after reboot"
     fi
 
     echo "Battery notifications configuration complete!"
@@ -943,36 +1042,6 @@ EOF
     # Restart logind to apply changes
     sudo systemctl restart systemd-logind
     echo "[OK] Power management configured"
-
-    # Configure i3-wm key bindings
-    echo "Configuring i3-wm key bindings..."
-    I3_CONFIG_SKEL="/etc/skel/.config/i3/config"
-
-    # Ensure config directory exists
-    sudo mkdir -p /etc/skel/.config/i3/ 2>/dev/null || true
-
-    # Add key bindings to i3 config if they don't exist
-    if [[ -f "$I3_CONFIG_SKEL" ]]; then
-        # Check if power bindings already exist
-        if ! grep -q "Control+Delete" "$I3_CONFIG_SKEL"; then
-            # Add power key bindings before the bar section (common in i3 configs)
-            awk '
-                /bar/ {
-                    print "bindsym $mod+Control+Delete exec --no-startup-id systemctl suspend"
-                    print "bindsym $mod+Control+BackSpace exec --no-startup-id systemctl hibernate"
-                    print "bindsym $mod+Shift+p exec --no-startup-id xterm -e \"acpi -b; read\""
-                    print ""
-                }
-                { print }
-            ' "$I3_CONFIG_SKEL" >"${I3_CONFIG_SKEL}.tmp" 2>/dev/null || true
-
-            if [[ -f "${I3_CONFIG_SKEL}.tmp" ]]; then
-                sudo mv "${I3_CONFIG_SKEL}.tmp" "$I3_CONFIG_SKEL" 2>/dev/null || true
-            fi
-        fi
-    fi
-
-    echo "[OK] i3-wm key bindings configured"
 
     # Check swap and hibernation capability
     echo ""
