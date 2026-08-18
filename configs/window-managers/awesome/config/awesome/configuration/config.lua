@@ -100,7 +100,7 @@ return {
             -- Background directory - Defaults to 'awesome/config/theme/wallpapers/' if null
             bg_dir = nil,
             -- Will look for this image file under 'bg_dir'
-            bg_image = "locksreen-bg.jpg",
+            bg_image = "lockscreen-bg.jpg",
             -- Blur lockscreen background
             blur_background = false,
             -- Blurred/filtered background image path (No reason to change this)
