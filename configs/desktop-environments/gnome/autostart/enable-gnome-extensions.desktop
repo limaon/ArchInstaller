@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Enable GNOME Extensions
+Exec=/home/%u/.local/bin/enable-gnome-extensions.sh
+Hidden=false
+NoDisplay=true
+X-GNOME-Autostart-enabled=true

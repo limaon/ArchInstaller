@@ -1,0 +1,36 @@
+{
+  "name": "gnome",
+  "display_name": "GNOME Desktop Environment",
+  "type": "desktop-environment",
+  "requires_display_manager": true,
+  "default_display_manager": "gdm",
+  "deployment": {
+    "scripts": {
+      "source": "scripts/",
+      "target": "~/.local/bin/",
+      "permissions": "0755",
+      "executable": true
+    },
+    "autostart": {
+      "source": "autostart/",
+      "target": "~/.config/autostart/",
+      "permissions": "0644"
+    },
+    "system": {
+      "source": "system/",
+      "target": "/etc/",
+      "permissions": "0644",
+      "requires_root": true
+    }
+  },
+  "shared_components": [
+    "themes",
+    "fonts"
+  ],
+  "features": {
+    "wayland_default": true,
+    "extensions_autostart": true,
+    "settings_autostart": true,
+    "flatpak_support": true
+  }
+}

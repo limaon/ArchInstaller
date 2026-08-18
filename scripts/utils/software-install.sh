@@ -96,6 +96,85 @@ deploy_window_manager() {
     return 0
 }
 
+# @description Deploy desktop environment configuration using metadata.json
+# @arg $1 Desktop environment name (gnome)
+# @noargs
+deploy_desktop_environment() {
+    local de_name="$1"
+    local de_dir=~/archinstaller/configs/desktop-environments/"$de_name"
+    local metadata_file="$de_dir/metadata.json"
+
+    if [[ ! -f "$metadata_file" ]]; then
+        echo "Error: Metadata file not found: $metadata_file"
+        return 1
+    fi
+
+    echo "Deploying $de_name desktop environment configuration..."
+
+    local display_name=$(jq -r '.display_name' "$metadata_file")
+    echo "Installing: $display_name"
+
+    # Deploy scripts
+    if jq -e '.deployment.scripts' "$metadata_file" >/dev/null 2>&1; then
+        local scripts_source="$de_dir/$(jq -r '.deployment.scripts.source' "$metadata_file")"
+        local scripts_target=$(jq -r '.deployment.scripts.target' "$metadata_file" | sed "s|~|$HOME|g")
+        local scripts_perms=$(jq -r '.deployment.scripts.permissions' "$metadata_file")
+
+        if [[ -d "$scripts_source" ]]; then
+            echo "  Deploying scripts to $scripts_target..."
+            mkdir -p "$scripts_target"
+            if ! cp "$scripts_source"/* "$scripts_target/" 2>/dev/null; then
+                echo "  [WARNING] Failed to copy some scripts" >&2
+            fi
+            if ! chmod "$scripts_perms" "$scripts_target"/* 2>/dev/null; then
+                echo "  [WARNING] Failed to set permissions on some scripts" >&2
+            fi
+            echo "  [OK] Scripts deployed"
+        fi
+    fi
+
+    # Deploy autostart files
+    if jq -e '.deployment.autostart' "$metadata_file" >/dev/null 2>&1; then
+        local autostart_source="$de_dir/$(jq -r '.deployment.autostart.source' "$metadata_file")"
+        local autostart_target=$(jq -r '.deployment.autostart.target' "$metadata_file" | sed "s|~|$HOME|g")
+        local autostart_perms=$(jq -r '.deployment.autostart.permissions' "$metadata_file")
+
+        if [[ -d "$autostart_source" ]]; then
+            echo "  Deploying autostart files to $autostart_target..."
+            mkdir -p "$autostart_target"
+            if ! cp "$autostart_source"/* "$autostart_target/" 2>/dev/null; then
+                echo "  [WARNING] Failed to copy some autostart files" >&2
+            fi
+            if ! chmod "$autostart_perms" "$autostart_target"/* 2>/dev/null; then
+                echo "  [WARNING] Failed to set permissions on some autostart files" >&2
+            fi
+            echo "  [OK] Autostart files deployed"
+        fi
+    fi
+
+    # Deploy system files (requires root)
+    if jq -e '.deployment.system' "$metadata_file" >/dev/null 2>&1; then
+        local system_source="$de_dir/$(jq -r '.deployment.system.source' "$metadata_file")"
+        local system_target=$(jq -r '.deployment.system.target' "$metadata_file")
+
+        if [[ -d "$system_source" ]]; then
+            echo "  Deploying system files to $system_target..."
+            if ! sudo cp -r "$system_source"/* "$system_target/" 2>/dev/null; then
+                echo "  [WARNING] Failed to copy some system files" >&2
+            fi
+            if ! sudo find "$system_target" -name "*.conf" -exec chmod 644 {} \; 2>/dev/null; then
+                echo "  [WARNING] Failed to set permissions on some system files" >&2
+            fi
+            echo "  [OK] System files deployed"
+        fi
+    fi
+
+    apply_shared_components "$de_name" "$metadata_file"
+
+    echo "[OK] $display_name deployment complete"
+    return 0
+}
+
 # @description Deploy shared components (themes, terminal, fonts, autostart)
 # @arg $1 Window manager name
 # @arg $2 Path to metadata.json
@@ -842,6 +921,11 @@ user_theming() {
             fi
 
             mkdir -p /usr/share/backgrounds/
+
+        elif [[ "$DESKTOP_ENV" == "gnome" ]]; then
+            deploy_desktop_environment "gnome"
+
+            echo "GNOME extensions and settings will be applied on first login"
 
         else
             echo -e "No theming setup for $DESKTOP_ENV"

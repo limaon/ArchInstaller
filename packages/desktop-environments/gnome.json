@@ -1,12 +1,11 @@
 {
   "minimal": {
-    "pacman": [{ "package": "gnome" }, { "package": "deepin-extra" }],
+    "pacman": [{ "package": "gnome" }, { "package": "gnome-tweaks" }],
     "aur": []
   },
   "full": {
     "pacman": [
-      { "package": "gparted" },
-      { "package": "gnome-extra" },
+      { "package": "gnome-circle" },
       { "package": "gvfs" },
       { "package": "gvfs-afc" },
       { "package": "gvfs-goa" },
@@ -15,8 +14,15 @@
       { "package": "gvfs-mtp" },
       { "package": "gvfs-nfs" },
       { "package": "gvfs-smb" },
-      { "package": "papirus-icon-theme" }
+      { "package": "gparted" },
+      { "package": "papirus-icon-theme" },
+      { "package": "flatpak" },
+      { "package": "xdg-desktop-portal-gnome" },
+      { "package": "gnome-browser-connector" }
     ],
-    "aur": []
+    "aur": [
+      { "package": "gnome-shell-extension-dash-to-dock" },
+      { "package": "gnome-shell-extension-gsconnect" }
+    ]
   }
 }
