@@ -21,6 +21,8 @@ failed=0
 gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita-dark' || ((failed++))
 gsettings set org.gnome.desktop.interface icon-theme 'Papirus-Dark' || ((failed++))
 gsettings set org.gnome.desktop.interface cursor-theme 'Adwaita' || ((failed++))
+gsettings set org.gnome.desktop.interface font-name 'Ubuntu 11' || ((failed++))
+gsettings set org.gnome.desktop.interface monospace-font-name 'Ubuntu Mono 11' || ((failed++))
 gsettings set org.gnome.desktop.interface show-battery-percentage true || ((failed++))
 gsettings set org.gnome.desktop.interface enable-animations true || ((failed++))
 
