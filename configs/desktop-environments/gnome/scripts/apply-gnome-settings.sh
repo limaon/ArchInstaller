@@ -86,20 +86,24 @@ TERM_PROFILE="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profi
 } >> "$LOG_FILE"
 
 # Terminal appearance
-safe_gsettings "$TERM_PROFILE" font 'Ubuntu Mono 12' "Terminal Font"
-safe_gsettings "$TERM_PROFILE" use-theme-colors false "Terminal Use Theme Colors"
-safe_gsettings "$TERM_PROFILE" background-color '#1e1e1e' "Terminal Background"
-safe_gsettings "$TERM_PROFILE" foreground-color '#e0e0e0' "Terminal Foreground"
+safe_gsettings "$TERM_PROFILE" font 'UbuntuMono Nerd Font Mono 12' "Terminal Font"
+safe_gsettings "$TERM_PROFILE" use-theme-colors true "Terminal Use Theme Colors"
+safe_gsettings "$TERM_PROFILE" background-color '#ffffff' "Terminal Background"
+safe_gsettings "$TERM_PROFILE" foreground-color '#171421' "Terminal Foreground"
 
 # Terminal behavior
-safe_gsettings "$TERM_PROFILE" scrollback-lines 5000 "Terminal Scrollback"
-safe_gsettings "$TERM_PROFILE" scrollbar-policy 'right' "Terminal Scrollbar"
-safe_gsettings "$TERM_PROFILE" cursor-blink-mode 'off' "Terminal Cursor Blink"
+safe_gsettings "$TERM_PROFILE" scrollback-lines 10000 "Terminal Scrollback"
+safe_gsettings "$TERM_PROFILE" scrollbar-policy 'never' "Terminal Scrollbar"
+safe_gsettings "$TERM_PROFILE" cursor-blink-mode 'system' "Terminal Cursor Blink"
 safe_gsettings "$TERM_PROFILE" cursor-shape 'block' "Terminal Cursor Shape"
 safe_gsettings "$TERM_PROFILE" audible-bell false "Terminal Audible Bell"
 
 # Terminal text rendering
-safe_gsettings "$TERM_PROFILE" text-blink-mode 'never' "Terminal Text Blink"
+safe_gsettings "$TERM_PROFILE" text-blink-mode 'always' "Terminal Text Blink"
+
+# Terminal size
+safe_gsettings "$TERM_PROFILE" default-size-columns 90 "Terminal Default Columns"
+safe_gsettings "$TERM_PROFILE" default-size-rows 30 "Terminal Default Rows"
 
 # Log summary
 {
