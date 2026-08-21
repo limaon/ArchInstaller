@@ -4,6 +4,7 @@
       { "package": "gnome" },
       { "package": "gdm" },
       { "package": "gnome-tweaks" },
+      { "package": "gnome-extensions-app" },
       { "package": "firefox" },
       { "package": "gnome-terminal" }
     ],
@@ -55,8 +56,7 @@
     "aur": [
       { "package": "gnome-shell-extension-dash-to-dock" },
       { "package": "gnome-shell-extension-gsconnect" },
-      { "package": "gnome-shell-extension-appindicator" },
-      { "package": "extension-manager" }
+      { "package": "gnome-shell-extension-appindicator" }
     ]
   }
 }
