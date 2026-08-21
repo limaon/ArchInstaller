@@ -52,10 +52,11 @@ safe_gsettings() {
 }
 
 # Interface
-safe_gsettings org.gnome.desktop.interface gtk-theme 'Adwaita-dark' "GTK Theme"
-safe_gsettings org.gnome.desktop.interface icon-theme 'Papirus-Dark' "Icon Theme"
+safe_gsettings org.gnome.desktop.interface gtk-theme 'Yaru' "GTK Theme"
+safe_gsettings org.gnome.desktop.interface icon-theme 'Yaru' "Icon Theme"
 safe_gsettings org.gnome.desktop.interface cursor-theme 'Adwaita' "Cursor Theme"
 safe_gsettings org.gnome.desktop.interface font-name 'Ubuntu 11' "Font Name"
+safe_gsettings org.gnome.desktop.interface document-font-name 'Ubuntu 11' "Document Font"
 safe_gsettings org.gnome.desktop.interface monospace-font-name 'Ubuntu Mono 11' "Monospace Font"
 safe_gsettings org.gnome.desktop.interface show-battery-percentage true "Show Battery Percentage"
 safe_gsettings org.gnome.desktop.interface enable-animations true "Enable Animations"

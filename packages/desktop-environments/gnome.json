@@ -56,9 +56,12 @@
       { "package": "xl2tpd" }
     ],
     "aur": [
-      { "package": "gnome-shell-extension-dash-to-dock" },
-      { "package": "gnome-shell-extension-gsconnect" },
-      { "package": "gnome-shell-extension-appindicator" }
-    ]
+       { "package": "yaru-gtk-theme" },
+       { "package": "yaru-gnome-shell-theme" },
+       { "package": "yaru-icon-theme" },
+       { "package": "gnome-shell-extension-dash-to-dock" },
+       { "package": "gnome-shell-extension-gsconnect" },
+       { "package": "gnome-shell-extension-appindicator" }
+     ]
   }
 }
