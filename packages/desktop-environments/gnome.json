@@ -1,10 +1,12 @@
 {
   "minimal": {
     "pacman": [
-      { "package": "gnome" },
+      { "package": "gnome-shell" },
+      { "package": "gnome-session" },
+      { "package": "gnome-settings-daemon" },
+      { "package": "gnome-desktop" },
       { "package": "gdm" },
       { "package": "gnome-tweaks" },
-      { "package": "gnome-extensions-app" },
       { "package": "firefox" },
       { "package": "gnome-terminal" }
     ],
@@ -56,12 +58,12 @@
       { "package": "xl2tpd" }
     ],
     "aur": [
-       { "package": "yaru-gtk-theme" },
-       { "package": "yaru-gnome-shell-theme" },
-       { "package": "yaru-icon-theme" },
-       { "package": "gnome-shell-extension-dash-to-dock" },
-       { "package": "gnome-shell-extension-gsconnect" },
-       { "package": "gnome-shell-extension-appindicator" }
-     ]
+      { "package": "yaru-gtk-theme" },
+      { "package": "yaru-gnome-shell-theme" },
+      { "package": "yaru-icon-theme" },
+      { "package": "gnome-shell-extension-dash-to-dock" },
+      { "package": "gnome-shell-extension-gsconnect" },
+      { "package": "gnome-shell-extension-appindicator" }
+    ]
   }
 }
