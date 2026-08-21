@@ -2,6 +2,11 @@
 # Enable GNOME Shell extensions on first login
 
 EXTENSIONS=(
+    "ubuntu-dock@ubuntu.com"
+    "ding@rastersoft.com"
+    "ubuntu-appindicators@ubuntu.com"
+    "tiling-assistant@ubuntu.com"
+    "drive-menu@gnome-shell-extensions.gcampax.github.com"
     "dash-to-dock@micxgjo.gmail.com"
     "gsconnect@andyholmes.github.io"
 )
@@ -18,7 +23,7 @@ if [[ $timeout -eq 0 ]]; then
 fi
 
 # D-Bus needs time to initialize after gnome-shell starts
-sleep 3
+sleep 5
 
 for ext in "${EXTENSIONS[@]}"; do
     if gnome-extensions list 2>/dev/null | grep -q "$ext"; then
