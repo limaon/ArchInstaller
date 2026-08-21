@@ -13,57 +13,106 @@ if [[ $timeout -eq 0 ]]; then
 fi
 
 # D-Bus needs time to initialize after gnome-shell starts
-sleep 3
+sleep 5
 
 failed=0
 
+# Create log file
+LOG_FILE="$HOME/.local/share/gnome-settings-apply.log"
+mkdir -p "$(dirname "$LOG_FILE")"
+{
+    echo "=== GNOME Settings Application Log ==="
+    echo "Date: $(date)"
+    echo "GNOME Shell Version: $(gnome-shell --version)"
+    echo ""
+} > "$LOG_FILE"
+
+# Helper function to safely set gsettings
+safe_gsettings() {
+    local schema="$1"
+    local key="$2"
+    local value="$3"
+    local description="${4:-$key}"
+
+    {
+        echo "Setting: $description"
+        echo "  Schema: $schema"
+        echo "  Key: $key"
+        echo "  Value: $value"
+    } >> "$LOG_FILE"
+
+    if gsettings set "$schema" "$key" "$value" 2>>"$LOG_FILE"; then
+        echo "  Status: [OK] SUCCESS" >> "$LOG_FILE"
+        return 0
+    else
+        echo "  Status: [FAIL] FAILED" >> "$LOG_FILE"
+        ((failed++))
+        return 1
+    fi
+}
+
 # Interface
-gsettings set org.gnome.desktop.interface gtk-theme 'Adwaita-dark' || ((failed++))
-gsettings set org.gnome.desktop.interface icon-theme 'Papirus-Dark' || ((failed++))
-gsettings set org.gnome.desktop.interface cursor-theme 'Adwaita' || ((failed++))
-gsettings set org.gnome.desktop.interface font-name 'Ubuntu 11' || ((failed++))
-gsettings set org.gnome.desktop.interface monospace-font-name 'Ubuntu Mono 11' || ((failed++))
-gsettings set org.gnome.desktop.interface show-battery-percentage true || ((failed++))
-gsettings set org.gnome.desktop.interface enable-animations true || ((failed++))
+safe_gsettings org.gnome.desktop.interface gtk-theme 'Adwaita-dark' "GTK Theme"
+safe_gsettings org.gnome.desktop.interface icon-theme 'Papirus-Dark' "Icon Theme"
+safe_gsettings org.gnome.desktop.interface cursor-theme 'Adwaita' "Cursor Theme"
+safe_gsettings org.gnome.desktop.interface font-name 'Ubuntu 11' "Font Name"
+safe_gsettings org.gnome.desktop.interface monospace-font-name 'Ubuntu Mono 11' "Monospace Font"
+safe_gsettings org.gnome.desktop.interface show-battery-percentage true "Show Battery Percentage"
+safe_gsettings org.gnome.desktop.interface enable-animations true "Enable Animations"
 
 # Window Manager
-gsettings set org.gnome.desktop.wm.preferences button-layout 'appmenu:minimize,maximize,close' || ((failed++))
-gsettings set org.gnome.desktop.wm.preferences focus-mode 'click' || ((failed++))
+safe_gsettings org.gnome.desktop.wm.preferences button-layout 'appmenu:minimize,maximize,close' "Button Layout"
+safe_gsettings org.gnome.desktop.wm.preferences focus-mode 'click' "Focus Mode"
 
 # Power Management
-gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 1800 || ((failed++))
-gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 'suspend' || ((failed++))
-gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-timeout 900 || ((failed++))
-gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-battery-type 'suspend' || ((failed++))
-gsettings set org.gnome.settings-daemon.plugins.power power-button-action 'suspend' || ((failed++))
+safe_gsettings org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 1800 "Sleep AC Timeout"
+safe_gsettings org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 'suspend' "Sleep AC Type"
+safe_gsettings org.gnome.settings-daemon.plugins.power sleep-inactive-battery-timeout 900 "Sleep Battery Timeout"
+safe_gsettings org.gnome.settings-daemon.plugins.power sleep-inactive-battery-type 'suspend' "Sleep Battery Type"
+safe_gsettings org.gnome.settings-daemon.plugins.power power-button-action 'suspend' "Power Button Action"
 
 # Favorite Apps
-gsettings set org.gnome.shell favorite-apps "['org.gnome.Nautilus.desktop', 'org.gnome.Console.desktop', 'firefox.desktop']" || ((failed++))
+safe_gsettings org.gnome.shell favorite-apps "['org.gnome.Nautilus.desktop', 'org.gnome.Console.desktop', 'firefox.desktop']" "Favorite Apps"
 
 # Terminal Configuration
 # Get default profile UUID
 TERM_UUID=$(gsettings get org.gnome.Terminal.ProfilesList default | tr -d \')
 TERM_PROFILE="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:${TERM_UUID}/"
 
+{
+    echo "Terminal Profile: $TERM_UUID"
+    echo ""
+} >> "$LOG_FILE"
+
 # Terminal appearance
-gsettings set "$TERM_PROFILE" font 'Ubuntu Mono 12' || ((failed++))
-gsettings set "$TERM_PROFILE" use-theme-colors false || ((failed++))
-gsettings set "$TERM_PROFILE" background-color '#1e1e1e' || ((failed++))
-gsettings set "$TERM_PROFILE" foreground-color '#e0e0e0' || ((failed++))
+safe_gsettings "$TERM_PROFILE" font 'Ubuntu Mono 12' "Terminal Font"
+safe_gsettings "$TERM_PROFILE" use-theme-colors false "Terminal Use Theme Colors"
+safe_gsettings "$TERM_PROFILE" background-color '#1e1e1e' "Terminal Background"
+safe_gsettings "$TERM_PROFILE" foreground-color '#e0e0e0' "Terminal Foreground"
 
 # Terminal behavior
-gsettings set "$TERM_PROFILE" scrollback-lines 5000 || ((failed++))
-gsettings set "$TERM_PROFILE" scrollbar-policy 'right' || ((failed++))
-gsettings set "$TERM_PROFILE" cursor-blink-mode 'on' || ((failed++))
-gsettings set "$TERM_PROFILE" cursor-shape 'block' || ((failed++))
-gsettings set "$TERM_PROFILE" audible-bell false || ((failed++))
+safe_gsettings "$TERM_PROFILE" scrollback-lines 5000 "Terminal Scrollback"
+safe_gsettings "$TERM_PROFILE" scrollbar-policy 'right' "Terminal Scrollbar"
+safe_gsettings "$TERM_PROFILE" cursor-blink-mode 'off' "Terminal Cursor Blink"
+safe_gsettings "$TERM_PROFILE" cursor-shape 'block' "Terminal Cursor Shape"
+safe_gsettings "$TERM_PROFILE" audible-bell false "Terminal Audible Bell"
 
 # Terminal text rendering
-gsettings set "$TERM_PROFILE" allow-bold true || ((failed++))
-gsettings set "$TERM_PROFILE" text-blink-mode 'never' || ((failed++))
+safe_gsettings "$TERM_PROFILE" text-blink-mode 'never' "Terminal Text Blink"
+
+# Log summary
+{
+    echo ""
+    echo "=== Summary ==="
+    echo "Failed commands: $failed"
+    echo "Log file: $LOG_FILE"
+} >> "$LOG_FILE"
 
 if [[ $failed -gt 0 ]]; then
     echo "Warning: $failed gsettings commands failed" >&2
+    echo "Check log file: $LOG_FILE" >&2
+else
+    echo "All GNOME settings applied successfully" >> "$LOG_FILE"
 fi
 
 rm -f ~/.config/autostart/apply-gnome-settings.desktop
