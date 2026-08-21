@@ -7,9 +7,10 @@
   "deployment": {
     "scripts": {
       "source": "scripts/",
-      "target": "~/.local/bin/",
+      "target": "/usr/local/bin/",
       "permissions": "0755",
-      "executable": true
+      "executable": true,
+      "requires_root": true
     },
     "autostart": {
       "source": "autostart/",
