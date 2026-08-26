@@ -1,6 +1,6 @@
 # ArchLinux Installer Script
 
-[![GitHub Super-Linter](https://github.com/limaon/ArchInstaller/workflows/Lint%20Code%20Base/badge.svg)](https://github.com/marketplace/actions/super-linter)
+[![GitHub Super-Linter](https://github.com/limaon/ArchInstaller/workflows/Lint%20Code%20Base/badge.svg)](https://github.com/marketplace/actions/super-linter) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Bash](https://img.shields.io/badge/Bash-5.1+-green.svg)](https://www.gnu.org/software/bash/) [![Platform: Linux](https://img.shields.io/badge/Platform-Linux-blue.svg)](https://www.linux.org/) [![Arch Linux](https://img.shields.io/badge/Arch%20Linux-1793D1?logo=arch-linux&logoColor=white)](https://archlinux.org/)
 
 An automated and interactive Arch Linux installer that transforms the complex manual installation process into a guided workflow. Install a complete Arch Linux system with desktop environment, drivers, optimizations, and configurations pre-applied.
 
