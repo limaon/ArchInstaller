@@ -29,7 +29,7 @@ grub_config
 # Configure crypttab for LUKS if needed
 if [[ "${FS}" == "luks" ]]; then
     echo "Configuring /etc/crypttab for LUKS..."
-    cat > /etc/crypttab << EOF
+    cat >/etc/crypttab <<EOF
 # Configuration for encrypted block devices.
 # See crypttab(5) for details.
 

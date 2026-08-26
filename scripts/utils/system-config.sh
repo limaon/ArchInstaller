@@ -1022,44 +1022,53 @@ configure_xorg_keyboard() {
 
     # Map KEYMAP to Xorg XkbLayout and XkbVariant
     case "${KEYMAP:-us}" in
-        us) xkb_layout="us" ;;
-        br-abnt2) xkb_layout="br"; xkb_variant="abnt2" ;;
-        by) xkb_layout="by" ;;
-        ca) xkb_layout="ca" ;;
-        cf) xkb_layout="ca"; xkb_variant="fr" ;;
-        cz) xkb_layout="cz" ;;
-        de) xkb_layout="de" ;;
-        dk) xkb_layout="dk" ;;
-        es) xkb_layout="es" ;;
-        et) xkb_layout="ee" ;;
-        fa) xkb_layout="ir" ;;
-        fi) xkb_layout="fi" ;;
-        fr) xkb_layout="fr" ;;
-        gr) xkb_layout="gr" ;;
-        hu) xkb_layout="hu" ;;
-        il) xkb_layout="il" ;;
-        it) xkb_layout="it" ;;
-        lt) xkb_layout="lt" ;;
-        lv) xkb_layout="lv" ;;
-        mk) xkb_layout="mk" ;;
-        nl) xkb_layout="nl" ;;
-        no) xkb_layout="no" ;;
-        pl) xkb_layout="pl" ;;
-        ro) xkb_layout="ro" ;;
-        ru) xkb_layout="ru" ;;
-        sg) xkb_layout="ch"; xkb_variant="sg" ;;
-        ua) xkb_layout="ua" ;;
-        uk) xkb_layout="gb" ;;
-        *)
-            echo "Warning: Unknown KEYMAP '$KEYMAP', using default (us)"
-            xkb_layout="us"
-            ;;
+    us) xkb_layout="us" ;;
+    br-abnt2)
+        xkb_layout="br"
+        xkb_variant="abnt2"
+        ;;
+    by) xkb_layout="by" ;;
+    ca) xkb_layout="ca" ;;
+    cf)
+        xkb_layout="ca"
+        xkb_variant="fr"
+        ;;
+    cz) xkb_layout="cz" ;;
+    de) xkb_layout="de" ;;
+    dk) xkb_layout="dk" ;;
+    es) xkb_layout="es" ;;
+    et) xkb_layout="ee" ;;
+    fa) xkb_layout="ir" ;;
+    fi) xkb_layout="fi" ;;
+    fr) xkb_layout="fr" ;;
+    gr) xkb_layout="gr" ;;
+    hu) xkb_layout="hu" ;;
+    il) xkb_layout="il" ;;
+    it) xkb_layout="it" ;;
+    lt) xkb_layout="lt" ;;
+    lv) xkb_layout="lv" ;;
+    mk) xkb_layout="mk" ;;
+    nl) xkb_layout="nl" ;;
+    no) xkb_layout="no" ;;
+    pl) xkb_layout="pl" ;;
+    ro) xkb_layout="ro" ;;
+    ru) xkb_layout="ru" ;;
+    sg)
+        xkb_layout="ch"
+        xkb_variant="sg"
+        ;;
+    ua) xkb_layout="ua" ;;
+    uk) xkb_layout="gb" ;;
+    *)
+        echo "Warning: Unknown KEYMAP '$KEYMAP', using default (us)"
+        xkb_layout="us"
+        ;;
     esac
 
     mkdir -p /etc/X11/xorg.conf.d
 
     # Generate keyboard configuration directly
-    cat > /etc/X11/xorg.conf.d/00-keyboard.conf << EOF
+    cat >/etc/X11/xorg.conf.d/00-keyboard.conf <<EOF
 # Xorg Configuration: Keyboard Layout
 # Maps console KEYMAP to Xorg XkbLayout and XkbVariant
 
@@ -1266,7 +1275,7 @@ grub_config() {
         sed -i "s%GRUB_CMDLINE_LINUX_DEFAULT=\"%GRUB_CMDLINE_LINUX_DEFAULT=\"rd.luks.name=${ENCRYPTED_PARTITION_UUID}=ROOT root=/dev/mapper/ROOT %g" /etc/default/grub
         sed -i 's/^#GRUB_ENABLE_CRYPTODISK=.*/GRUB_ENABLE_CRYPTODISK=y/' /etc/default/grub
         if ! grep -q "^GRUB_ENABLE_CRYPTODISK=y" /etc/default/grub; then
-            echo "GRUB_ENABLE_CRYPTODISK=y" >> /etc/default/grub
+            echo "GRUB_ENABLE_CRYPTODISK=y" >>/etc/default/grub
         fi
     fi
     sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="[^"]*/& splash /' /etc/default/grub
@@ -1532,27 +1541,27 @@ configure_tlp() {
 
     TLP_CONF="/etc/tlp.conf"
 
-        # Configure TLP to manage power settings for specific disks:
-        # sets moderate APM level (128) on battery for power saving,
-        # and maximum performance (254) on AC; targets nvme0n1 and sda devices.
-        update_config_value "$TLP_CONF" "DISK_DEVICES" "\"nvme0n1 sda\"" "true"
-        update_config_value "$TLP_CONF" "DISK_APM_LEVEL_ON_BAT" "\"128\"" "true"
-        update_config_value "$TLP_CONF" "DISK_APM_LEVEL_ON_AC" "\"254\"" "true"
+    # Configure TLP to manage power settings for specific disks:
+    # sets moderate APM level (128) on battery for power saving,
+    # and maximum performance (254) on AC; targets nvme0n1 and sda devices.
+    update_config_value "$TLP_CONF" "DISK_DEVICES" "\"nvme0n1 sda\"" "true"
+    update_config_value "$TLP_CONF" "DISK_APM_LEVEL_ON_BAT" "\"128\"" "true"
+    update_config_value "$TLP_CONF" "DISK_APM_LEVEL_ON_AC" "\"254\"" "true"
 
-        # Note: DEVICES_TO_DISABLE_ON_BAT is not set, so bluetooth will remain enabled on battery
-        # If you want to disable bluetooth on battery to save power, uncomment the line below:
-        # update_config_value "$TLP_CONF" "DEVICES_TO_DISABLE_ON_BAT" "\"bluetooth\"" "true"
+    # Note: DEVICES_TO_DISABLE_ON_BAT is not set, so bluetooth will remain enabled on battery
+    # If you want to disable bluetooth on battery to save power, uncomment the line below:
+    # update_config_value "$TLP_CONF" "DEVICES_TO_DISABLE_ON_BAT" "\"bluetooth\"" "true"
 
-        # Defines aggressiveness in the scaling of the CPU
-        update_config_value "$TLP_CONF" "CPU_SCALING_GOVERNOR_ON_BAT" "powersave" "true"
-        update_config_value "$TLP_CONF" "CPU_SCALING_GOVERNOR_ON_AC" "ondemand" "true"
+    # Defines aggressiveness in the scaling of the CPU
+    update_config_value "$TLP_CONF" "CPU_SCALING_GOVERNOR_ON_BAT" "powersave" "true"
+    update_config_value "$TLP_CONF" "CPU_SCALING_GOVERNOR_ON_AC" "ondemand" "true"
 
-        # Configure TLP to disable USB autosuspend, enable runtime power management on AC,
-        # and set CPU energy/performance policies: balanced performance on AC, balanced power on battery.
-        update_config_value "$TLP_CONF" "USB_AUTOSUSPEND" "0" "true"
-        update_config_value "$TLP_CONF" "RUNTIME_PM_ON_AC" "auto" "true"
-        update_config_value "$TLP_CONF" "CPU_ENERGY_PERF_POLICY_ON_AC" "balance_performance" "true"
-        update_config_value "$TLP_CONF" "CPU_ENERGY_PERF_POLICY_ON_BAT" "balance_power" "true"
+    # Configure TLP to disable USB autosuspend, enable runtime power management on AC,
+    # and set CPU energy/performance policies: balanced performance on AC, balanced power on battery.
+    update_config_value "$TLP_CONF" "USB_AUTOSUSPEND" "0" "true"
+    update_config_value "$TLP_CONF" "RUNTIME_PM_ON_AC" "auto" "true"
+    update_config_value "$TLP_CONF" "CPU_ENERGY_PERF_POLICY_ON_AC" "balance_performance" "true"
+    update_config_value "$TLP_CONF" "CPU_ENERGY_PERF_POLICY_ON_BAT" "balance_power" "true"
 
     # Logind configuration to suspend when closing the lid
     echo "Configuring lid close behavior via systemd-logind..."
@@ -1819,7 +1828,7 @@ configure_xorg_gpu() {
     # Determine GPU type and generate configuration
     if [[ $nvidia_count -gt 0 && $intel_count -gt 0 ]]; then
         gpu_type="NVIDIA Optimus (Intel + NVIDIA)"
-        cat > /etc/X11/xorg.conf.d/10-gpu.conf << 'EOF'
+        cat >/etc/X11/xorg.conf.d/10-gpu.conf <<'EOF'
 # Xorg Configuration: NVIDIA Optimus (Hybrid GPU)
 Section "OutputClass"
     Identifier "intel"
@@ -1840,7 +1849,7 @@ EOF
 
     elif [[ $nvidia_count -gt 0 ]]; then
         gpu_type="NVIDIA (proprietary driver)"
-        cat > /etc/X11/xorg.conf.d/10-gpu.conf << 'EOF'
+        cat >/etc/X11/xorg.conf.d/10-gpu.conf <<'EOF'
 # Xorg Configuration: NVIDIA GPU
 Section "OutputClass"
     Identifier "nvidia"
@@ -1857,7 +1866,7 @@ EOF
 
     elif [[ $amd_count -gt 0 && $intel_count -gt 0 ]]; then
         gpu_type="AMD Hybrid (Intel + AMD)"
-        cat > /etc/X11/xorg.conf.d/10-gpu.conf << 'EOF'
+        cat >/etc/X11/xorg.conf.d/10-gpu.conf <<'EOF'
 # Xorg Configuration: AMD Hybrid GPU
 Section "OutputClass"
     Identifier "amd"
@@ -1876,7 +1885,7 @@ EOF
 
     elif [[ $amd_count -gt 0 ]]; then
         gpu_type="AMD (amdgpu driver)"
-        cat > /etc/X11/xorg.conf.d/10-gpu.conf << 'EOF'
+        cat >/etc/X11/xorg.conf.d/10-gpu.conf <<'EOF'
 # Xorg Configuration: AMD GPU
 Section "OutputClass"
     Identifier "amd"
@@ -1889,7 +1898,7 @@ EOF
 
     elif [[ $intel_count -gt 0 ]]; then
         gpu_type="Intel Graphics"
-        cat > /etc/X11/xorg.conf.d/10-gpu.conf << 'EOF'
+        cat >/etc/X11/xorg.conf.d/10-gpu.conf <<'EOF'
 # Xorg Configuration: Intel GPU
 Section "Device"
     Identifier "Intel GPU"
@@ -1899,7 +1908,7 @@ EndSection
 EOF
 
     else
-        cat > /etc/X11/xorg.conf.d/10-gpu.conf << 'EOF'
+        cat >/etc/X11/xorg.conf.d/10-gpu.conf <<'EOF'
 # Xorg Configuration: Generic GPU (modesetting driver)
 Section "Device"
     Identifier "Generic GPU"
@@ -1935,7 +1944,7 @@ configure_xorg_display() {
     mkdir -p /etc/X11/xorg.conf.d
 
     if [[ $monitor_count -eq 1 ]]; then
-        cat > /etc/X11/xorg.conf.d/50-monitor.conf << 'EOF'
+        cat >/etc/X11/xorg.conf.d/50-monitor.conf <<'EOF'
 # Xorg Configuration: Single Monitor Display
 Section "Monitor"
     Identifier "Primary"
@@ -1952,7 +1961,7 @@ Section "Screen"
 EndSection
 EOF
     else
-        cat > /etc/X11/xorg.conf.d/50-monitor.conf << 'EOF'
+        cat >/etc/X11/xorg.conf.d/50-monitor.conf <<'EOF'
 # Xorg Configuration: Multi-Monitor Display
 Section "Monitor"
     Identifier "Primary"
@@ -2001,7 +2010,7 @@ configure_xorg_mouse() {
 
     mkdir -p /etc/X11/xorg.conf.d
 
-    cat > /etc/X11/xorg.conf.d/40-libinput.conf << 'EOF'
+    cat >/etc/X11/xorg.conf.d/40-libinput.conf <<'EOF'
 # Xorg Configuration: Pointer Acceleration Profile
 # Purpose: Sets acceleration profile for all pointer devices (mice, trackballs)
 #
@@ -2054,7 +2063,7 @@ configure_xorg_touchpad() {
 
     mkdir -p /etc/X11/xorg.conf.d
 
-    cat > "$touchpad_conf" << 'EOF'
+    cat >"$touchpad_conf" <<'EOF'
 # Xorg Configuration: Touchpad Settings (libinput)
 Section "InputClass"
     Identifier "touchpad"
@@ -2085,14 +2094,14 @@ is_wayland_only_desktop() {
     local desktop_env="$1"
 
     case "$desktop_env" in
-        gnome)
-            # GNOME 50+ is Wayland-only by default
-            return 0
-            ;;
-        *)
-            # All other DEs (i3, awesome, openbox, kde, lxde, xfce, mate, deepin, cinnamon, budgie)
-            # are X11-based or have X11 as primary/fallback option
-            return 1
-            ;;
+    gnome)
+        # GNOME 50+ is Wayland-only by default
+        return 0
+        ;;
+    *)
+        # All other DEs (i3, awesome, openbox, kde, lxde, xfce, mate, deepin, cinnamon, budgie)
+        # are X11-based or have X11 as primary/fallback option
+        return 1
+        ;;
     esac
 }

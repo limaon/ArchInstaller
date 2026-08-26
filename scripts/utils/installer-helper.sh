@@ -580,5 +580,3 @@ select_option_with_search() {
     cursor_blink_on
     return $original_index
 }
-
-

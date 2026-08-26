@@ -24,10 +24,7 @@
       "requires_root": true
     }
   },
-  "shared_components": [
-    "themes",
-    "fonts"
-  ],
+  "shared_components": ["themes", "fonts"],
   "features": {
     "wayland_default": true,
     "extensions_autostart": true,

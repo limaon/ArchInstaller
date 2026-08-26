@@ -195,53 +195,53 @@ apply_shared_components() {
 
     for component in $shared_components; do
         case "$component" in
-            "themes")
-                # Deploy GTK/Qt/Kvantum themes
-                if [[ -d "$shared_dir/themes" ]]; then
-                    echo "    - Deploying themes..."
-                    mkdir -p "$HOME/.config"
+        "themes")
+            # Deploy GTK/Qt/Kvantum themes
+            if [[ -d "$shared_dir/themes" ]]; then
+                echo "    - Deploying themes..."
+                mkdir -p "$HOME/.config"
 
-                    # GTK themes
-                    [[ -d "$shared_dir/themes/gtk-3.0" ]] && cp -r "$shared_dir/themes/gtk-3.0" "$HOME/.config/" 2>/dev/null || true
-                    [[ -d "$shared_dir/themes/gtk-4.0" ]] && cp -r "$shared_dir/themes/gtk-4.0" "$HOME/.config/" 2>/dev/null || true
+                # GTK themes
+                [[ -d "$shared_dir/themes/gtk-3.0" ]] && cp -r "$shared_dir/themes/gtk-3.0" "$HOME/.config/" 2>/dev/null || true
+                [[ -d "$shared_dir/themes/gtk-4.0" ]] && cp -r "$shared_dir/themes/gtk-4.0" "$HOME/.config/" 2>/dev/null || true
 
-                    # Qt themes
-                    [[ -d "$shared_dir/themes/qt5ct" ]] && cp -r "$shared_dir/themes/qt5ct" "$HOME/.config/" 2>/dev/null || true
-                    [[ -d "$shared_dir/themes/qt6ct" ]] && cp -r "$shared_dir/themes/qt6ct" "$HOME/.config/" 2>/dev/null || true
+                # Qt themes
+                [[ -d "$shared_dir/themes/qt5ct" ]] && cp -r "$shared_dir/themes/qt5ct" "$HOME/.config/" 2>/dev/null || true
+                [[ -d "$shared_dir/themes/qt6ct" ]] && cp -r "$shared_dir/themes/qt6ct" "$HOME/.config/" 2>/dev/null || true
 
-                    # Kvantum themes
-                    [[ -d "$shared_dir/themes/Kvantum" ]] && cp -r "$shared_dir/themes/Kvantum" "$HOME/.config/" 2>/dev/null || true
-                fi
-                ;;
-            "terminal")
-                # Deploy terminal configs (kitty)
-                if [[ -d "$shared_dir/terminal/kitty" ]]; then
-                    echo "    - Deploying terminal config..."
-                    mkdir -p "$HOME/.config"
-                    cp -r "$shared_dir/terminal/kitty" "$HOME/.config/" 2>/dev/null || true
-                fi
-                ;;
-            "fonts")
-                # Deploy font configs
-                if [[ -d "$shared_dir/fonts/fontconfig" ]]; then
-                    echo "    - Deploying font config..."
-                    mkdir -p "$HOME/.config"
-                    cp -r "$shared_dir/fonts/fontconfig" "$HOME/.config/" 2>/dev/null || true
-                fi
-                ;;
-            "autostart")
-                # Deploy autostart applications
-                if [[ -d "$shared_dir/autostart" ]]; then
-                    echo "    - Deploying autostart apps..."
-                    mkdir -p "$HOME/.config"
+                # Kvantum themes
+                [[ -d "$shared_dir/themes/Kvantum" ]] && cp -r "$shared_dir/themes/Kvantum" "$HOME/.config/" 2>/dev/null || true
+            fi
+            ;;
+        "terminal")
+            # Deploy terminal configs (kitty)
+            if [[ -d "$shared_dir/terminal/kitty" ]]; then
+                echo "    - Deploying terminal config..."
+                mkdir -p "$HOME/.config"
+                cp -r "$shared_dir/terminal/kitty" "$HOME/.config/" 2>/dev/null || true
+            fi
+            ;;
+        "fonts")
+            # Deploy font configs
+            if [[ -d "$shared_dir/fonts/fontconfig" ]]; then
+                echo "    - Deploying font config..."
+                mkdir -p "$HOME/.config"
+                cp -r "$shared_dir/fonts/fontconfig" "$HOME/.config/" 2>/dev/null || true
+            fi
+            ;;
+        "autostart")
+            # Deploy autostart applications
+            if [[ -d "$shared_dir/autostart" ]]; then
+                echo "    - Deploying autostart apps..."
+                mkdir -p "$HOME/.config"
 
-                    # libfm config
-                    [[ -d "$shared_dir/autostart/libfm" ]] && cp -r "$shared_dir/autostart/libfm" "$HOME/.config/" 2>/dev/null || true
+                # libfm config
+                [[ -d "$shared_dir/autostart/libfm" ]] && cp -r "$shared_dir/autostart/libfm" "$HOME/.config/" 2>/dev/null || true
 
-                    # autostart desktop files
-                    [[ -d "$shared_dir/autostart/autostart" ]] && cp -r "$shared_dir/autostart/autostart" "$HOME/.config/" 2>/dev/null || true
-                fi
-                ;;
+                # autostart desktop files
+                [[ -d "$shared_dir/autostart/autostart" ]] && cp -r "$shared_dir/autostart/autostart" "$HOME/.config/" 2>/dev/null || true
+            fi
+            ;;
         esac
     done
 
@@ -983,14 +983,14 @@ essential_services() {
         ufw allow in 80/tcp  # HTTP
         ufw allow in 443/tcp # HTTPS
 
-         # Allow local sharing (home network)
-         ufw allow in 5353/udp # mDNS (Avahi)
+        # Allow local sharing (home network)
+        ufw allow in 5353/udp # mDNS (Avahi)
 
         echo "Enabling UFW"
         ufw --force enable
         echo -e "UFW configured and enabled \n"
 
-         echo "Syncing time with ntp"
+        echo "Syncing time with ntp"
         ntpd -qg
         echo -e "Time synced \n"
 

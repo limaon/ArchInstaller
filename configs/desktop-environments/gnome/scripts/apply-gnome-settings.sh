@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 # Apply GNOME settings on first login
 
 timeout=60
@@ -76,7 +77,6 @@ safe_gsettings org.gnome.settings-daemon.plugins.power power-button-action 'susp
 safe_gsettings org.gnome.shell favorite-apps "['org.gnome.Nautilus.desktop', 'org.gnome.Console.desktop', 'firefox.desktop']" "Favorite Apps"
 
 # Terminal Configuration
-# Get default profile UUID
 TERM_UUID=$(gsettings get org.gnome.Terminal.ProfilesList default | tr -d \')
 TERM_PROFILE="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profiles:/:${TERM_UUID}/"
 
@@ -85,25 +85,78 @@ TERM_PROFILE="org.gnome.Terminal.Legacy.Profile:/org/gnome/terminal/legacy/profi
     echo ""
 } >> "$LOG_FILE"
 
-# Terminal appearance
 safe_gsettings "$TERM_PROFILE" font 'UbuntuMono Nerd Font Mono 12' "Terminal Font"
 safe_gsettings "$TERM_PROFILE" use-theme-colors true "Terminal Use Theme Colors"
 safe_gsettings "$TERM_PROFILE" background-color '#ffffff' "Terminal Background"
 safe_gsettings "$TERM_PROFILE" foreground-color '#171421' "Terminal Foreground"
-
-# Terminal behavior
 safe_gsettings "$TERM_PROFILE" scrollback-lines 10000 "Terminal Scrollback"
 safe_gsettings "$TERM_PROFILE" scrollbar-policy 'never' "Terminal Scrollbar"
 safe_gsettings "$TERM_PROFILE" cursor-blink-mode 'system' "Terminal Cursor Blink"
 safe_gsettings "$TERM_PROFILE" cursor-shape 'block' "Terminal Cursor Shape"
 safe_gsettings "$TERM_PROFILE" audible-bell false "Terminal Audible Bell"
-
-# Terminal text rendering
 safe_gsettings "$TERM_PROFILE" text-blink-mode 'always' "Terminal Text Blink"
-
-# Terminal size
 safe_gsettings "$TERM_PROFILE" default-size-columns 90 "Terminal Default Columns"
 safe_gsettings "$TERM_PROFILE" default-size-rows 30 "Terminal Default Rows"
+
+apply_extensions_config() {
+    local ext_failed=0
+
+    {
+        echo ""
+        echo "=== GNOME Shell Extensions Configuration ==="
+    } >> "$LOG_FILE"
+
+    {
+        echo "Configuring Dash to Dock..."
+    } >> "$LOG_FILE"
+
+    if dconf write /org/gnome/shell/extensions/dash-to-dock/dock-position "'LEFT'" 2>>"$LOG_FILE" && \
+       dconf write /org/gnome/shell/extensions/dash-to-dock/extend-height true 2>>"$LOG_FILE" && \
+       dconf write /org/gnome/shell/extensions/dash-to-dock/height-fraction 0.9 2>>"$LOG_FILE" && \
+       dconf write /org/gnome/shell/extensions/dash-to-dock/dash-max-icon-size 48 2>>"$LOG_FILE" && \
+       dconf write /org/gnome/shell/extensions/dash-to-dock/background-opacity 0.8 2>>"$LOG_FILE" && \
+       dconf write /org/gnome/shell/extensions/dash-to-dock/intellihide false 2>>"$LOG_FILE" && \
+       dconf write /org/gnome/shell/extensions/dash-to-dock/intellihide-mode "'FOCUS_APPLICATION_WINDOWS'" 2>>"$LOG_FILE" && \
+       dconf write /org/gnome/shell/extensions/dash-to-dock/running-indicator-style "'DEFAULT'" 2>>"$LOG_FILE" && \
+       dconf write /org/gnome/shell/extensions/dash-to-dock/always-center-icons false 2>>"$LOG_FILE" && \
+       dconf write /org/gnome/shell/extensions/dash-to-dock/icon-size-fixed false 2>>"$LOG_FILE"; then
+        echo "  Status: [OK] Dash to Dock configured" >> "$LOG_FILE"
+    else
+        echo "  Status: [FAIL] Dash to Dock configuration failed" >> "$LOG_FILE"
+        ((ext_failed++))
+    fi
+
+    # System Monitor settings
+    {
+        echo "Configuring System Monitor..."
+    } >> "$LOG_FILE"
+
+    if dconf write /org/gnome/shell/extensions/system-monitor/show-swap false 2>>"$LOG_FILE"; then
+        echo "  Status: [OK] System Monitor configured" >> "$LOG_FILE"
+    else
+        echo "  Status: [FAIL] System Monitor configuration failed" >> "$LOG_FILE"
+        ((ext_failed++))
+    fi
+
+    # User Themes settings
+    {
+        echo "Configuring User Themes..."
+    } >> "$LOG_FILE"
+
+    if dconf write /org/gnome/shell/extensions/user-theme/name "'Yaru-dark'" 2>>"$LOG_FILE"; then
+        echo "  Status: [OK] User Themes configured" >> "$LOG_FILE"
+    else
+        echo "  Status: [FAIL] User Themes configuration failed" >> "$LOG_FILE"
+        ((ext_failed++))
+    fi
+
+    return $ext_failed
+}
+
+# Apply extensions configuration
+apply_extensions_config
+ext_result=$?
+((failed += ext_result))
 
 # Log summary
 {
@@ -114,7 +167,7 @@ safe_gsettings "$TERM_PROFILE" default-size-rows 30 "Terminal Default Rows"
 } >> "$LOG_FILE"
 
 if [[ $failed -gt 0 ]]; then
-    echo "Warning: $failed gsettings commands failed" >&2
+    echo "Warning: $failed configuration commands failed" >&2
     echo "Check log file: $LOG_FILE" >&2
 else
     echo "All GNOME settings applied successfully" >> "$LOG_FILE"
