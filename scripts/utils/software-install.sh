@@ -15,6 +15,7 @@ source "$HOME"/archinstaller/scripts/utils/aur-helpers.sh
 # @noargs
 deploy_window_manager() {
     local wm_name="$1"
+    local deployment_scope="${2:-user}"
     local wm_dir=~/archinstaller/configs/window-managers/"$wm_name"
     local metadata_file="$wm_dir/metadata.json"
 
@@ -29,7 +30,7 @@ deploy_window_manager() {
     echo "Installing: $display_name"
 
     # Deploy config files
-    if jq -e '.deployment.config' "$metadata_file" >/dev/null 2>&1; then
+    if [[ "$deployment_scope" != "system" ]] && jq -e '.deployment.config' "$metadata_file" >/dev/null 2>&1; then
         local config_source="$wm_dir/$(jq -r '.deployment.config.source' "$metadata_file")"
         local config_target=$(jq -r '.deployment.config.target' "$metadata_file" | sed "s|~|$HOME|g")
         local config_perms=$(jq -r '.deployment.config.permissions' "$metadata_file")
@@ -43,40 +44,39 @@ deploy_window_manager() {
         fi
     fi
 
-    # Deploy scripts (requires root)
-    if jq -e '.deployment.scripts' "$metadata_file" >/dev/null 2>&1; then
+    # Deploy scripts and system files from the root installer process.
+    if [[ "$deployment_scope" != "user" ]] && jq -e '.deployment.scripts' "$metadata_file" >/dev/null 2>&1; then
         local scripts_source="$wm_dir/$(jq -r '.deployment.scripts.source' "$metadata_file")"
         local scripts_target=$(jq -r '.deployment.scripts.target' "$metadata_file")
         local scripts_perms=$(jq -r '.deployment.scripts.permissions' "$metadata_file")
 
         if [[ -d "$scripts_source" ]]; then
             echo "  Deploying scripts to $scripts_target..."
-            sudo mkdir -p "$scripts_target"
-            sudo cp "$scripts_source"* "$scripts_target/" 2>/dev/null || true
-            sudo chmod "$scripts_perms" "$scripts_target"/* 2>/dev/null || true
+            mkdir -p "$scripts_target"
+            cp "$scripts_source"* "$scripts_target/" 2>/dev/null || true
+            chmod "$scripts_perms" "$scripts_target"/* 2>/dev/null || true
             echo "  [OK] Scripts deployed"
         fi
     fi
 
-    # Deploy system files (requires root)
-    if jq -e '.deployment.system' "$metadata_file" >/dev/null 2>&1; then
+    if [[ "$deployment_scope" != "user" ]] && jq -e '.deployment.system' "$metadata_file" >/dev/null 2>&1; then
         local system_source="$wm_dir/$(jq -r '.deployment.system.source' "$metadata_file")"
         local system_target=$(jq -r '.deployment.system.target' "$metadata_file")
 
         if [[ -d "$system_source" ]]; then
             echo "  Deploying system files to $system_target..."
-            sudo cp -r "$system_source"* "$system_target/" 2>/dev/null || true
+            cp -r "$system_source"* "$system_target/" 2>/dev/null || true
             # Set permissions for specific file types
-            sudo find "$system_target" -name "*.rules" -exec chmod 644 {} \; 2>/dev/null || true
-            sudo find "$system_target" -name "*.conf" -exec chmod 644 {} \; 2>/dev/null || true
-            sudo find "$system_target" -name "*.service" -exec chmod 644 {} \; 2>/dev/null || true
-            sudo find "$system_target" -name "*.timer" -exec chmod 644 {} \; 2>/dev/null || true
+            find "$system_target" -name "*.rules" -exec chmod 644 {} \; 2>/dev/null || true
+            find "$system_target" -name "*.conf" -exec chmod 644 {} \; 2>/dev/null || true
+            find "$system_target" -name "*.service" -exec chmod 644 {} \; 2>/dev/null || true
+            find "$system_target" -name "*.timer" -exec chmod 644 {} \; 2>/dev/null || true
             echo "  [OK] System files deployed"
         fi
     fi
 
     # Deploy dotfiles
-    if jq -e '.deployment.dotfiles' "$metadata_file" >/dev/null 2>&1; then
+    if [[ "$deployment_scope" != "system" ]] && jq -e '.deployment.dotfiles' "$metadata_file" >/dev/null 2>&1; then
         local dotfiles_source="$wm_dir/$(jq -r '.deployment.dotfiles.source' "$metadata_file")"
         local dotfiles_target=$(jq -r '.deployment.dotfiles.target' "$metadata_file" | sed "s|~|$HOME|g")
         local dotfiles_perms=$(jq -r '.deployment.dotfiles.permissions' "$metadata_file")
@@ -89,11 +89,19 @@ deploy_window_manager() {
         fi
     fi
 
-    # Deploy shared components
-    apply_shared_components "$wm_name" "$metadata_file"
+    if [[ "$deployment_scope" != "system" ]]; then
+        apply_shared_components "$wm_name" "$metadata_file"
+    fi
 
     echo "[OK] $display_name deployment complete"
     return 0
+}
+
+# @description Deploy window-manager files that require root permissions
+# @arg $1 Window manager name
+# @noargs
+deploy_window_manager_system_files() {
+    deploy_window_manager "$1" system
 }
 
 # @description Deploy desktop environment configuration using metadata.json
@@ -886,6 +894,18 @@ run_user_theming() {
         return 1
     fi
 
+    local system_window_manager=""
+    case "$DESKTOP_ENV" in
+    awesome) system_window_manager="awesome" ;;
+    i3-wm) system_window_manager="i3" ;;
+    esac
+
+    if [[ -n "$system_window_manager" ]]; then
+        if ! deploy_window_manager_system_files "$system_window_manager"; then
+            return 1
+        fi
+    fi
+
     runuser -u "$USERNAME" -- env HOME="$user_home" bash -c '
         for filename in "$HOME"/archinstaller/scripts/utils/*.sh; do
             [ -e "$filename" ] || continue
@@ -939,9 +959,6 @@ user_theming() {
                     sed -i '/^# Load Wallpaper/a exec --no-startup-id xsetroot -solid '"'"'#073642'"'"'' "$I3_CONFIG_FILE"
                 fi
             fi
-
-            mkdir -p /usr/share/backgrounds/
-
         elif [[ "$DESKTOP_ENV" == "gnome" ]]; then
             deploy_desktop_environment "gnome"
 

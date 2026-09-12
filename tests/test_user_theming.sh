@@ -19,3 +19,10 @@ if ! grep -Fq 'local user_home="/home/$USERNAME"' "$software_script" ||
     printf 'User theming must run with the installer user home directory\n' >&2
     exit 1
 fi
+
+if ! grep -Fq 'deploy_window_manager_system_files()' "$software_script" ||
+    ! grep -Fq 'i3-wm) system_window_manager="i3" ;;' "$software_script" ||
+    ! grep -Fq 'if ! deploy_window_manager_system_files "$system_window_manager"; then' "$software_script"; then
+    printf 'i3 system files must be deployed before switching to the installer user\n' >&2
+    exit 1
+fi
