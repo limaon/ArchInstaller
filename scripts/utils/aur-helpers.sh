@@ -49,7 +49,7 @@ validate_aur_helper_prerequisites() {
     if [[ ${#missing[@]} -gt 0 ]]; then
         echo "Warning: Missing dependencies for $helper: ${missing[*]}"
         echo "Installing missing dependencies..."
-        if ! pacman -S "${missing[@]}" --noconfirm --needed --color=always; then
+        if ! sudo pacman -S "${missing[@]}" --noconfirm --needed --color=always; then
             echo "Error: Failed to install missing dependencies"
             return 1
         fi

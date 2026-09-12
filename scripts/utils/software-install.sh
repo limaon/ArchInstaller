@@ -644,6 +644,12 @@ install_packages_from_json() {
 
     echo "Installing packages from $json_file (filter: $jq_filter)"
 
+    local packages
+    if ! packages=$(jq --raw-output "$jq_filter" "$json_file"); then
+        echo "Error: Failed to extract packages from $json_file"
+        return 1
+    fi
+
     local failed=0
     local count=0
 
@@ -659,7 +665,7 @@ install_packages_from_json() {
         if ! install_package "$package" "$source"; then
             ((failed += 1))
         fi
-    done < <(jq --raw-output "$jq_filter" "$json_file")
+    done <<<"$packages"
 
     if [[ $failed -gt 0 ]]; then
         echo "Warning: $failed package(s) failed to install"

@@ -37,7 +37,15 @@ cat >"$sandbox/bin/pacman" <<'SH'
 if [[ "$1" == "-Qi" ]]; then
     exit 1
 fi
-printf 'pacman %s\n' "$*" >>"$AUR_TEST_LOG"
+if [[ -z "${SUDO_STUB:-}" ]]; then
+    printf 'pacman %s\n' "$*" >>"$AUR_TEST_LOG"
+fi
+SH
+
+cat >"$sandbox/bin/sudo" <<'SH'
+#!/usr/bin/env bash
+printf 'sudo %s\n' "$*" >>"$AUR_TEST_LOG"
+SUDO_STUB=1 "$@"
 SH
 
 cat >"$sandbox/bin/git" <<'SH'
@@ -58,7 +66,7 @@ printf 'paru %s\n' "$*" >>"$AUR_TEST_LOG"
 exit "${PARU_STATUS:-0}"
 SH
 
-chmod +x "$sandbox/bin/pacman" "$sandbox/bin/git" "$sandbox/bin/makepkg" "$sandbox/bin/paru"
+chmod +x "$sandbox/bin/pacman" "$sandbox/bin/sudo" "$sandbox/bin/git" "$sandbox/bin/makepkg" "$sandbox/bin/paru"
 export AUR_TEST_LOG="$log_file"
 
 source "$repository_root/scripts/utils/aur-helpers.sh"
@@ -78,7 +86,7 @@ AUR_HELPER=paru
 install_aur_helper paru
 install_package_via_aur downgrade
 assert_log_equals "$(cat <<EOF
-pacman -S base-devel git --noconfirm --needed --color=always
+sudo pacman -S base-devel git --noconfirm --needed --color=always
 git clone https://aur.archlinux.org/paru.git $HOME/paru
 makepkg -sirc --noconfirm
 paru -S downgrade --noconfirm --needed --color=always
@@ -140,7 +148,7 @@ AUR_HELPER=paru
 INSTALL_TYPE=MINIMAL
 aur_helper_install
 assert_log_equals "$(cat <<EOF
-pacman -S base-devel git --noconfirm --needed --color=always
+sudo pacman -S base-devel git --noconfirm --needed --color=always
 git clone https://aur.archlinux.org/paru.git $HOME/paru
 makepkg -sirc --noconfirm
 paru -S downgrade --noconfirm --needed --color=always
@@ -151,7 +159,7 @@ EOF
 INSTALL_TYPE=FULL
 aur_helper_install
 assert_log_equals "$(cat <<EOF
-pacman -S base-devel git --noconfirm --needed --color=always
+sudo pacman -S base-devel git --noconfirm --needed --color=always
 git clone https://aur.archlinux.org/paru.git $HOME/paru
 makepkg -sirc --noconfirm
 paru -S downgrade --noconfirm --needed --color=always
@@ -163,6 +171,29 @@ EOF
 export PARU_STATUS=1
 if aur_helper_install; then
     printf 'AUR package failure must fail Phase 2\n' >&2
+    exit 1
+fi
+
+empty_packages="$sandbox/empty-packages.json"
+cat >"$empty_packages" <<'JSON'
+{"minimal": {"aur": []}}
+JSON
+if ! install_packages_from_json "$empty_packages" '.minimal.aur[].package' aur; then
+    printf 'an empty valid package list must succeed\n' >&2
+    exit 1
+fi
+
+if install_packages_from_json "$empty_packages" '.minimal.aur[' aur; then
+    printf 'an invalid jq filter must fail package installation\n' >&2
+    exit 1
+fi
+
+invalid_schema_packages="$sandbox/invalid-schema-packages.json"
+cat >"$invalid_schema_packages" <<'JSON'
+{"minimal": {"aur": "not-an-array"}}
+JSON
+if install_packages_from_json "$invalid_schema_packages" '.minimal.aur[].package' aur; then
+    printf 'an invalid package schema must fail package installation\n' >&2
     exit 1
 fi
 

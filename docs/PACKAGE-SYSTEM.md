@@ -398,7 +398,7 @@ The installer will detect the new JSON automatically!
 ### AUR Helper Bootstrap
 
 Phase 2 runs as the newly created user, never as root. When `AUR_HELPER=paru`, it
-installs missing `base-devel` and `git` with pacman, clones
+installs missing `base-devel` and `git` with `sudo pacman`, clones
 `https://aur.archlinux.org/paru.git` into `$HOME/paru`, and builds it with
 `makepkg -sirc --noconfirm` before installing selected AUR packages through paru.
 

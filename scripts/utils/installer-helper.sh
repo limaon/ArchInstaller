@@ -48,12 +48,12 @@ source_file() {
 # @description Run all installation phases (0-3)
 # @noargs
 run_installation_phases() {
-    . "$SCRIPTS_DIR"/0-preinstall.sh
-    arch-chroot /mnt "$HOME"/archinstaller/scripts/1-setup.sh
+    . "$SCRIPTS_DIR"/0-preinstall.sh || return 1
+    arch-chroot /mnt "$HOME"/archinstaller/scripts/1-setup.sh || return 1
     if [[ ! "$INSTALL_TYPE" == SERVER ]]; then
-        arch-chroot /mnt /usr/bin/runuser -u "$USERNAME" -- /home/"$USERNAME"/archinstaller/scripts/2-user.sh
+        arch-chroot /mnt /usr/bin/runuser -u "$USERNAME" -- /home/"$USERNAME"/archinstaller/scripts/2-user.sh || return 1
     fi
-    arch-chroot /mnt "$HOME"/archinstaller/scripts/3-post-setup.sh
+    arch-chroot /mnt "$HOME"/archinstaller/scripts/3-post-setup.sh || return 1
 }
 
 # @description Copy logs to installed system and user home, copy verification script
