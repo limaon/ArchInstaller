@@ -43,7 +43,10 @@ setfont ter-v18b
 show_logo
 source "${SCRIPTS_DIR}/configuration.sh"
 source_file "$CONFIG_FILE"
-run_installation_phases
+if ! run_installation_phases; then
+    echo "Error: Installation phases failed; stopping installer"
+    exit 1
+fi
 
 echo -ne "
             Done - Please Eject Install Media and Reboot
