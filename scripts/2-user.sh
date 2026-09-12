@@ -18,7 +18,10 @@ show_logo
 
 # Installs software from the Arch User Repository (AUR) using a
 # specified AUR helper on 'software-install.sh'
-aur_helper_install
+if ! aur_helper_install; then
+    echo "Error: AUR helper installation failed; stopping Phase 2"
+    exit 1
+fi
 
 # Installs system fonts by reading a JSON file that specifies font packages
 # and uses pacman to install them. 'software-install.sh'

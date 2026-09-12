@@ -165,3 +165,21 @@ if aur_helper_install; then
     printf 'AUR package failure must fail Phase 2\n' >&2
     exit 1
 fi
+
+mkdir -p "$HOME/archinstaller/configs"
+cat >"$HOME/archinstaller/configs/setup.conf" <<'CONF'
+AUR_HELPER=unknown
+INSTALL_TYPE=SERVER
+DESKTOP_ENV=none
+FS=ext4
+CONF
+
+phase_output="$sandbox/phase-2.log"
+if bash "$repository_root/scripts/2-user.sh" >"$phase_output" 2>&1; then
+    printf 'Phase 2 must exit nonzero when AUR helper installation fails\n' >&2
+    exit 1
+fi
+if grep -q 'SYSTEM READY FOR 3-post-setup.sh' "$phase_output"; then
+    printf 'Phase 2 must not report success after AUR helper failure\n' >&2
+    exit 1
+fi
