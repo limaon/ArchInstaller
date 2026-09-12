@@ -84,7 +84,10 @@ deploy_window_manager() {
         if [[ -d "$dotfiles_source" ]]; then
             echo "  Deploying dotfiles to $dotfiles_target..."
             cp "$dotfiles_source".* "$dotfiles_target/" 2>/dev/null || true
-            chmod "$dotfiles_perms" "$dotfiles_target"/.* 2>/dev/null || true
+            for dotfile in "$dotfiles_source".*; do
+                [[ -f "$dotfile" ]] || continue
+                chmod "$dotfiles_perms" "$dotfiles_target/$(basename "$dotfile")" 2>/dev/null || true
+            done
             echo "  [OK] Dotfiles deployed"
         fi
     fi

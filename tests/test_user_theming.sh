@@ -26,3 +26,8 @@ if ! grep -Fq 'deploy_window_manager_system_files()' "$software_script" ||
     printf 'i3 system files must be deployed before switching to the installer user\n' >&2
     exit 1
 fi
+
+if grep -Fq 'chmod "$dotfiles_perms" "$dotfiles_target"/.*' "$software_script"; then
+    printf 'Dotfile permissions must not modify unrelated user directories\n' >&2
+    exit 1
+fi

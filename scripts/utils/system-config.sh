@@ -960,6 +960,8 @@ configure_base_skel() {
         SKEL_CONFIG_DIR="$HOME"/archinstaller/configs/base/etc/skel
 
         if cp -a "$SKEL_CONFIG_DIR"/. /etc/skel/ 2>/dev/null; then
+            # Users must be able to traverse copied configuration directories.
+            find /etc/skel -type d -exec chmod 755 {} \;
             echo "Base skel configurations copied to /etc/skel/"
 
             if [[ -f /etc/skel/.nanorc ]]; then
