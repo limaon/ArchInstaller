@@ -86,9 +86,6 @@ if [[ "${FS}" == "luks" ]]; then
     echo "Adding sd-encrypt hook to mkinitcpio for LUKS..."
     # Add sd-encrypt hook BEFORE filesystems in HOOKS array
     sed -i 's/\(block\) filesystems/\1 sd-encrypt filesystems/' /etc/mkinitcpio.conf
-    echo "Rebuilding initramfs for LUKS..."
-    mkinitcpio -p linux
-    mkinitcpio -p linux-lts
 fi
 
 echo -ne "

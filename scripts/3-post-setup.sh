@@ -43,6 +43,13 @@ EOF
     sed -i 's/root=UUID=[^ ]* //' /etc/default/grub
 fi
 
+# Rebuild every installed initramfs after all package and boot settings are final.
+echo "Rebuilding initramfs presets..."
+if ! mkinitcpio -P; then
+    echo "ERROR: Failed to rebuild initramfs presets"
+    exit 1
+fi
+
 # Install GRUB bootloader based on system type (UEFI or Legacy BIOS)
 if [[ -d "/sys/firmware/efi" ]]; then
     # UEFI system: Install GRUB for EFI
