@@ -647,19 +647,19 @@ install_packages_from_json() {
     local failed=0
     local count=0
 
-    jq --raw-output "$jq_filter" "$json_file" | while read -r package; do
+    while read -r package; do
         # Skip empty lines
         if [[ -z "$package" ]]; then
             continue
         fi
 
-        ((count++))
+        ((count += 1))
 
         # Install package
         if ! install_package "$package" "$source"; then
-            ((failed++))
+            ((failed += 1))
         fi
-    done
+    done < <(jq --raw-output "$jq_filter" "$json_file")
 
     if [[ $failed -gt 0 ]]; then
         echo "Warning: $failed package(s) failed to install"
@@ -794,35 +794,21 @@ aur_helper_install() {
                     Installing AUR Software
 -------------------------------------------------------------------------
 "
-    if [[ ! "$AUR_HELPER" == NONE ]]; then
-        echo "Selected AUR Helper: $AUR_HELPER"
-
-        # Clone the AUR helper repository
-        if ! git clone https://aur.archlinux.org/"$AUR_HELPER".git ~/"$AUR_HELPER"; then
-            echo "ERROR! Failed to clone the repository for $AUR_HELPER. Please check your network connection or the helper name."
-            exit 1
-        fi
-        cd ~/"$AUR_HELPER" || return
-
-        # Build and install the AUR helper
-        if ! makepkg -sirc --noconfirm; then
-            echo "ERROR! Failed to build and install $AUR_HELPER. Please check for missing dependencies or errors in the PKGBUILD."
-            exit 1
-        fi
-        echo "$AUR_HELPER installed successfully."
-
-        # JQ filters to determine AUR packages to install
-        MINIMAL_AUR_FILTER=".minimal.aur[].package"
-        FULL_AUR_FILTER=$([ "$AUR_HELPER" != NONE ] && [ "$INSTALL_TYPE" == "FULL" ] && echo ", .full.aur[].package" || echo "")
-
-        # Parse the JSON file and install AUR packages
-        jq --raw-output "${MINIMAL_AUR_FILTER}""${FULL_AUR_FILTER}" ~/archinstaller/packages/base.json | (
-            while read -r line; do
-                echo "Installing $line"
-                "$AUR_HELPER" -S "$line" --noconfirm --needed --color=always
-            done
-        )
+    if [[ "$AUR_HELPER" == NONE ]]; then
+        echo "No AUR helper selected; skipping AUR software"
+        return 0
     fi
+
+    echo "Selected AUR Helper: $AUR_HELPER"
+    install_aur_helper "$AUR_HELPER" || return 1
+
+    local aur_filter=".minimal.aur[].package"
+    if [[ "$INSTALL_TYPE" == "FULL" ]]; then
+        aur_filter="${aur_filter}, .full.aur[].package"
+    fi
+
+    install_packages_from_json "$HOME/archinstaller/packages/base.json" "$aur_filter" aur || return 1
+    return 0
 }
 
 # @description Installs desktop environment packages from base repositories

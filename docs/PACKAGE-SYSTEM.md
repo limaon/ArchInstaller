@@ -395,7 +395,7 @@ The installer will detect the new JSON automatically!
 
 ## Package Installation Flow
 
-## AUR Helper Bootstrap
+### AUR Helper Bootstrap
 
 Phase 2 runs as the newly created user, never as root. When `AUR_HELPER=paru`, it
 installs missing `base-devel` and `git` with pacman, clones

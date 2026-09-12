@@ -120,3 +120,48 @@ AUR_HELPER=NONE
 install_aur_helper NONE
 install_package_via_aur downgrade
 [[ ! -s "$log_file" ]] || { printf 'NONE must not invoke AUR commands\n' >&2; exit 1; }
+
+ln -s "$repository_root/scripts" "$HOME/archinstaller/scripts"
+cat >"$HOME/archinstaller/packages/base.json" <<'JSON'
+{
+  "minimal": {
+    "aur": [{"package": "downgrade"}]
+  },
+  "full": {
+    "aur": [{"package": "google-chrome"}]
+  }
+}
+JSON
+
+source "$repository_root/scripts/utils/software-install.sh"
+
+: >"$log_file"
+AUR_HELPER=paru
+INSTALL_TYPE=MINIMAL
+aur_helper_install
+assert_log_equals "$(cat <<EOF
+pacman -S base-devel git --noconfirm --needed --color=always
+git clone https://aur.archlinux.org/paru.git $HOME/paru
+makepkg -sirc --noconfirm
+paru -S downgrade --noconfirm --needed --color=always
+EOF
+)"
+
+: >"$log_file"
+INSTALL_TYPE=FULL
+aur_helper_install
+assert_log_equals "$(cat <<EOF
+pacman -S base-devel git --noconfirm --needed --color=always
+git clone https://aur.archlinux.org/paru.git $HOME/paru
+makepkg -sirc --noconfirm
+paru -S downgrade --noconfirm --needed --color=always
+paru -S google-chrome --noconfirm --needed --color=always
+EOF
+)"
+
+: >"$log_file"
+export PARU_STATUS=1
+if aur_helper_install; then
+    printf 'AUR package failure must fail Phase 2\n' >&2
+    exit 1
+fi
