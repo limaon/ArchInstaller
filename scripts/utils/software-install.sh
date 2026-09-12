@@ -876,6 +876,26 @@ btrfs_install() {
     fi
 }
 
+# @description Run desktop theming as the installer user
+# @noargs
+run_user_theming() {
+    local user_home="/home/$USERNAME"
+
+    if [[ ! -d "$user_home" ]]; then
+        echo "Error: Home directory not found for $USERNAME"
+        return 1
+    fi
+
+    runuser -u "$USERNAME" -- env HOME="$user_home" bash -c '
+        for filename in "$HOME"/archinstaller/scripts/utils/*.sh; do
+            [ -e "$filename" ] || continue
+            source "$filename"
+        done
+        source "$HOME"/archinstaller/configs/setup.conf
+        user_theming
+    '
+}
+
 # @description Perform desktop environment specific theming
 # @noargs
 user_theming() {

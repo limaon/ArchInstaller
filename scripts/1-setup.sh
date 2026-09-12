@@ -52,10 +52,6 @@ if [[ "$INSTALL_TYPE" != "SERVER" ]]; then
     graphics_install
 fi
 
-# Function to apply desktop environment theming based on user selection
-# during FULL installation on 'software-install.sh'
-user_theming
-
 # Configure base skel directory before creating user (so user gets configs automatically)
 configure_base_skel
 
@@ -79,6 +75,9 @@ fi
 # Adds a new user with the specified username and password, creates a
 # home directory and assign to groups 'system-config.sh'
 add_user
+
+# Apply user-specific desktop configuration with the new user's home directory.
+run_user_theming
 
 # Check if the filesystem is LUKS; if so, add sd-encrypt hook and rebuild initramfs
 # According to Arch Wiki, use sd-encrypt (systemd-based) with systemd initramfs
