@@ -84,3 +84,6 @@ replit.md
 # Implementation plans (internal docs)
 # -----------------------------------------------
 docs/implementation-plans
+
+# Local Git worktrees
+.worktrees/
