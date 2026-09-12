@@ -360,12 +360,14 @@ install_fonts() {
     echo "Installing system fonts..."
 
     # Install pacman fonts
-    install_packages_from_json "$fonts_json" ".pacman[].package" "pacman"
+    install_packages_from_json "$fonts_json" ".pacman[].package" "pacman" || return 1
 
     # Install AUR fonts (if helper configured)
     if [[ "$AUR_HELPER" != NONE ]]; then
-        install_packages_from_json "$fonts_json" ".aur[].package" "aur"
+        install_packages_from_json "$fonts_json" ".aur[].package" "aur" || return 1
     fi
+
+    return 0
 }
 
 # @description Installs base arch linux system
@@ -845,12 +847,14 @@ desktop_environment_install() {
     fi
 
     # Install pacman packages
-    install_packages_from_json "$de_json" "$pacman_filter" "pacman"
+    install_packages_from_json "$de_json" "$pacman_filter" "pacman" || return 1
 
     # Install AUR packages (if helper configured)
     if [[ "$AUR_HELPER" != NONE ]]; then
-        install_packages_from_json "$de_json" "$aur_filter" "aur"
+        install_packages_from_json "$de_json" "$aur_filter" "aur" || return 1
     fi
+
+    return 0
 }
 
 # @description Installs btrfs and snapper packages for Btrfs or LUKS filesystems
@@ -871,12 +875,14 @@ btrfs_install() {
     echo "Installing btrfs and snapper packages..."
 
     # Install pacman packages
-    install_packages_from_json ~/archinstaller/packages/btrfs.json ".pacman[].package" "pacman"
+    install_packages_from_json ~/archinstaller/packages/btrfs.json ".pacman[].package" "pacman" || return 1
 
     # Install AUR packages (if helper configured)
     if [[ "$AUR_HELPER" != NONE ]]; then
-        install_packages_from_json ~/archinstaller/packages/btrfs.json ".aur[].package" "aur"
+        install_packages_from_json ~/archinstaller/packages/btrfs.json ".aur[].package" "aur" || return 1
     fi
+
+    return 0
 }
 
 # @description Run desktop theming as the installer user
