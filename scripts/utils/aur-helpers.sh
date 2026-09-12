@@ -141,8 +141,8 @@ install_package_via_aur() {
     fi
 
     if [[ "$AUR_HELPER" == NONE ]]; then
-        echo "Error: AUR helper not configured"
-        return 1
+        echo "No AUR helper configured; skipping $package"
+        return 0
     fi
 
     echo "Installing $package via $AUR_HELPER..."

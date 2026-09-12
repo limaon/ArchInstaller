@@ -395,6 +395,17 @@ The installer will detect the new JSON automatically!
 
 ## Package Installation Flow
 
+## AUR Helper Bootstrap
+
+Phase 2 runs as the newly created user, never as root. When `AUR_HELPER=paru`, it
+installs missing `base-devel` and `git` with pacman, clones
+`https://aur.archlinux.org/paru.git` into `$HOME/paru`, and builds it with
+`makepkg -sirc --noconfirm` before installing selected AUR packages through paru.
+
+Any bootstrap or AUR package installation failure stops Phase 2 and fails the
+installation. `AUR_HELPER=NONE` skips both the helper bootstrap and all AUR
+package installation.
+
 ```
 +-----------------------------------------------------------+
 | 1. Determine INSTALL_TYPE (MINIMAL, FULL, SERVER)         |
