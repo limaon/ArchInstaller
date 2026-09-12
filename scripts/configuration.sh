@@ -21,9 +21,6 @@ user_info
 clear
 show_logo
 install_type
-clear
-show_logo
-swap_type
 if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
     clear
     show_logo
