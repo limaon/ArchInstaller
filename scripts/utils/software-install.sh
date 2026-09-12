@@ -419,7 +419,7 @@ detect_gpu() {
 
     if echo "$gpu_info" | grep -iE "NVIDIA|GeForce" &>/dev/null; then
         echo "nvidia"
-    elif echo "$gpu_info" | grep -iE "Radeon|AMD|ATI" &>/dev/null; then
+    elif echo "$gpu_info" | grep -iE 'Radeon|AMD|(^|[^[:alnum:]])ATI([^[:alnum:]]|$)' &>/dev/null; then
         echo "amd"
     elif echo "$gpu_info" | grep -iE "Intel.*Graphics|Integrated Graphics Controller" &>/dev/null; then
         echo "intel"
