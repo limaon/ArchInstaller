@@ -18,7 +18,7 @@ else
     export iso="US"
     echo "Warning: Could not detect country code, using US as default"
 fi
-timedatectl set-ntp true
+sync_live_time
 pacman -Sy --noconfirm --color=always archlinux-keyring # update keyrings to latest to prevent packages failing to install
 pacman -Sy --noconfirm --needed --color=always pacman-contrib rate-mirrors
 sed -i \

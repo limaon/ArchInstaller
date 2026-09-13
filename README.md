@@ -86,6 +86,15 @@ ip addr show
 systemctl status NetworkManager
 ```
 
+### Time Synchronization During Installation
+
+The Arch ISO performs a best-effort time synchronization with a 30-second
+deadline before entering the target system. The post-installation phase does
+not run a blocking one-shot NTP command inside `arch-chroot`; it only enables
+`ntpd.service`, which synchronizes after the first boot when networking and DNS
+are available. Failure to reach an NTP server during installation is reported
+as a warning and does not leave the installer blocked.
+
 ### No WiFi
 
 You can check if the WiFi is blocked by running `rfkill list`.

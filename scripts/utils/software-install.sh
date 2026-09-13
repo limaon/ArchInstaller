@@ -1028,10 +1028,7 @@ essential_services() {
         ufw --force enable
         echo -e "UFW configured and enabled \n"
 
-        echo "Syncing time with ntp"
-        ntpd -qg
-        echo -e "Time synced \n"
-
+        echo "NTP synchronization deferred until first boot"
         echo "Enabling ntpd"
         systemctl enable ntpd.service
         echo -e "NTP enabled \n"

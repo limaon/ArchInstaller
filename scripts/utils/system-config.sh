@@ -873,6 +873,29 @@ cpu_config() {
     fi
 }
 
+# @description Synchronize the live ISO clock without blocking installation
+# @return 0 always; synchronization failure is non-fatal
+sync_live_time() {
+    echo "Synchronizing live environment time..."
+
+    if ! timedatectl --no-ask-password set-ntp true; then
+        echo "Warning: Could not enable live environment NTP synchronization"
+        return 0
+    fi
+
+    local deadline=$((SECONDS + 30))
+    while ((SECONDS < deadline)); do
+        if [[ "$(timedatectl show -p NTPSynchronized --value 2>/dev/null)" == "yes" ]]; then
+            echo "Time synchronized in live environment"
+            return 0
+        fi
+        sleep 1
+    done
+
+    echo "Warning: Live environment time synchronization timed out; continuing installation"
+    return 0
+}
+
 # @description Set locale, timezone, keymap, and vconsole configuration
 # @noargs
 locale_config() {
