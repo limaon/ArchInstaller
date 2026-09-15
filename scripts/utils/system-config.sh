@@ -1828,32 +1828,25 @@ do_btrfs() {
         fi
     done
 }
-configure_xorg_gpu() {
-    local gpu_type="Generic (modesetting driver)"
-    local nvidia_count=0
-    local amd_count=0
-    local intel_count=0
+configure_nvidia_xorg() {
+    local xorg_config_file="$1"
+    local hybrid="${2:-false}"
+    local nvidia_driver_type="${NVIDIA_DRIVER_TYPE:-proprietary}"
 
-    echo -ne "
--------------------------------------------------------------------------
-                     Configuring Xorg GPU Driver
--------------------------------------------------------------------------
-"
-
-    if ! command -v lspci &>/dev/null; then
-        echo "Warning: lspci not found, using default GPU configuration"
-    else
-        nvidia_count=$(lspci | grep -ic "NVIDIA\|GeForce\|Quadro\|Tesla")
-        amd_count=$(lspci | grep -ic "AMD\|ATI\|Radeon")
-        intel_count=$(lspci | grep -ic "Intel.*Graphics\|Intel.*Iris")
+    if [[ "$nvidia_driver_type" == "nouveau" ]]; then
+        cat >"$xorg_config_file" <<'EOF'
+# Xorg Configuration: NVIDIA GPU using the kernel modesetting driver
+Section "OutputClass"
+    Identifier "nvidia-modesetting"
+    MatchDriver "nouveau"
+    Driver "modesetting"
+EndSection
+EOF
+        return 0
     fi
 
-    mkdir -p /etc/X11/xorg.conf.d
-
-    # Determine GPU type and generate configuration
-    if [[ $nvidia_count -gt 0 && $intel_count -gt 0 ]]; then
-        gpu_type="NVIDIA Optimus (Intel + NVIDIA)"
-        cat >/etc/X11/xorg.conf.d/10-gpu.conf <<'EOF'
+    if [[ "$hybrid" == true ]]; then
+        cat >"$xorg_config_file" <<'EOF'
 # Xorg Configuration: NVIDIA Optimus (Hybrid GPU)
 Section "OutputClass"
     Identifier "intel"
@@ -1871,10 +1864,8 @@ Section "OutputClass"
     ModulePath "/usr/lib/xorg/modules"
 EndSection
 EOF
-
-    elif [[ $nvidia_count -gt 0 ]]; then
-        gpu_type="NVIDIA (proprietary driver)"
-        cat >/etc/X11/xorg.conf.d/10-gpu.conf <<'EOF'
+    else
+        cat >"$xorg_config_file" <<'EOF'
 # Xorg Configuration: NVIDIA GPU
 Section "OutputClass"
     Identifier "nvidia"
@@ -1888,10 +1879,45 @@ Section "OutputClass"
     ModulePath "/usr/lib/xorg/modules"
 EndSection
 EOF
+    fi
+}
+
+configure_xorg_gpu() {
+    local gpu_type="Generic (modesetting driver)"
+    local nvidia_count=0
+    local amd_count=0
+    local intel_count=0
+    local xorg_config_dir="${XORG_CONFIG_DIR:-/etc/X11/xorg.conf.d}"
+    local xorg_config_file="$xorg_config_dir/10-gpu.conf"
+
+    echo -ne "
+-------------------------------------------------------------------------
+                     Configuring Xorg GPU Driver
+-------------------------------------------------------------------------
+"
+
+    if ! command -v lspci &>/dev/null; then
+        echo "Warning: lspci not found, using default GPU configuration"
+    else
+        nvidia_count=$(lspci | grep -iE "NVIDIA|GeForce|Quadro|Tesla" -c || true)
+        amd_count=$(lspci | grep -iE 'Radeon|AMD|(^|[^[:alnum:]])ATI([^[:alnum:]]|$)' -c || true)
+        intel_count=$(lspci | grep -iE "Intel.*Graphics|Intel.*Iris" -c || true)
+    fi
+
+    mkdir -p "$xorg_config_dir"
+
+    # Determine GPU type and generate configuration
+    if [[ $nvidia_count -gt 0 && $intel_count -gt 0 ]]; then
+        gpu_type="NVIDIA Optimus (Intel + NVIDIA)"
+        configure_nvidia_xorg "$xorg_config_file" true
+
+    elif [[ $nvidia_count -gt 0 ]]; then
+        gpu_type="NVIDIA (${NVIDIA_DRIVER_TYPE:-proprietary} driver)"
+        configure_nvidia_xorg "$xorg_config_file"
 
     elif [[ $amd_count -gt 0 && $intel_count -gt 0 ]]; then
         gpu_type="AMD Hybrid (Intel + AMD)"
-        cat >/etc/X11/xorg.conf.d/10-gpu.conf <<'EOF'
+        cat >"$xorg_config_file" <<'EOF'
 # Xorg Configuration: AMD Hybrid GPU
 Section "OutputClass"
     Identifier "amd"
@@ -1910,7 +1936,7 @@ EOF
 
     elif [[ $amd_count -gt 0 ]]; then
         gpu_type="AMD (amdgpu driver)"
-        cat >/etc/X11/xorg.conf.d/10-gpu.conf <<'EOF'
+        cat >"$xorg_config_file" <<'EOF'
 # Xorg Configuration: AMD GPU
 Section "OutputClass"
     Identifier "amd"
@@ -1923,7 +1949,7 @@ EOF
 
     elif [[ $intel_count -gt 0 ]]; then
         gpu_type="Intel Graphics"
-        cat >/etc/X11/xorg.conf.d/10-gpu.conf <<'EOF'
+        cat >"$xorg_config_file" <<'EOF'
 # Xorg Configuration: Intel GPU
 Section "Device"
     Identifier "Intel GPU"
@@ -1933,7 +1959,7 @@ EndSection
 EOF
 
     else
-        cat >/etc/X11/xorg.conf.d/10-gpu.conf <<'EOF'
+        cat >"$xorg_config_file" <<'EOF'
 # Xorg Configuration: Generic GPU (modesetting driver)
 Section "Device"
     Identifier "Generic GPU"

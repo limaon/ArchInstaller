@@ -441,6 +441,17 @@ detect_gpu() {
     fi
 }
 
+# @description List the detected video card models
+# @noargs
+# @stdout One video card model per line
+get_detected_gpu_models() {
+    local gpu_info
+    gpu_info=$(lspci | grep -iE "VGA|3D|Display" 2>/dev/null || true)
+
+    [[ -n "$gpu_info" ]] || return 1
+    printf '%s\n' "$gpu_info" | sed -E 's/^[^ ]+ [^:]+: //'
+}
+
 # @description Detect hybrid graphics (NVIDIA + Intel)
 # @noargs
 # @return 0 if hybrid detected, 1 otherwise
@@ -470,12 +481,37 @@ nvidia_supports_open_dkms() {
     return 1
 }
 
+# @description Select the driver family matching the detected NVIDIA generation
+# @noargs
+# @stdout Driver variant used by gpu-drivers.json
+get_nvidia_driver_variant() {
+    local nvidia_model
+    nvidia_model=$(lspci | grep -iE "NVIDIA|GeForce" | head -1)
+
+    if echo "$nvidia_model" | grep -iE "RTX|GTX 16|T[0-9]" &>/dev/null; then
+        echo "open-dkms"
+    elif echo "$nvidia_model" | grep -iE "\b(GP|GM)[0-9]+\b|GTX 10|GTX 9|Quadro (M|P)|Tesla P|Tesla V" &>/dev/null; then
+        echo "legacy-580xx"
+    elif echo "$nvidia_model" | grep -iE "\bGK[0-9]+\b|GTX [678]|GT [67]|Quadro K|Tesla K" &>/dev/null; then
+        echo "legacy-470xx"
+    elif echo "$nvidia_model" | grep -iE "\bGF[0-9]+\b|GTX [45]|GT [45]|Quadro (F|4000)|Tesla (C|M)" &>/dev/null; then
+        echo "legacy-390xx"
+    elif echo "$nvidia_model" | grep -iE "GeForce 8|GeForce 9|GeForce 2[0-9]{2}|Quadro (FX|NVS)|Tesla S" &>/dev/null; then
+        echo "legacy-340xx"
+    else
+        echo "proprietary"
+    fi
+}
+
 # @description Get NVIDIA driver choice from user
 # @noargs
 # @stdout Driver type: proprietary, open-dkms, nouveau
 get_nvidia_driver_choice() {
     local supports_open=false
+    local default_variant
+    local -a options
     nvidia_supports_open_dkms && supports_open=true
+    default_variant=$(get_nvidia_driver_variant)
 
     echo -ne "\nNVIDIA GPU detected. Select driver type:\n"
 
@@ -485,9 +521,14 @@ get_nvidia_driver_choice() {
             "Open-source Kernel (nvidia-open-dkms) - Open kernel module, good performance"
             "Open-source (nouveau) - Free software, limited performance"
         )
+    elif [[ "$default_variant" == legacy-* ]]; then
+        options=(
+            "Legacy proprietary ($default_variant) - Best compatibility"
+            "Open-source (nouveau) - Free software, limited performance"
+        )
     else
         options=(
-            "Proprietary (nvidia-dkms) - Best performance, closed-source"
+            "Proprietary (nvidia) - Best performance, closed-source"
             "Open-source (nouveau) - Free software, limited performance"
         )
     fi
@@ -501,6 +542,12 @@ get_nvidia_driver_choice() {
         1) echo "open-dkms" ;;
         2) echo "nouveau" ;;
         *) echo "proprietary" ;;
+        esac
+    elif [[ "$default_variant" == legacy-* ]]; then
+        case $choice in
+        0) echo "$default_variant" ;;
+        1) echo "nouveau" ;;
+        *) echo "$default_variant" ;;
         esac
     else
         case $choice in
@@ -695,31 +742,36 @@ install_gpu_from_json() {
     fi
 
     # Build JQ filter based on GPU type and variant
-    local jq_filter=""
+    local jq_path=""
 
     if [[ "$gpu_type" == "hybrid" ]]; then
-        # Hybrid: .hybrid.nvidia-intel.proprietary.pacman[].package
-        jq_filter=".hybrid.nvidia-intel.${nvidia_type}.pacman[].package"
+        # Hybrid: .hybrid.nvidia-intel.proprietary.{pacman,aur}
+        jq_path=".hybrid.nvidia-intel[\"${nvidia_type}\"]"
     elif [[ "$gpu_type" == "nvidia" ]]; then
-        # NVIDIA: .nvidia.proprietary.pacman[].package
-        jq_filter=".nvidia.${driver_variant}.pacman[].package"
+        # NVIDIA: .nvidia.proprietary.{pacman,aur}
+        jq_path=".nvidia[\"${driver_variant}\"]"
     else
-        # Simple types: .amd.pacman[].package
-        jq_filter=".${gpu_type}.pacman[].package"
+        # Simple types: .amd.{pacman,aur}
+        jq_path=".${gpu_type}"
     fi
 
-    # Extract packages using JQ
+    # Extract official packages using JQ
     local packages=()
     while IFS= read -r package; do
         [[ -n "$package" ]] && packages+=("$package")
-    done < <(jq --raw-output "$jq_filter" "$json_file" 2>/dev/null)
+    done < <(jq --raw-output "$jq_path.pacman[]?.package" "$json_file" 2>/dev/null)
 
-    if [[ ${#packages[@]} -eq 0 ]]; then
+    local aur_packages=()
+    while IFS= read -r package; do
+        [[ -n "$package" ]] && aur_packages+=("$package")
+    done < <(jq --raw-output "$jq_path.aur[]?.package" "$json_file" 2>/dev/null)
+
+    if [[ ${#packages[@]} -eq 0 && ${#aur_packages[@]} -eq 0 ]]; then
         echo "Error: No packages found for GPU type: $gpu_type"
         return 1
     fi
 
-    echo "Installing ${#packages[@]} packages for $gpu_type..."
+    echo "Installing $((${#packages[@]} + ${#aur_packages[@]})) packages for $gpu_type..."
 
     # Install packages using intelligent installation logic
     local failed=0
@@ -729,8 +781,15 @@ install_gpu_from_json() {
         fi
     done
 
+    for package in "${aur_packages[@]}"; do
+        if ! install_package "$package" "aur"; then
+            ((failed++))
+        fi
+    done
+
     if [[ $failed -gt 0 ]]; then
         echo "Warning: $failed package(s) failed to install"
+        return 1
     fi
 
     # Save configuration
@@ -751,6 +810,16 @@ graphics_install() {
                     Installing Graphics Drivers
 -------------------------------------------------------------------------
 "
+
+    local detected_gpu_models
+    if detected_gpu_models=$(get_detected_gpu_models); then
+        echo "Detected video card(s):"
+        while IFS= read -r gpu_model; do
+            [[ -n "$gpu_model" ]] && echo "  - $gpu_model"
+        done <<<"$detected_gpu_models"
+    else
+        echo "No video card detected"
+    fi
 
     # 1. Check if running in virtual machine
     if detect_vm; then
