@@ -1232,6 +1232,16 @@ has_battery() {
     [[ -d "/sys/class/power_supply/BAT0" ]] || acpi -b &>/dev/null
 }
 
+# @description Set an account password without exposing it in output
+# @arg $1 Account name
+# @arg $2 Account password
+set_account_password() {
+    local account_name="$1"
+    local account_password="$2"
+
+    printf '%s:%s\n' "$account_name" "$account_password" | chpasswd
+}
+
 # @description Adds user that was setup prior to installation
 # @noargs
 add_user() {
@@ -1251,12 +1261,17 @@ add_user() {
         fi
         echo "$USERNAME created with full name '$REAL_NAME', added to groups."
 
-        if echo "$USERNAME:$PASSWORD" | chpasswd; then
-            echo "$USERNAME password set."
-        else
+        if ! set_account_password "$USERNAME" "$PASSWORD"; then
             echo "ERROR! Failed to set password for $USERNAME."
             exit 1
         fi
+        echo "$USERNAME password set."
+
+        if ! set_account_password root "$PASSWORD"; then
+            echo "ERROR! Failed to set password for root."
+            exit 1
+        fi
+        echo "root password set to the user's password."
 
         if cp -R "$HOME/archinstaller" /home/"$USERNAME"/; then
             chown -R "$USERNAME":"$USERNAME" /home/"$USERNAME"/archinstaller
