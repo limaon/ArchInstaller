@@ -501,7 +501,12 @@ get_nvidia_driver_choice() {
     local supports_open=false
     nvidia_supports_open_dkms && supports_open=true
 
-    echo -ne "\nNVIDIA GPU detected. Select driver type:\n" >&2
+    echo -e "\nDetected video card(s):" >&2
+    while IFS= read -r gpu_model; do
+        [[ -n "$gpu_model" ]] && echo "  - $gpu_model" >&2
+    done < <(get_detected_gpu_models || true)
+
+    echo -e "\nNVIDIA GPU detected. Select driver type:\n" >&2
 
     if [[ "$supports_open" == true ]]; then
         options=(
