@@ -1601,6 +1601,9 @@ configure_tlp() {
     update_config_value "$TLP_CONF" "RUNTIME_PM_ON_AC" "auto" "true"
     update_config_value "$TLP_CONF" "CPU_ENERGY_PERF_POLICY_ON_AC" "balance_performance" "true"
     update_config_value "$TLP_CONF" "CPU_ENERGY_PERF_POLICY_ON_BAT" "balance_power" "true"
+    update_config_value "$TLP_CONF" "PLATFORM_PROFILE_ON_AC" "balanced" "true"
+    update_config_value "$TLP_CONF" "PLATFORM_PROFILE_ON_BAT" "balanced" "true"
+    update_config_value "$TLP_CONF" "PLATFORM_PROFILE_ON_SAV" "balanced" "true"
 
     # Logind configuration to suspend when closing the lid
     echo "Configuring lid close behavior via systemd-logind..."

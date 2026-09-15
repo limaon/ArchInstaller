@@ -338,4 +338,3 @@ sudo swapon /swap/swapfile
 sudo systemctl disable systemd-zram-setup@zram0.service
 sudo swapoff /dev/zram0
 ```
-

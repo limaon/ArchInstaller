@@ -49,26 +49,26 @@ packages/
 
 ```json
 {
-  "minimal": {
-    "pacman": [{ "package": "package-name" }],
-    "aur": [{ "package": "aur-package" }]
-  },
-  "full": {
-    "pacman": [{ "package": "extra-package" }],
-    "aur": [{ "package": "extra-aur-package" }]
-  }
+    "minimal": {
+        "pacman": [{ "package": "package-name" }],
+        "aur": [{ "package": "aur-package" }]
+    },
+    "full": {
+        "pacman": [{ "package": "extra-package" }],
+        "aur": [{ "package": "extra-aur-package" }]
+    }
 }
 ```
 
 ### Fields
 
 - **minimal**: Minimal installation (always installed if not SERVER)
-  - **pacman**: Official packages
-  - **aur**: AUR packages (only if AUR_HELPER ≠ NONE)
+    - **pacman**: Official packages
+    - **aur**: AUR packages (only if AUR_HELPER ≠ NONE)
 
 - **full**: Complete installation (only if INSTALL_TYPE=FULL)
-  - **pacman**: Extra official packages
-  - **aur**: Extra AUR packages
+    - **pacman**: Extra official packages
+    - **aur**: Extra AUR packages
 
 ## base.json
 
@@ -130,30 +130,30 @@ Each DE has its own JSON in `desktop-environments/`.
 
 ```json
 {
-  "minimal": {
-    "pacman": [
-      { "package": "plasma-desktop" },
-      { "package": "plasma-nm" },
-      { "package": "plasma-pa" },
-      { "package": "konsole" },
-      { "package": "dolphin" },
-      { "package": "sddm" }
-    ],
-    "aur": []
-  },
-  "full": {
-    "pacman": [
-      { "package": "plasma-meta" },
-      { "package": "kde-applications-meta" },
-      { "package": "kdenlive" },
-      { "package": "krita" },
-      { "package": "ark" },
-      { "package": "gwenview" },
-      { "package": "okular" },
-      { "package": "spectacle" }
-    ],
-    "aur": [{ "package": "sddm-theme-nordic-git" }]
-  }
+    "minimal": {
+        "pacman": [
+            { "package": "plasma-desktop" },
+            { "package": "plasma-nm" },
+            { "package": "plasma-pa" },
+            { "package": "konsole" },
+            { "package": "dolphin" },
+            { "package": "sddm" }
+        ],
+        "aur": []
+    },
+    "full": {
+        "pacman": [
+            { "package": "plasma-meta" },
+            { "package": "kde-applications-meta" },
+            { "package": "kdenlive" },
+            { "package": "krita" },
+            { "package": "ark" },
+            { "package": "gwenview" },
+            { "package": "okular" },
+            { "package": "spectacle" }
+        ],
+        "aur": [{ "package": "sddm-theme-nordic-git" }]
+    }
 }
 ```
 
@@ -185,33 +185,33 @@ Each DE has its own JSON in `desktop-environments/`.
 
 ```json
 {
-  "minimal": {
-    "pacman": [
-      { "package": "i3-wm" },
-      { "package": "i3status" },
-      { "package": "i3lock" },
-      { "package": "dmenu" },
-      { "package": "xorg-server" },
-      { "package": "xorg-xinit" },
-      { "package": "alacritty" },
-      { "package": "thunar" },
-      { "package": "lightdm" },
-      { "package": "lightdm-gtk-greeter" }
-    ],
-    "aur": []
-  },
-  "full": {
-    "pacman": [
-      { "package": "rofi" },
-      { "package": "polybar" },
-      { "package": "picom" },
-      { "package": "nitrogen" },
-      { "package": "dunst" },
-      { "package": "feh" },
-      { "package": "scrot" }
-    ],
-    "aur": [{ "package": "i3-gaps-git" }, { "package": "autotiling" }]
-  }
+    "minimal": {
+        "pacman": [
+            { "package": "i3-wm" },
+            { "package": "i3status" },
+            { "package": "i3lock" },
+            { "package": "dmenu" },
+            { "package": "xorg-server" },
+            { "package": "xorg-xinit" },
+            { "package": "alacritty" },
+            { "package": "thunar" },
+            { "package": "lightdm" },
+            { "package": "lightdm-gtk-greeter" }
+        ],
+        "aur": []
+    },
+    "full": {
+        "pacman": [
+            { "package": "rofi" },
+            { "package": "polybar" },
+            { "package": "picom" },
+            { "package": "nitrogen" },
+            { "package": "dunst" },
+            { "package": "feh" },
+            { "package": "scrot" }
+        ],
+        "aur": [{ "package": "i3-gaps-git" }, { "package": "autotiling" }]
+    }
 }
 ```
 
@@ -223,15 +223,15 @@ System fonts (FULL install only).
 
 ```json
 {
-  "pacman": [
-    { "package": "ttf-dejavu" },
-    { "package": "ttf-liberation" },
-    { "package": "noto-fonts" },
-    { "package": "noto-fonts-emoji" },
-    { "package": "ttf-hack" },
-    { "package": "ttf-fira-code" }
-  ],
-  "aur": [{ "package": "ttf-ms-fonts" }, { "package": "nerd-fonts-complete" }]
+    "pacman": [
+        { "package": "ttf-dejavu" },
+        { "package": "ttf-liberation" },
+        { "package": "noto-fonts" },
+        { "package": "noto-fonts-emoji" },
+        { "package": "ttf-hack" },
+        { "package": "ttf-fira-code" }
+    ],
+    "aur": [{ "package": "ttf-ms-fonts" }, { "package": "nerd-fonts-complete" }]
 }
 ```
 
@@ -245,13 +245,13 @@ Btrfs-specific tools (only installs if FS=btrfs).
 
 ```json
 {
-  "pacman": [
-    { "package": "btrfs-progs" },
-    { "package": "snapper" },
-    { "package": "snap-pac" },
-    { "package": "grub-btrfs" }
-  ],
-  "aur": [{ "package": "snapper-gui-git" }]
+    "pacman": [
+        { "package": "btrfs-progs" },
+        { "package": "snapper" },
+        { "package": "snap-pac" },
+        { "package": "grub-btrfs" }
+    ],
+    "aur": [{ "package": "snapper-gui-git" }]
 }
 ```
 
@@ -344,19 +344,19 @@ Create `packages/desktop-environments/my-de.json`:
 
 ```json
 {
-  "minimal": {
-    "pacman": [
-      { "package": "my-de-core" },
-      { "package": "display-manager" },
-      { "package": "terminal" },
-      { "package": "file-manager" }
-    ],
-    "aur": []
-  },
-  "full": {
-    "pacman": [{ "package": "my-de-apps" }, { "package": "extras" }],
-    "aur": [{ "package": "custom-themes" }]
-  }
+    "minimal": {
+        "pacman": [
+            { "package": "my-de-core" },
+            { "package": "display-manager" },
+            { "package": "terminal" },
+            { "package": "file-manager" }
+        ],
+        "aur": []
+    },
+    "full": {
+        "pacman": [{ "package": "my-de-apps" }, { "package": "extras" }],
+        "aur": [{ "package": "custom-themes" }]
+    }
 }
 ```
 
@@ -460,10 +460,10 @@ package installation.
 
 ```json
 {
-  "pacman": [
-    { "package": "firefox", "description": "Main browser" },
-    { "package": "thunderbird", "description": "Email client" }
-  ]
+    "pacman": [
+        { "package": "firefox", "description": "Main browser" },
+        { "package": "thunderbird", "description": "Email client" }
+    ]
 }
 ```
 
@@ -553,7 +553,7 @@ grep -r "firefox" packages/
 
 ```bash
 for json in packages/**/*.json; do
-    jq . "$json" > /dev/null && echo "✓ $json" || echo "✗ $json"
+    jq . "$json" > /dev/null && echo "[*] $json" || echo "[x] $json"
 done
 ```
 
