@@ -1,118 +1,92 @@
 {
   "vm": {
-    "pacman": [{ "package": "lib32-mesa" }, { "package": "mesa" }]
+    "pacman": [
+      { "package": "mesa" },
+      { "package": "xorg-server" },
+      { "package": "xorg-xinit" }
+    ]
   },
   "nvidia": {
-    "proprietary": {
-      "pacman": [
-        { "package": "lib32-mesa" },
-        { "package": "lib32-nvidia-utils" },
-        { "package": "libva-nvidia-driver" },
-        { "package": "nvidia-dkms" },
-        { "package": "nvidia-settings" },
-        { "package": "nvidia-utils" }
-      ]
-    },
     "open-dkms": {
       "pacman": [
-        { "package": "lib32-mesa" },
-        { "package": "lib32-nvidia-utils" },
+        { "package": "dkms" },
         { "package": "libva-nvidia-driver" },
         { "package": "nvidia-open-dkms" },
         { "package": "nvidia-settings" },
-        { "package": "nvidia-utils" }
-      ]
-    },
-    "legacy-580xx": {
-      "aur": [
-        { "package": "lib32-nvidia-580xx-utils" },
-        { "package": "nvidia-580xx-dkms" }
-      ]
-    },
-    "legacy-470xx": {
-      "aur": [
-        { "package": "lib32-nvidia-470xx-utils" },
-        { "package": "nvidia-470xx-dkms" }
-      ]
-    },
-    "legacy-390xx": {
-      "aur": [
-        { "package": "lib32-nvidia-390xx-utils" },
-        { "package": "nvidia-390xx-dkms" }
-      ]
-    },
-    "legacy-340xx": {
-      "aur": [
-        { "package": "lib32-nvidia-340xx-utils" },
-        { "package": "nvidia-340xx-dkms" }
+        { "package": "nvidia-utils" },
+        { "package": "xorg-server" },
+        { "package": "xorg-xinit" }
       ]
     },
     "nouveau": {
       "pacman": [
-        { "package": "lib32-mesa" },
-        { "package": "lib32-vulkan-nouveau" },
         { "package": "mesa" },
-        { "package": "vulkan-nouveau" }
+        { "package": "vulkan-nouveau" },
+        { "package": "xf86-video-nouveau" },
+        { "package": "xorg-server" },
+        { "package": "xorg-xinit" }
       ]
     }
   },
   "amd": {
     "pacman": [
-      { "package": "lib32-mesa" },
       { "package": "mesa" },
       { "package": "vulkan-radeon" },
       { "package": "xf86-video-amdgpu" },
-      { "package": "xf86-video-ati" }
+      { "package": "xf86-video-ati" },
+      { "package": "xorg-server" },
+      { "package": "xorg-xinit" }
     ]
   },
   "intel": {
     "pacman": [
       { "package": "intel-media-driver" },
-      { "package": "lib32-mesa" },
       { "package": "libva-intel-driver" },
       { "package": "mesa" },
-      { "package": "vulkan-intel" }
+      { "package": "vulkan-intel" },
+      { "package": "xorg-server" },
+      { "package": "xorg-xinit" }
     ]
   },
   "hybrid": {
+    "amd-intel": {
+      "pacman": [
+        { "package": "intel-media-driver" },
+        { "package": "libva-intel-driver" },
+        { "package": "mesa" },
+        { "package": "vulkan-intel" },
+        { "package": "vulkan-radeon" },
+        { "package": "xf86-video-amdgpu" },
+        { "package": "xorg-server" },
+        { "package": "xorg-xinit" }
+      ]
+    },
     "nvidia-intel": {
-      "proprietary": {
-        "pacman": [
-          { "package": "intel-media-driver" },
-          { "package": "lib32-mesa" },
-          { "package": "lib32-nvidia-utils" },
-          { "package": "libva-intel-driver" },
-          { "package": "libva-nvidia-driver" },
-          { "package": "mesa" },
-          { "package": "nvidia-dkms" },
-          { "package": "nvidia-settings" },
-          { "package": "nvidia-utils" },
-          { "package": "vulkan-intel" }
-        ]
-      },
       "open-dkms": {
         "pacman": [
+          { "package": "dkms" },
           { "package": "intel-media-driver" },
-          { "package": "lib32-mesa" },
-          { "package": "lib32-nvidia-utils" },
           { "package": "libva-intel-driver" },
           { "package": "libva-nvidia-driver" },
           { "package": "mesa" },
           { "package": "nvidia-open-dkms" },
           { "package": "nvidia-settings" },
           { "package": "nvidia-utils" },
-          { "package": "vulkan-intel" }
+          { "package": "vulkan-intel" },
+          { "package": "xorg-server" },
+          { "package": "xorg-xinit" }
         ]
       },
       "nouveau": {
         "pacman": [
           { "package": "intel-media-driver" },
-          { "package": "lib32-mesa" },
-          { "package": "lib32-vulkan-nouveau" },
           { "package": "libva-intel-driver" },
           { "package": "mesa" },
           { "package": "vulkan-intel" },
-          { "package": "vulkan-nouveau" }
+          { "package": "vulkan-nouveau" },
+          { "package": "xf86-video-nouveau" },
+          { "package": "xorg-server" },
+          { "package": "xorg-xinit" }
         ]
       }
     }

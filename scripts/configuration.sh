@@ -28,6 +28,9 @@ if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
     clear
     show_logo
     desktop_environment
+    clear
+    show_logo
+    configure_gpu_selection
 fi
 clear
 show_logo

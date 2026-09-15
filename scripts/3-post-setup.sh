@@ -45,6 +45,10 @@ fi
 
 # Rebuild every installed initramfs after all package and boot settings are final.
 echo "Rebuilding initramfs presets..."
+if [[ "${FS}" == "btrfs" || "${FS}" == "luks" ]] && ! command -v btrfs &>/dev/null; then
+    echo "ERROR: btrfs-progs is required before rebuilding initramfs"
+    exit 1
+fi
 if ! mkinitcpio -P; then
     echo "ERROR: Failed to rebuild initramfs presets"
     exit 1

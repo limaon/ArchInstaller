@@ -273,7 +273,14 @@ arch_install() {
                     Arch Install on Main Drive
 -------------------------------------------------------------------------
 "
-    pacstrap /mnt base base-devel linux linux-firmware linux-lts jq neovim sudo wget libnewt --noconfirm --needed --color=always
+    local base_packages=(base base-devel linux linux-firmware linux-lts jq neovim sudo wget libnewt)
+
+    # Btrfs support is required before any chroot phase can build initramfs.
+    if [[ "${FS:-}" == "btrfs" || "${FS:-}" == "luks" ]]; then
+        base_packages+=(btrfs-progs)
+    fi
+
+    pacstrap /mnt "${base_packages[@]}" --noconfirm --needed --color=always
 }
 
 # @description Install bootloader prerequisites during Phase 0 (live ISO, before chroot)
@@ -441,24 +448,13 @@ detect_gpu() {
     fi
 }
 
-# @description List the detected video card models
-# @noargs
-# @stdout One video card model per line
-get_detected_gpu_models() {
-    local gpu_info
-    gpu_info=$(lspci | grep -iE "VGA|3D|Display" 2>/dev/null || true)
-
-    [[ -n "$gpu_info" ]] || return 1
-    printf '%s\n' "$gpu_info" | sed -E 's/^[^ ]+ [^:]+: //'
-}
-
-# @description Detect hybrid graphics (NVIDIA + Intel)
+# @description Detect hybrid graphics with Intel integrated graphics
 # @noargs
 # @return 0 if hybrid detected, 1 otherwise
 detect_hybrid_graphics() {
     local gpu_info=$(lspci | grep -iE "VGA|3D|Display" 2>/dev/null)
 
-    if echo "$gpu_info" | grep -iE "NVIDIA|GeForce" &>/dev/null &&
+    if echo "$gpu_info" | grep -iE "NVIDIA|GeForce|Radeon|AMD|ATI" &>/dev/null &&
         echo "$gpu_info" | grep -iE "Intel.*Graphics|Integrated Graphics Controller" &>/dev/null; then
         return 0
     fi
@@ -481,80 +477,87 @@ nvidia_supports_open_dkms() {
     return 1
 }
 
-# @description Select the driver family matching the detected NVIDIA generation
-# @noargs
-# @stdout Driver variant used by gpu-drivers.json
-get_nvidia_driver_variant() {
-    local nvidia_model
-    nvidia_model=$(lspci | grep -iE "NVIDIA|GeForce" | head -1)
+# @description Validate the GPU driver package schema before selecting packages
+# @arg $1 GPU driver JSON file
+validate_gpu_driver_config() {
+    local json_file="${1:-$HOME/archinstaller/packages/gpu-drivers.json}"
 
-    if echo "$nvidia_model" | grep -iE "RTX|GTX 16|T[0-9]" &>/dev/null; then
-        echo "open-dkms"
-    elif echo "$nvidia_model" | grep -iE "\b(GP|GM)[0-9]+\b|GTX 10|GTX 9|Quadro (M|P)|Tesla P|Tesla V" &>/dev/null; then
-        echo "legacy-580xx"
-    elif echo "$nvidia_model" | grep -iE "\bGK[0-9]+\b|GTX [678]|GT [67]|Quadro K|Tesla K" &>/dev/null; then
-        echo "legacy-470xx"
-    elif echo "$nvidia_model" | grep -iE "\bGF[0-9]+\b|GTX [45]|GT [45]|Quadro (F|4000)|Tesla (C|M)" &>/dev/null; then
-        echo "legacy-390xx"
-    elif echo "$nvidia_model" | grep -iE "GeForce 8|GeForce 9|GeForce 2[0-9]{2}|Quadro (FX|NVS)|Tesla S" &>/dev/null; then
-        echo "legacy-340xx"
-    else
-        echo "proprietary"
-    fi
+    jq -e '
+        (.vm.pacman | type == "array") and
+        (.amd.pacman | type == "array") and
+        (.intel.pacman | type == "array") and
+        (.nvidia["open-dkms"].pacman | type == "array") and
+        (.nvidia.nouveau.pacman | type == "array") and
+        (.hybrid["amd-intel"].pacman | type == "array") and
+        (.hybrid["nvidia-intel"]["open-dkms"].pacman | type == "array") and
+        (.hybrid["nvidia-intel"].nouveau.pacman | type == "array")
+    ' "$json_file" >/dev/null 2>&1
 }
 
 # @description Get NVIDIA driver choice from user
 # @noargs
-# @stdout Driver type: proprietary, open-dkms, nouveau
+# @stdout Driver type: open-dkms, nouveau
 get_nvidia_driver_choice() {
     local supports_open=false
-    local default_variant
-    local -a options
     nvidia_supports_open_dkms && supports_open=true
-    default_variant=$(get_nvidia_driver_variant)
 
-    echo -ne "\nNVIDIA GPU detected. Select driver type:\n"
+    echo -ne "\nNVIDIA GPU detected. Select driver type:\n" >&2
 
     if [[ "$supports_open" == true ]]; then
         options=(
-            "Proprietary (nvidia-dkms) - Best performance, closed-source"
             "Open-source Kernel (nvidia-open-dkms) - Open kernel module, good performance"
-            "Open-source (nouveau) - Free software, limited performance"
-        )
-    elif [[ "$default_variant" == legacy-* ]]; then
-        options=(
-            "Legacy proprietary ($default_variant) - Best compatibility"
             "Open-source (nouveau) - Free software, limited performance"
         )
     else
         options=(
-            "Proprietary (nvidia) - Best performance, closed-source"
             "Open-source (nouveau) - Free software, limited performance"
         )
     fi
 
-    select_option ${#options[@]} 1 "${options[@]}"
+    select_option ${#options[@]} 1 "${options[@]}" >&2
     local choice=$?
 
     if [[ "$supports_open" == true ]]; then
         case $choice in
-        0) echo "proprietary" ;;
-        1) echo "open-dkms" ;;
-        2) echo "nouveau" ;;
-        *) echo "proprietary" ;;
-        esac
-    elif [[ "$default_variant" == legacy-* ]]; then
-        case $choice in
-        0) echo "$default_variant" ;;
+        0) echo "open-dkms" ;;
         1) echo "nouveau" ;;
-        *) echo "$default_variant" ;;
+        *) echo "open-dkms" ;;
         esac
     else
         case $choice in
-        0) echo "proprietary" ;;
-        1) echo "nouveau" ;;
-        *) echo "proprietary" ;;
+        0) echo "nouveau" ;;
+        *) echo "nouveau" ;;
         esac
+    fi
+}
+
+# @description Detect GPU hardware and save the initial driver configuration
+# @noargs
+configure_gpu_selection() {
+    local detected_gpu
+    detected_gpu=$(detect_gpu)
+
+    if detect_vm >/dev/null; then
+        set_option GPU_TYPE "vm"
+        set_option GPU_DRIVER "vm"
+        return 0
+    fi
+
+    if [[ "$detected_gpu" == "nvidia" || "$detected_gpu" == "amd" ]] && detect_hybrid_graphics; then
+        set_option GPU_TYPE "hybrid"
+        set_option GPU_DRIVER "$detected_gpu"
+        set_option GPU_SECONDARY_VENDOR "intel"
+        if [[ "$detected_gpu" == "nvidia" ]]; then
+            set_option NVIDIA_DRIVER_TYPE "$(get_nvidia_driver_choice)"
+        fi
+        return 0
+    fi
+
+    set_option GPU_TYPE "$detected_gpu"
+    set_option GPU_DRIVER "$detected_gpu"
+
+    if [[ "$detected_gpu" == "nvidia" ]]; then
+        set_option NVIDIA_DRIVER_TYPE "$(get_nvidia_driver_choice)"
     fi
 }
 
@@ -727,8 +730,8 @@ install_packages_from_json() {
 
 # @description Install GPU drivers from JSON file
 # @arg $1 GPU type (vm, nvidia, amd, intel, hybrid, fallback)
-# @arg $2 Driver variant (proprietary, open-dkms, nouveau) or "" for simple types
-# @arg $3 NVIDIA driver type (if hybrid, e.g., proprietary)
+# @arg $2 Driver variant (open-dkms, nouveau) or "" for simple types
+# @arg $3 NVIDIA driver type (if hybrid, e.g., open-dkms)
 install_gpu_from_json() {
     local gpu_type="$1"
     local driver_variant="${2:-}"
@@ -741,37 +744,43 @@ install_gpu_from_json() {
         return 1
     fi
 
-    # Build JQ filter based on GPU type and variant
-    local jq_path=""
-
-    if [[ "$gpu_type" == "hybrid" ]]; then
-        # Hybrid: .hybrid.nvidia-intel.proprietary.{pacman,aur}
-        jq_path=".hybrid.nvidia-intel[\"${nvidia_type}\"]"
-    elif [[ "$gpu_type" == "nvidia" ]]; then
-        # NVIDIA: .nvidia.proprietary.{pacman,aur}
-        jq_path=".nvidia[\"${driver_variant}\"]"
-    else
-        # Simple types: .amd.{pacman,aur}
-        jq_path=".${gpu_type}"
+    if ! validate_gpu_driver_config "$json_file"; then
+        echo "Error: Invalid GPU driver package configuration: $json_file"
+        return 1
     fi
 
-    # Extract official packages using JQ
+    # Build JQ filter based on GPU type and variant
+    local jq_filter=""
+
+    if [[ "$gpu_type" == "hybrid" ]]; then
+        local hybrid_profile="${driver_variant}"
+        if [[ "$hybrid_profile" == "nvidia-intel" ]]; then
+            # NVIDIA hybrid: .hybrid["nvidia-intel"]["open-dkms"].pacman[].package
+            jq_filter='.hybrid["'"${hybrid_profile}"'"]["'"${nvidia_type}"'"]["pacman"][]["package"]'
+        else
+            # AMD hybrid: .hybrid["amd-intel"].pacman[].package
+            jq_filter='.hybrid["'"${hybrid_profile}"'"]["pacman"][]["package"]'
+        fi
+    elif [[ "$gpu_type" == "nvidia" ]]; then
+        # NVIDIA: .nvidia["open-dkms"].pacman[].package
+        jq_filter='.nvidia["'"${driver_variant}"'"]["pacman"][]["package"]'
+    else
+        # Simple types: .amd.pacman[].package
+        jq_filter=".${gpu_type}.pacman[].package"
+    fi
+
+    # Extract packages using JQ
     local packages=()
     while IFS= read -r package; do
         [[ -n "$package" ]] && packages+=("$package")
-    done < <(jq --raw-output "$jq_path.pacman[]?.package" "$json_file" 2>/dev/null)
+    done < <(jq --raw-output "$jq_filter" "$json_file" 2>/dev/null)
 
-    local aur_packages=()
-    while IFS= read -r package; do
-        [[ -n "$package" ]] && aur_packages+=("$package")
-    done < <(jq --raw-output "$jq_path.aur[]?.package" "$json_file" 2>/dev/null)
-
-    if [[ ${#packages[@]} -eq 0 && ${#aur_packages[@]} -eq 0 ]]; then
+    if [[ ${#packages[@]} -eq 0 ]]; then
         echo "Error: No packages found for GPU type: $gpu_type"
         return 1
     fi
 
-    echo "Installing $((${#packages[@]} + ${#aur_packages[@]})) packages for $gpu_type..."
+    echo "Installing ${#packages[@]} packages for $gpu_type..."
 
     # Install packages using intelligent installation logic
     local failed=0
@@ -781,15 +790,8 @@ install_gpu_from_json() {
         fi
     done
 
-    for package in "${aur_packages[@]}"; do
-        if ! install_package "$package" "aur"; then
-            ((failed++))
-        fi
-    done
-
     if [[ $failed -gt 0 ]]; then
         echo "Warning: $failed package(s) failed to install"
-        return 1
     fi
 
     # Save configuration
@@ -811,18 +813,8 @@ graphics_install() {
 -------------------------------------------------------------------------
 "
 
-    local detected_gpu_models
-    if detected_gpu_models=$(get_detected_gpu_models); then
-        echo "Detected video card(s):"
-        while IFS= read -r gpu_model; do
-            [[ -n "$gpu_model" ]] && echo "  - $gpu_model"
-        done <<<"$detected_gpu_models"
-    else
-        echo "No video card detected"
-    fi
-
     # 1. Check if running in virtual machine
-    if detect_vm; then
+    if detect_vm >/dev/null; then
         echo "Virtual machine detected - installing VM graphics drivers"
         install_gpu_from_json "vm" ""
         return $?
@@ -832,16 +824,20 @@ graphics_install() {
     local detected_gpu=$(detect_gpu)
     echo "Detected GPU type: $detected_gpu"
 
-    # 3. Handle NVIDIA with user choice
-    if [[ "$detected_gpu" == "nvidia" ]]; then
+    # 3. Handle NVIDIA and AMD hybrid graphics using initial configuration
+    if [[ "$detected_gpu" == "nvidia" || "$detected_gpu" == "amd" ]]; then
+        local hybrid_profile="${GPU_DRIVER:-$detected_gpu}-${GPU_SECONDARY_VENDOR:-intel}"
+        local nvidia_driver_type="${NVIDIA_DRIVER_TYPE:-}"
+        if [[ "$detected_gpu" == "nvidia" && -z "$nvidia_driver_type" ]]; then
+            nvidia_driver_type=$(get_nvidia_driver_choice)
+        fi
+
         # Check for hybrid graphics
         if detect_hybrid_graphics; then
-            echo "Hybrid graphics detected (NVIDIA + Intel)"
-            local nvidia_driver_type=$(get_nvidia_driver_choice)
-            install_gpu_from_json "hybrid" "nvidia-intel" "$nvidia_driver_type"
+            echo "Hybrid graphics detected ($detected_gpu + Intel)"
+            install_gpu_from_json "hybrid" "$hybrid_profile" "$nvidia_driver_type"
         else
-            local nvidia_driver_type=$(get_nvidia_driver_choice)
-            install_gpu_from_json "nvidia" "$nvidia_driver_type"
+            install_gpu_from_json "$detected_gpu" "$nvidia_driver_type"
         fi
         return $?
     fi

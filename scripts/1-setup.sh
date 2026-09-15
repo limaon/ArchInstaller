@@ -56,7 +56,9 @@ fi
 configure_base_skel
 
 # Configure system-wide settings based on desktop environment
-if is_wayland_only_desktop "$DESKTOP_ENV"; then
+if [[ "$INSTALL_TYPE" == "SERVER" ]]; then
+    echo "Skipping graphical configuration for server installation"
+elif is_wayland_only_desktop "$DESKTOP_ENV"; then
     echo "Skipping Xorg configuration for Wayland-only desktop: $DESKTOP_ENV"
 else
     configure_xorg_base

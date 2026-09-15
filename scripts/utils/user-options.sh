@@ -383,6 +383,7 @@ Do you want to redo any step? Select an option below, or press Enter to proceed:
         echo "7) Timezone"
         echo "8) System Language (Locale)"
         echo "9) Keyboard Layout"
+        echo "10) Graphics Card and Driver"
 
         # Only show Desktop, AUR, Filesystem, Timezone, Locale, Keyboard if not SERVER
         if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
@@ -467,7 +468,7 @@ Do you want to redo any step? Select an option below, or press Enter to proceed:
             ;;
         10)
             if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
-                filesystem
+                configure_gpu_selection
             else
                 echo "Invalid option. Please try again."
             fi
