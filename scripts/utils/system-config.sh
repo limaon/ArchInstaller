@@ -1858,12 +1858,15 @@ configure_xorg_gpu() {
 -------------------------------------------------------------------------
 "
 
+    local gpu_devices=""
     if ! command -v lspci &>/dev/null; then
         echo "Warning: lspci not found, using default GPU configuration"
     else
-        nvidia_count=$(lspci | grep -ic "NVIDIA\|GeForce\|Quadro\|Tesla")
-        amd_count=$(lspci | grep -ic "AMD\|ATI\|Radeon")
-        intel_count=$(lspci | grep -ic "Intel.*Graphics\|Intel.*Iris")
+        # Restrict detection to display controllers, excluding HDMI audio devices.
+        gpu_devices=$(lspci -k -d ::03xx 2>/dev/null)
+        nvidia_count=$(grep -ic "NVIDIA\|GeForce\|Quadro\|Tesla" <<<"$gpu_devices")
+        amd_count=$(grep -icE "AMD|Radeon|(^|[^[:alnum:]])ATI([^[:alnum:]]|$)" <<<"$gpu_devices")
+        intel_count=$(grep -ic "Intel.*Graphics\|Intel.*Iris" <<<"$gpu_devices")
     fi
 
     mkdir -p "$(dirname "$xorg_config_file")"
