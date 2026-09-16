@@ -7,6 +7,17 @@
     ]
   },
   "nvidia": {
+    "legacy-580xx": {
+      "pacman": [
+        { "package": "dkms" },
+        { "package": "libva-nvidia-driver" },
+        { "package": "nvidia-580xx-dkms" },
+        { "package": "nvidia-settings" },
+        { "package": "nvidia-utils" },
+        { "package": "xorg-server" },
+        { "package": "xorg-xinit" }
+      ]
+    },
     "open-dkms": {
       "pacman": [
         { "package": "dkms" },
@@ -62,6 +73,21 @@
       ]
     },
     "nvidia-intel": {
+      "legacy-580xx": {
+        "pacman": [
+          { "package": "dkms" },
+          { "package": "intel-media-driver" },
+          { "package": "libva-intel-driver" },
+          { "package": "libva-nvidia-driver" },
+          { "package": "mesa" },
+          { "package": "nvidia-580xx-dkms" },
+          { "package": "nvidia-settings" },
+          { "package": "nvidia-utils" },
+          { "package": "vulkan-intel" },
+          { "package": "xorg-server" },
+          { "package": "xorg-xinit" }
+        ]
+      },
       "open-dkms": {
         "pacman": [
           { "package": "dkms" },

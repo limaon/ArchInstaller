@@ -462,19 +462,63 @@ detect_hybrid_graphics() {
     return 1
 }
 
+# @description Identify NVIDIA GPU family using Nouveau chipset names
+# @noargs
+# @stdout NVIDIA family (fermi, kepler, maxwell, pascal, volta, turing, ampere, ada, unknown)
+nvidia_get_family() {
+    local chipset
+    local nvidia_model
+
+    chipset=$(dmesg 2>/dev/null | grep -iEo 'NV(0[4-9]|10|20|30|40|50|C[0-9A-F]+|E[0-9A-F]+|1[1234679][0-9]*)' | head -1)
+    chipset=${chipset^^}
+    case "$chipset" in
+    NVC0) echo "fermi" ;;
+    NVE*) echo "kepler" ;;
+    NV11*) echo "maxwell" ;;
+    NV13*) echo "pascal" ;;
+    NV14*) echo "volta" ;;
+    NV16*) echo "turing" ;;
+    NV17*) echo "ampere" ;;
+    NV19*) echo "ada" ;;
+    *)
+        nvidia_model=$(lspci | grep -iE "NVIDIA|GeForce" | head -1)
+        case "$nvidia_model" in
+        *RTX\ 30*) echo "ampere" ;;
+        *RTX\ 40*) echo "ada" ;;
+        *RTX\ 20*|*GTX\ 16*) echo "turing" ;;
+        *GTX\ 10*) echo "pascal" ;;
+        *GTX\ 9*|*GTX\ 75*) echo "maxwell" ;;
+        *) echo "unknown" ;;
+        esac
+        ;;
+    esac
+}
+
 # @description Check if NVIDIA GPU supports open-dkms (Turing+)
 # @noargs
 # @return 0 if supported, 1 otherwise
 nvidia_supports_open_dkms() {
-    local nvidia_model
-    nvidia_model=$(lspci | grep -iE "NVIDIA|GeForce" | head -1)
+    local nvidia_family
+    nvidia_family=$(nvidia_get_family)
 
-    # Turing and later: RTX 20xx/30xx/40xx/50xx+, GTX 16xx, T-series
-    if echo "$nvidia_model" | grep -iE "RTX|GTX 16|T[0-9]" &>/dev/null; then
+    # Nouveau families: NV160 (Turing) and newer support NVIDIA's open module.
+    if [[ "$nvidia_family" == "turing" || "$nvidia_family" == "ampere" ||
+        "$nvidia_family" == "ada" ]]; then
         return 0
     fi
 
     return 1
+}
+
+# @description Get the default NVIDIA driver variant for the detected family
+# @noargs
+# @stdout Driver variant (open-dkms or nouveau)
+get_nvidia_driver_variant() {
+    if nvidia_supports_open_dkms; then
+        echo "open-dkms"
+    else
+        echo "nouveau"
+    fi
 }
 
 # @description Validate the GPU driver package schema before selecting packages
@@ -496,20 +540,31 @@ validate_gpu_driver_config() {
 
 # @description Get NVIDIA driver choice from user
 # @noargs
-# @stdout Driver type: open-dkms, nouveau
+# @stdout Driver type: proprietary, open-dkms, legacy-580xx, nouveau
 get_nvidia_driver_choice() {
     local supports_open=false
+    local default_variant
+    local proprietary_variant="proprietary"
+    local -a options
     nvidia_supports_open_dkms && supports_open=true
+    default_variant=$(get_nvidia_driver_variant)
+
+    if [[ "$default_variant" == "open-dkms" ]]; then
+        proprietary_variant="legacy-580xx"
+    fi
 
     echo -e "\nDetected video card(s):" >&2
     while IFS= read -r gpu_model; do
         [[ -n "$gpu_model" ]] && echo "  - $gpu_model" >&2
     done < <(get_detected_gpu_models || true)
 
-    echo -e "\nNVIDIA GPU detected. Select driver type:\n" >&2
+    local nvidia_family
+    nvidia_family=$(nvidia_get_family)
+    echo -e "\nNVIDIA GPU detected ($nvidia_family family). Select driver type:\n" >&2
 
     if [[ "$supports_open" == true ]]; then
         options=(
+            "Proprietary (nvidia-580xx-dkms, AUR) - Best compatibility"
             "Open-source Kernel (nvidia-open-dkms) - Open kernel module, good performance"
             "Open-source (nouveau) - Free software, limited performance"
         )
@@ -524,9 +579,10 @@ get_nvidia_driver_choice() {
 
     if [[ "$supports_open" == true ]]; then
         case $choice in
-        0) echo "open-dkms" ;;
-        1) echo "nouveau" ;;
-        *) echo "open-dkms" ;;
+        0) echo "$proprietary_variant" ;;
+        1) echo "open-dkms" ;;
+        2) echo "nouveau" ;;
+        *) echo "$proprietary_variant" ;;
         esac
     else
         case $choice in
