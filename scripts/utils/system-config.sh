@@ -1851,6 +1851,11 @@ configure_nvidia_kernel_modules() {
     local mkinitcpio_config_file="${MKINITCPIO_CONFIG_FILE:-/etc/mkinitcpio.conf}"
     local driver_type="${NVIDIA_DRIVER_TYPE:-}"
 
+    if [[ "${GPU_DRIVERS_INSTALLED:-false}" != true ]]; then
+        echo "Warning: NVIDIA drivers were not installed; skipping NVIDIA KMS configuration"
+        return 0
+    fi
+
     case "${GPU_TYPE:-}" in
     nvidia | hybrid) ;;
     *)

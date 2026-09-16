@@ -46,17 +46,6 @@ base_install
 # processor type (Intel or AMD) on 'software-install.sh'.
 microcode_install
 
-# Detects the GPU type using lspci and installs the appropriate
-# graphics drivers for NVIDIA, AMD, or Intel graphics on 'software-install.sh'
-if [[ "$INSTALL_TYPE" != "SERVER" ]]; then
-    if ! graphics_install; then
-        echo "Error: Graphics driver installation failed; stopping setup phase"
-        exit 1
-    fi
-    source "$HOME"/archinstaller/configs/setup.conf
-    configure_nvidia_kernel_modules
-fi
-
 # Configure base skel directory before creating user (so user gets configs automatically)
 configure_base_skel
 

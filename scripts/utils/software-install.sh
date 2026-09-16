@@ -448,6 +448,19 @@ detect_gpu() {
     fi
 }
 
+# @description List detected GPU model names from lspci
+# @noargs
+# @stdout One GPU model per line
+get_detected_gpu_models() {
+    if ! command -v lspci &>/dev/null; then
+        return 1
+    fi
+
+    lspci 2>/dev/null |
+        grep -iE "VGA|3D|Display" |
+        sed -E 's/^[^ ]+[[:space:]]+[^:]+:[[:space:]]*//' || true
+}
+
 # @description Detect hybrid graphics with Intel integrated graphics
 # @noargs
 # @return 0 if hybrid detected, 1 otherwise
@@ -955,9 +968,11 @@ install_gpu_from_json() {
 
     if [[ $failed -gt 0 ]]; then
         echo "Warning: $failed package(s) failed to install"
+        return 1
     fi
 
     # Save configuration
+    set_option GPU_DRIVERS_INSTALLED true
     set_option GPU_TYPE "$gpu_type"
     set_option NVIDIA_KERNEL_VARIANT "${NVIDIA_KERNEL_VARIANT:-both}"
     if [[ "$gpu_type" == "hybrid" && -n "$nvidia_type" ]]; then

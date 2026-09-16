@@ -49,6 +49,9 @@ if [[ "${FS}" == "btrfs" || "${FS}" == "luks" ]] && ! command -v btrfs &>/dev/nu
     echo "ERROR: btrfs-progs is required before rebuilding initramfs"
     exit 1
 fi
+
+configure_nvidia_kernel_modules
+
 if ! mkinitcpio -P; then
     echo "ERROR: Failed to rebuild initramfs presets"
     exit 1

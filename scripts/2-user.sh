@@ -23,6 +23,12 @@ if ! aur_helper_install; then
     exit 1
 fi
 
+# Install GPU drivers after the AUR helper is available.
+if ! graphics_install; then
+    echo "Error: Graphics driver installation failed; stopping Phase 2"
+    exit 1
+fi
+
 # Installs system fonts by reading a JSON file that specifies font packages
 # and uses pacman to install them. 'software-install.sh'
 if ! install_fonts; then
