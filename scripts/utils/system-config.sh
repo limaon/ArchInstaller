@@ -1846,6 +1846,52 @@ do_btrfs() {
     done
 }
 
+configure_nvidia_kernel_modules() {
+    local modprobe_config_file="${NVIDIA_MODPROBE_CONFIG_FILE:-/etc/modprobe.d/nvidia.conf}"
+    local mkinitcpio_config_file="${MKINITCPIO_CONFIG_FILE:-/etc/mkinitcpio.conf}"
+    local driver_type="${NVIDIA_DRIVER_TYPE:-}"
+
+    case "${GPU_TYPE:-}" in
+    nvidia | hybrid) ;;
+    *)
+        rm -f "$modprobe_config_file"
+        return 0
+        ;;
+    esac
+
+    mkdir -p "$(dirname "$modprobe_config_file")"
+
+    if [[ -z "$driver_type" || "$driver_type" == "nouveau" ]]; then
+        rm -f "$modprobe_config_file"
+        return 0
+    fi
+
+    cat >"$modprobe_config_file" <<'EOF'
+options nvidia_drm modeset=1
+EOF
+
+    local modules_line
+    local current_modules
+    local -a modules=()
+    modules_line=$(grep '^MODULES=' "$mkinitcpio_config_file" 2>/dev/null || true)
+    current_modules="${modules_line#MODULES=(}"
+    current_modules="${current_modules%)}"
+    read -r -a modules <<<"$current_modules"
+
+    local module
+    for module in nvidia nvidia_modeset nvidia_uvm nvidia_drm; do
+        if [[ ! " ${modules[*]} " == *" $module "* ]]; then
+            modules+=("$module")
+        fi
+    done
+
+    if [[ -n "$modules_line" ]]; then
+        sed -i "s|^MODULES=.*|MODULES=(${modules[*]})|" "$mkinitcpio_config_file"
+    else
+        sed -i "1i MODULES=(${modules[*]})" "$mkinitcpio_config_file"
+    fi
+}
+
 get_nvidia_xorg_driver_label() {
     case "${NVIDIA_DRIVER_TYPE:-}" in
     open | open-lts | open-dkms)

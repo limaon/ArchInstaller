@@ -53,6 +53,8 @@ if [[ "$INSTALL_TYPE" != "SERVER" ]]; then
         echo "Error: Graphics driver installation failed; stopping setup phase"
         exit 1
     fi
+    source "$HOME"/archinstaller/configs/setup.conf
+    configure_nvidia_kernel_modules
 fi
 
 # Configure base skel directory before creating user (so user gets configs automatically)
