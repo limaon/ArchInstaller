@@ -12,8 +12,8 @@
         { "package": "dkms" },
         { "package": "libva-nvidia-driver" },
         { "package": "nvidia-580xx-dkms" },
-        { "package": "nvidia-settings" },
-        { "package": "nvidia-utils" },
+        { "package": "nvidia-580xx-settings" },
+        { "package": "nvidia-580xx-utils" },
         { "package": "xorg-server" },
         { "package": "xorg-xinit" }
       ]
@@ -81,8 +81,8 @@
           { "package": "libva-nvidia-driver" },
           { "package": "mesa" },
           { "package": "nvidia-580xx-dkms" },
-          { "package": "nvidia-settings" },
-          { "package": "nvidia-utils" },
+          { "package": "nvidia-580xx-settings" },
+          { "package": "nvidia-580xx-utils" },
           { "package": "vulkan-intel" },
           { "package": "xorg-server" },
           { "package": "xorg-xinit" }

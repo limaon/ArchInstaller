@@ -530,9 +530,11 @@ validate_gpu_driver_config() {
         (.vm.pacman | type == "array") and
         (.amd.pacman | type == "array") and
         (.intel.pacman | type == "array") and
+        (.nvidia["legacy-580xx"].pacman | type == "array") and
         (.nvidia["open-dkms"].pacman | type == "array") and
         (.nvidia.nouveau.pacman | type == "array") and
         (.hybrid["amd-intel"].pacman | type == "array") and
+        (.hybrid["nvidia-intel"]["legacy-580xx"].pacman | type == "array") and
         (.hybrid["nvidia-intel"]["open-dkms"].pacman | type == "array") and
         (.hybrid["nvidia-intel"].nouveau.pacman | type == "array")
     ' "$json_file" >/dev/null 2>&1
@@ -640,7 +642,18 @@ install_package_intelligent() {
         fi
         return 0
     else
-        echo "Warning: Package $package not found in repositories"
+        if [[ "$AUR_HELPER" == NONE ]]; then
+            echo "Warning: Package $package not found in repositories and no AUR helper is configured"
+            return 1
+        fi
+
+        echo "Installing $package from AUR via $AUR_HELPER..."
+        if "$AUR_HELPER" -S "$package" --noconfirm --needed --color=always; then
+            echo "[OK] $package installed successfully from AUR"
+            return 0
+        fi
+
+        echo "Error: Failed to install $package via $AUR_HELPER"
         return 1
     fi
 }
@@ -791,8 +804,8 @@ install_packages_from_json() {
 
 # @description Install GPU drivers from JSON file
 # @arg $1 GPU type (vm, nvidia, amd, intel, hybrid, fallback)
-# @arg $2 Driver variant (open-dkms, nouveau) or "" for simple types
-# @arg $3 NVIDIA driver type (if hybrid, e.g., open-dkms)
+# @arg $2 Driver variant (open-dkms, legacy-580xx, nouveau) or "" for simple types
+# @arg $3 NVIDIA driver type (if hybrid, e.g., open-dkms or legacy-580xx)
 install_gpu_from_json() {
     local gpu_type="$1"
     local driver_variant="${2:-}"
@@ -810,20 +823,43 @@ install_gpu_from_json() {
         return 1
     fi
 
+    if [[ "$gpu_type" == "nvidia" ]]; then
+        case "$driver_variant" in
+        legacy-580xx | open-dkms | nouveau) ;;
+        *)
+            echo "Error: Invalid NVIDIA driver variant: $driver_variant"
+            return 1
+            ;;
+        esac
+    elif [[ "$gpu_type" == "hybrid" && "$driver_variant" == "nvidia-intel" ]]; then
+        case "$nvidia_type" in
+        legacy-580xx | open-dkms | nouveau) ;;
+        *)
+            echo "Error: Invalid NVIDIA hybrid driver variant: $nvidia_type"
+            return 1
+            ;;
+        esac
+    fi
+
     # Build JQ filter based on GPU type and variant
     local jq_filter=""
 
     if [[ "$gpu_type" == "hybrid" ]]; then
         local hybrid_profile="${driver_variant}"
         if [[ "$hybrid_profile" == "nvidia-intel" ]]; then
-            # NVIDIA hybrid: .hybrid["nvidia-intel"]["open-dkms"].pacman[].package
+            if [[ -z "$nvidia_type" ]]; then
+                echo "Error: NVIDIA driver variant is required for nvidia-intel hybrid graphics"
+                return 1
+            fi
+
+            # NVIDIA hybrid profile: .hybrid["nvidia-intel"][variant].pacman[].package
             jq_filter='.hybrid["'"${hybrid_profile}"'"]["'"${nvidia_type}"'"]["pacman"][]["package"]'
         else
             # AMD hybrid: .hybrid["amd-intel"].pacman[].package
             jq_filter='.hybrid["'"${hybrid_profile}"'"]["pacman"][]["package"]'
         fi
     elif [[ "$gpu_type" == "nvidia" ]]; then
-        # NVIDIA: .nvidia["open-dkms"].pacman[].package
+        # NVIDIA profile: .nvidia[variant].pacman[].package
         jq_filter='.nvidia["'"${driver_variant}"'"]["pacman"][]["package"]'
     else
         # Simple types: .amd.pacman[].package
@@ -857,7 +893,9 @@ install_gpu_from_json() {
 
     # Save configuration
     set_option GPU_TYPE "$gpu_type"
-    if [[ -n "$driver_variant" ]]; then
+    if [[ "$gpu_type" == "hybrid" && -n "$nvidia_type" ]]; then
+        set_option NVIDIA_DRIVER_TYPE "$nvidia_type"
+    elif [[ -n "$driver_variant" ]]; then
         set_option NVIDIA_DRIVER_TYPE "$driver_variant"
     fi
 
