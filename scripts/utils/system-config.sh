@@ -1845,6 +1845,21 @@ do_btrfs() {
         fi
     done
 }
+
+get_nvidia_xorg_driver_label() {
+    case "${NVIDIA_DRIVER_TYPE:-}" in
+    open | open-lts | open-dkms)
+        echo "NVIDIA (open kernel driver)"
+        ;;
+    legacy-340xx | legacy-390xx | legacy-470xx | legacy-580xx)
+        echo "NVIDIA (legacy proprietary driver)"
+        ;;
+    *)
+        echo "NVIDIA (proprietary driver)"
+        ;;
+    esac
+}
+
 configure_xorg_gpu() {
     local gpu_type="Generic (modesetting driver)"
     local nvidia_count=0
@@ -1924,7 +1939,7 @@ Section "OutputClass"
 EndSection
 EOF
         else
-            gpu_type="NVIDIA (open kernel driver)"
+            gpu_type=$(get_nvidia_xorg_driver_label)
             cat >"$xorg_config_file" <<'EOF'
 # Xorg Configuration: NVIDIA GPU
 Section "OutputClass"

@@ -464,25 +464,28 @@ detect_hybrid_graphics() {
 
 # @description Identify NVIDIA GPU family using Nouveau chipset names
 # @noargs
-# @stdout NVIDIA family (fermi, kepler, maxwell, pascal, volta, turing, ampere, ada, unknown)
+# @stdout NVIDIA family (tesla, fermi, kepler, maxwell, pascal, volta, turing, ampere, ada, blackwell, unknown)
 nvidia_get_family() {
     local chipset
     local nvidia_model
 
-    chipset=$(dmesg 2>/dev/null | grep -iEo 'NV(0[4-9]|10|20|30|40|50|C[0-9A-F]+|E[0-9A-F]+|1[1234679][0-9]*)' | head -1)
+    chipset=$(dmesg 2>/dev/null | grep -iEo '(NV|NC)[0-9A-F]+' | head -1)
     chipset=${chipset^^}
     case "$chipset" in
-    NVC0) echo "fermi" ;;
-    NVE*) echo "kepler" ;;
-    NV11*) echo "maxwell" ;;
+    NV5* | NV8* | NV9* | NVA*) echo "tesla" ;;
+    NC*) echo "fermi" ;;
+    NVE* | NVF*) echo "kepler" ;;
+    NV11* | NV12*) echo "maxwell" ;;
     NV13*) echo "pascal" ;;
     NV14*) echo "volta" ;;
     NV16*) echo "turing" ;;
     NV17*) echo "ampere" ;;
-    NV19*) echo "ada" ;;
+    NV18*) echo "ada" ;;
+    NV19*) echo "blackwell" ;;
     *)
         nvidia_model=$(lspci | grep -iE "NVIDIA|GeForce" | head -1)
         case "$nvidia_model" in
+        *RTX\ 50*) echo "blackwell" ;;
         *RTX\ 30*) echo "ampere" ;;
         *RTX\ 40*) echo "ada" ;;
         *RTX\ 20*|*GTX\ 16*) echo "turing" ;;
@@ -503,22 +506,39 @@ nvidia_supports_open_dkms() {
 
     # Nouveau families: NV160 (Turing) and newer support NVIDIA's open module.
     if [[ "$nvidia_family" == "turing" || "$nvidia_family" == "ampere" ||
-        "$nvidia_family" == "ada" ]]; then
+        "$nvidia_family" == "ada" || "$nvidia_family" == "blackwell" ]]; then
         return 0
     fi
 
     return 1
 }
 
+# @description Select the NVIDIA open module package for the configured kernel set
+# @noargs
+# @stdout Driver variant (open, open-lts or open-dkms)
+nvidia_get_open_variant() {
+    case "${NVIDIA_KERNEL_VARIANT:-both}" in
+    linux) echo "open" ;;
+    lts) echo "open-lts" ;;
+    *) echo "open-dkms" ;;
+    esac
+}
+
 # @description Get the default NVIDIA driver variant for the detected family
 # @noargs
-# @stdout Driver variant (open-dkms or nouveau)
+# @stdout Driver variant for the detected NVIDIA family
 get_nvidia_driver_variant() {
-    if nvidia_supports_open_dkms; then
-        echo "open-dkms"
-    else
-        echo "nouveau"
-    fi
+    local nvidia_family
+    nvidia_family=$(nvidia_get_family)
+
+    case "$nvidia_family" in
+    turing | ampere | ada | blackwell) nvidia_get_open_variant ;;
+    volta | pascal | maxwell) echo "legacy-580xx" ;;
+    kepler) echo "legacy-470xx" ;;
+    fermi) echo "legacy-390xx" ;;
+    tesla) echo "legacy-340xx" ;;
+    *) echo "nouveau" ;;
+    esac
 }
 
 # @description Validate the GPU driver package schema before selecting packages
@@ -531,10 +551,28 @@ validate_gpu_driver_config() {
         (.amd.pacman | type == "array") and
         (.intel.pacman | type == "array") and
         (.nvidia["legacy-580xx"].pacman | type == "array") and
+        (.nvidia["legacy-580xx"].aur | type == "array") and
+        (.nvidia["legacy-470xx"].pacman | type == "array") and
+        (.nvidia["legacy-470xx"].aur | type == "array") and
+        (.nvidia["legacy-390xx"].pacman | type == "array") and
+        (.nvidia["legacy-390xx"].aur | type == "array") and
+        (.nvidia["legacy-340xx"].pacman | type == "array") and
+        (.nvidia["legacy-340xx"].aur | type == "array") and
+        (.nvidia.open.pacman | type == "array") and
+        (.nvidia["open-lts"].pacman | type == "array") and
         (.nvidia["open-dkms"].pacman | type == "array") and
         (.nvidia.nouveau.pacman | type == "array") and
         (.hybrid["amd-intel"].pacman | type == "array") and
         (.hybrid["nvidia-intel"]["legacy-580xx"].pacman | type == "array") and
+        (.hybrid["nvidia-intel"]["legacy-580xx"].aur | type == "array") and
+        (.hybrid["nvidia-intel"]["legacy-470xx"].pacman | type == "array") and
+        (.hybrid["nvidia-intel"]["legacy-470xx"].aur | type == "array") and
+        (.hybrid["nvidia-intel"]["legacy-390xx"].pacman | type == "array") and
+        (.hybrid["nvidia-intel"]["legacy-390xx"].aur | type == "array") and
+        (.hybrid["nvidia-intel"]["legacy-340xx"].pacman | type == "array") and
+        (.hybrid["nvidia-intel"]["legacy-340xx"].aur | type == "array") and
+        (.hybrid["nvidia-intel"].open.pacman | type == "array") and
+        (.hybrid["nvidia-intel"]["open-lts"].pacman | type == "array") and
         (.hybrid["nvidia-intel"]["open-dkms"].pacman | type == "array") and
         (.hybrid["nvidia-intel"].nouveau.pacman | type == "array")
     ' "$json_file" >/dev/null 2>&1
@@ -546,12 +584,14 @@ validate_gpu_driver_config() {
 get_nvidia_driver_choice() {
     local supports_open=false
     local default_variant
-    local proprietary_variant="proprietary"
+    local proprietary_variant
+    local open_variant
     local -a options
     nvidia_supports_open_dkms && supports_open=true
     default_variant=$(get_nvidia_driver_variant)
-
-    if [[ "$default_variant" == "open-dkms" ]]; then
+    open_variant=$(nvidia_get_open_variant)
+    proprietary_variant="$default_variant"
+    if [[ "$supports_open" == true ]]; then
         proprietary_variant="legacy-580xx"
     fi
 
@@ -567,7 +607,12 @@ get_nvidia_driver_choice() {
     if [[ "$supports_open" == true ]]; then
         options=(
             "Proprietary (nvidia-580xx-dkms, AUR) - Best compatibility"
-            "Open-source Kernel (nvidia-open-dkms) - Open kernel module, good performance"
+            "Open-source Kernel (nvidia-$open_variant) - Open kernel module, good performance"
+            "Open-source (nouveau) - Free software, limited performance"
+        )
+    elif [[ "$proprietary_variant" != "nouveau" ]]; then
+        options=(
+            "Proprietary ($proprietary_variant, AUR) - Best compatibility"
             "Open-source (nouveau) - Free software, limited performance"
         )
     else
@@ -582,8 +627,14 @@ get_nvidia_driver_choice() {
     if [[ "$supports_open" == true ]]; then
         case $choice in
         0) echo "$proprietary_variant" ;;
-        1) echo "open-dkms" ;;
+        1) echo "$open_variant" ;;
         2) echo "nouveau" ;;
+        *) echo "$proprietary_variant" ;;
+        esac
+    elif [[ "$proprietary_variant" != "nouveau" ]]; then
+        case $choice in
+        0) echo "$proprietary_variant" ;;
+        1) echo "nouveau" ;;
         *) echo "$proprietary_variant" ;;
         esac
     else
@@ -804,7 +855,7 @@ install_packages_from_json() {
 
 # @description Install GPU drivers from JSON file
 # @arg $1 GPU type (vm, nvidia, amd, intel, hybrid, fallback)
-# @arg $2 Driver variant (open-dkms, legacy-580xx, nouveau) or "" for simple types
+# @arg $2 Driver variant (open, open-lts, open-dkms, legacy-* or nouveau) or "" for simple types
 # @arg $3 NVIDIA driver type (if hybrid, e.g., open-dkms or legacy-580xx)
 install_gpu_from_json() {
     local gpu_type="$1"
@@ -825,7 +876,7 @@ install_gpu_from_json() {
 
     if [[ "$gpu_type" == "nvidia" ]]; then
         case "$driver_variant" in
-        legacy-580xx | open-dkms | nouveau) ;;
+        open | open-lts | open-dkms | legacy-340xx | legacy-390xx | legacy-470xx | legacy-580xx | nouveau) ;;
         *)
             echo "Error: Invalid NVIDIA driver variant: $driver_variant"
             return 1
@@ -833,7 +884,7 @@ install_gpu_from_json() {
         esac
     elif [[ "$gpu_type" == "hybrid" && "$driver_variant" == "nvidia-intel" ]]; then
         case "$nvidia_type" in
-        legacy-580xx | open-dkms | nouveau) ;;
+            open | open-lts | open-dkms | legacy-340xx | legacy-390xx | legacy-470xx | legacy-580xx | nouveau) ;;
         *)
             echo "Error: Invalid NVIDIA hybrid driver variant: $nvidia_type"
             return 1
@@ -841,48 +892,47 @@ install_gpu_from_json() {
         esac
     fi
 
-    # Build JQ filter based on GPU type and variant
-    local jq_filter=""
-
+    local profile_path
     if [[ "$gpu_type" == "hybrid" ]]; then
-        local hybrid_profile="${driver_variant}"
-        if [[ "$hybrid_profile" == "nvidia-intel" ]]; then
+        if [[ "$driver_variant" != "nvidia-intel" ]]; then
+            profile_path=".hybrid[\"${driver_variant}\"]"
+        else
             if [[ -z "$nvidia_type" ]]; then
                 echo "Error: NVIDIA driver variant is required for nvidia-intel hybrid graphics"
                 return 1
             fi
-
-            # NVIDIA hybrid profile: .hybrid["nvidia-intel"][variant].pacman[].package
-            jq_filter='.hybrid["'"${hybrid_profile}"'"]["'"${nvidia_type}"'"]["pacman"][]["package"]'
-        else
-            # AMD hybrid: .hybrid["amd-intel"].pacman[].package
-            jq_filter='.hybrid["'"${hybrid_profile}"'"]["pacman"][]["package"]'
+            profile_path=".hybrid[\"nvidia-intel\"][\"${nvidia_type}\"]"
         fi
     elif [[ "$gpu_type" == "nvidia" ]]; then
-        # NVIDIA profile: .nvidia[variant].pacman[].package
-        jq_filter='.nvidia["'"${driver_variant}"'"]["pacman"][]["package"]'
+        profile_path=".nvidia[\"${driver_variant}\"]"
     else
-        # Simple types: .amd.pacman[].package
-        jq_filter=".${gpu_type}.pacman[].package"
+        profile_path=".${gpu_type}"
     fi
 
-    # Extract packages using JQ
-    local packages=()
+    local pacman_packages=()
+    local aur_packages=()
     while IFS= read -r package; do
-        [[ -n "$package" ]] && packages+=("$package")
-    done < <(jq --raw-output "$jq_filter" "$json_file" 2>/dev/null)
+        [[ -n "$package" ]] && pacman_packages+=("$package")
+    done < <(jq --raw-output "${profile_path}.pacman[]?.package" "$json_file" 2>/dev/null)
+    while IFS= read -r package; do
+        [[ -n "$package" ]] && aur_packages+=("$package")
+    done < <(jq --raw-output "${profile_path}.aur[]?.package" "$json_file" 2>/dev/null)
 
-    if [[ ${#packages[@]} -eq 0 ]]; then
+    if [[ ${#pacman_packages[@]} -eq 0 && ${#aur_packages[@]} -eq 0 ]]; then
         echo "Error: No packages found for GPU type: $gpu_type"
         return 1
     fi
 
-    echo "Installing ${#packages[@]} packages for $gpu_type..."
+    echo "Installing $((${#pacman_packages[@]} + ${#aur_packages[@]})) packages for $gpu_type..."
 
-    # Install packages using intelligent installation logic
     local failed=0
-    for package in "${packages[@]}"; do
-        if ! install_package_intelligent "$package"; then
+    for package in "${pacman_packages[@]}"; do
+        if ! install_package "$package" "pacman"; then
+            ((failed++))
+        fi
+    done
+    for package in "${aur_packages[@]}"; do
+        if ! install_package "$package" "aur"; then
             ((failed++))
         fi
     done
@@ -893,6 +943,7 @@ install_gpu_from_json() {
 
     # Save configuration
     set_option GPU_TYPE "$gpu_type"
+    set_option NVIDIA_KERNEL_VARIANT "${NVIDIA_KERNEL_VARIANT:-both}"
     if [[ "$gpu_type" == "hybrid" && -n "$nvidia_type" ]]; then
         set_option NVIDIA_DRIVER_TYPE "$nvidia_type"
     elif [[ -n "$driver_variant" ]]; then

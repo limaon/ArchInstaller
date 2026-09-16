@@ -10,10 +10,68 @@
     "legacy-580xx": {
       "pacman": [
         { "package": "dkms" },
+        { "package": "xorg-server" },
+        { "package": "xorg-xinit" }
+      ],
+      "aur": [
         { "package": "libva-nvidia-driver" },
         { "package": "nvidia-580xx-dkms" },
         { "package": "nvidia-580xx-settings" },
-        { "package": "nvidia-580xx-utils" },
+        { "package": "nvidia-580xx-utils" }
+      ]
+    },
+    "legacy-470xx": {
+      "pacman": [
+        { "package": "dkms" },
+        { "package": "xorg-server" },
+        { "package": "xorg-xinit" }
+      ],
+      "aur": [
+        { "package": "nvidia-470xx-dkms" },
+        { "package": "nvidia-470xx-settings" },
+        { "package": "nvidia-470xx-utils" }
+      ]
+    },
+    "legacy-390xx": {
+      "pacman": [
+        { "package": "dkms" },
+        { "package": "xorg-server" },
+        { "package": "xorg-xinit" }
+      ],
+      "aur": [
+        { "package": "nvidia-390xx-dkms" },
+        { "package": "nvidia-390xx-settings" },
+        { "package": "nvidia-390xx-utils" }
+      ]
+    },
+    "legacy-340xx": {
+      "pacman": [
+        { "package": "dkms" },
+        { "package": "xorg-server" },
+        { "package": "xorg-xinit" }
+      ],
+      "aur": [
+        { "package": "nvidia-340xx" },
+        { "package": "nvidia-340xx-settings" },
+        { "package": "nvidia-340xx-utils" }
+      ]
+    },
+    "open": {
+      "pacman": [
+        { "package": "libva-nvidia-driver" },
+        { "package": "nvidia-open" },
+        { "package": "nvidia-settings" },
+        { "package": "nvidia-utils" },
+        { "package": "xorg-server" },
+        { "package": "xorg-xinit" }
+      ]
+    },
+    "open-lts": {
+      "pacman": [
+        { "package": "libva-nvidia-driver" },
+        { "package": "nvidia-open-lts" },
+        { "package": "nvidia-settings" },
+        { "package": "nvidia-utils" },
         { "package": "xorg-server" },
         { "package": "xorg-xinit" }
       ]
@@ -75,14 +133,92 @@
     "nvidia-intel": {
       "legacy-580xx": {
         "pacman": [
+          { "package": "intel-media-driver" },
+          { "package": "libva-intel-driver" },
           { "package": "dkms" },
+          { "package": "mesa" },
+          { "package": "vulkan-intel" },
+          { "package": "xorg-server" },
+          { "package": "xorg-xinit" }
+        ],
+        "aur": [
+          { "package": "libva-nvidia-driver" },
+          { "package": "nvidia-580xx-dkms" },
+          { "package": "nvidia-580xx-settings" },
+          { "package": "nvidia-580xx-utils" }
+        ]
+      },
+      "legacy-470xx": {
+        "pacman": [
+          { "package": "intel-media-driver" },
+          { "package": "libva-intel-driver" },
+          { "package": "dkms" },
+          { "package": "mesa" },
+          { "package": "vulkan-intel" },
+          { "package": "xorg-server" },
+          { "package": "xorg-xinit" }
+        ],
+        "aur": [
+          { "package": "nvidia-470xx-dkms" },
+          { "package": "nvidia-470xx-settings" },
+          { "package": "nvidia-470xx-utils" }
+        ]
+      },
+      "legacy-390xx": {
+        "pacman": [
+          { "package": "intel-media-driver" },
+          { "package": "libva-intel-driver" },
+          { "package": "dkms" },
+          { "package": "mesa" },
+          { "package": "vulkan-intel" },
+          { "package": "xorg-server" },
+          { "package": "xorg-xinit" }
+        ],
+        "aur": [
+          { "package": "nvidia-390xx-dkms" },
+          { "package": "nvidia-390xx-settings" },
+          { "package": "nvidia-390xx-utils" }
+        ]
+      },
+      "legacy-340xx": {
+        "pacman": [
+          { "package": "intel-media-driver" },
+          { "package": "libva-intel-driver" },
+          { "package": "dkms" },
+          { "package": "mesa" },
+          { "package": "vulkan-intel" },
+          { "package": "xorg-server" },
+          { "package": "xorg-xinit" }
+        ],
+        "aur": [
+          { "package": "nvidia-340xx" },
+          { "package": "nvidia-340xx-settings" },
+          { "package": "nvidia-340xx-utils" }
+        ]
+      },
+      "open": {
+        "pacman": [
           { "package": "intel-media-driver" },
           { "package": "libva-intel-driver" },
           { "package": "libva-nvidia-driver" },
           { "package": "mesa" },
-          { "package": "nvidia-580xx-dkms" },
-          { "package": "nvidia-580xx-settings" },
-          { "package": "nvidia-580xx-utils" },
+          { "package": "nvidia-open" },
+          { "package": "nvidia-settings" },
+          { "package": "nvidia-utils" },
+          { "package": "vulkan-intel" },
+          { "package": "xorg-server" },
+          { "package": "xorg-xinit" }
+        ]
+      },
+      "open-lts": {
+        "pacman": [
+          { "package": "intel-media-driver" },
+          { "package": "libva-intel-driver" },
+          { "package": "libva-nvidia-driver" },
+          { "package": "mesa" },
+          { "package": "nvidia-open-lts" },
+          { "package": "nvidia-settings" },
+          { "package": "nvidia-utils" },
           { "package": "vulkan-intel" },
           { "package": "xorg-server" },
           { "package": "xorg-xinit" }
