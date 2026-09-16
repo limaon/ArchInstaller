@@ -100,6 +100,18 @@ desktop_environment() {
     set_option DESKTOP_ENV "$desktop_env"
 }
 
+# @description Choose whether to install optional 32-bit graphics libraries.
+# @noargs
+configure_32bit_graphics() {
+    echo -e "\nInstall optional 32-bit graphics libraries for Steam, Wine, and 32-bit games?"
+    local options=("No" "Yes")
+    if select_option ${#options[@]} 1 "${options[@]}"; then
+        set_option ENABLE_32BIT_GRAPHICS false
+    else
+        set_option ENABLE_32BIT_GRAPHICS true
+    fi
+}
+
 # @description Disk selection for drive to be used with installation.
 # @noargs
 disk_select() {
@@ -384,10 +396,11 @@ Do you want to redo any step? Select an option below, or press Enter to proceed:
         echo "8) System Language (Locale)"
         echo "9) Keyboard Layout"
         echo "10) Graphics Card and Driver"
+        echo "11) 32-bit Graphics Libraries"
 
         # Only show Desktop, AUR, Filesystem, Timezone, Locale, Keyboard if not SERVER
         if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
-            echo "11) Re-select File System" # Extra option
+            echo "12) Re-select File System" # Extra option
         fi
 
         echo "------------------------------------------------------------------------
@@ -469,6 +482,20 @@ Do you want to redo any step? Select an option below, or press Enter to proceed:
         10)
             if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
                 configure_gpu_selection
+            else
+                echo "Invalid option. Please try again."
+            fi
+            ;;
+        11)
+            if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                configure_32bit_graphics
+            else
+                echo "Invalid option. Please try again."
+            fi
+            ;;
+        12)
+            if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
+                filesystem
             else
                 echo "Invalid option. Please try again."
             fi

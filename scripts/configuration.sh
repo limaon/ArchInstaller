@@ -31,6 +31,9 @@ if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
     clear
     show_logo
     configure_gpu_selection
+    clear
+    show_logo
+    configure_32bit_graphics
 fi
 clear
 show_logo

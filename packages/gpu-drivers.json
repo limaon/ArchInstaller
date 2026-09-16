@@ -4,7 +4,8 @@
       { "package": "mesa" },
       { "package": "xorg-server" },
       { "package": "xorg-xinit" }
-    ]
+    ],
+    "lib32": [{ "package": "lib32-mesa" }]
   },
   "nvidia": {
     "legacy-580xx": {
@@ -13,6 +14,7 @@
         { "package": "xorg-server" },
         { "package": "xorg-xinit" }
       ],
+      "lib32": [{ "package": "lib32-nvidia-580xx-utils", "source": "aur" }],
       "aur": [
         { "package": "libva-nvidia-driver" },
         { "package": "nvidia-580xx-dkms" },
@@ -26,6 +28,7 @@
         { "package": "xorg-server" },
         { "package": "xorg-xinit" }
       ],
+      "lib32": [{ "package": "lib32-nvidia-470xx-utils", "source": "aur" }],
       "aur": [
         { "package": "nvidia-470xx-dkms" },
         { "package": "nvidia-470xx-settings" },
@@ -38,6 +41,7 @@
         { "package": "xorg-server" },
         { "package": "xorg-xinit" }
       ],
+      "lib32": [{ "package": "lib32-nvidia-390xx-utils", "source": "aur" }],
       "aur": [
         { "package": "nvidia-390xx-dkms" },
         { "package": "nvidia-390xx-settings" },
@@ -50,6 +54,7 @@
         { "package": "xorg-server" },
         { "package": "xorg-xinit" }
       ],
+      "lib32": [{ "package": "lib32-nvidia-340xx-utils", "source": "aur" }],
       "aur": [
         { "package": "nvidia-340xx" },
         { "package": "nvidia-340xx-settings" },
@@ -64,7 +69,8 @@
         { "package": "nvidia-utils" },
         { "package": "xorg-server" },
         { "package": "xorg-xinit" }
-      ]
+      ],
+      "lib32": [{ "package": "lib32-nvidia-utils" }]
     },
     "open-lts": {
       "pacman": [
@@ -74,7 +80,8 @@
         { "package": "nvidia-utils" },
         { "package": "xorg-server" },
         { "package": "xorg-xinit" }
-      ]
+      ],
+      "lib32": [{ "package": "lib32-nvidia-utils" }]
     },
     "open-dkms": {
       "pacman": [
@@ -85,7 +92,8 @@
         { "package": "nvidia-utils" },
         { "package": "xorg-server" },
         { "package": "xorg-xinit" }
-      ]
+      ],
+      "lib32": [{ "package": "lib32-nvidia-utils" }]
     },
     "nouveau": {
       "pacman": [
@@ -94,6 +102,10 @@
         { "package": "xf86-video-nouveau" },
         { "package": "xorg-server" },
         { "package": "xorg-xinit" }
+      ],
+      "lib32": [
+        { "package": "lib32-mesa" },
+        { "package": "lib32-vulkan-nouveau" }
       ]
     }
   },
@@ -105,7 +117,8 @@
       { "package": "xf86-video-ati" },
       { "package": "xorg-server" },
       { "package": "xorg-xinit" }
-    ]
+    ],
+    "lib32": [{ "package": "lib32-mesa" }, { "package": "lib32-vulkan-radeon" }]
   },
   "intel": {
     "pacman": [
@@ -115,7 +128,8 @@
       { "package": "vulkan-intel" },
       { "package": "xorg-server" },
       { "package": "xorg-xinit" }
-    ]
+    ],
+    "lib32": [{ "package": "lib32-mesa" }, { "package": "lib32-vulkan-intel" }]
   },
   "hybrid": {
     "amd-intel": {
@@ -128,6 +142,11 @@
         { "package": "xf86-video-amdgpu" },
         { "package": "xorg-server" },
         { "package": "xorg-xinit" }
+      ],
+      "lib32": [
+        { "package": "lib32-mesa" },
+        { "package": "lib32-vulkan-intel" },
+        { "package": "lib32-vulkan-radeon" }
       ]
     },
     "nvidia-intel": {
@@ -141,6 +160,7 @@
           { "package": "xorg-server" },
           { "package": "xorg-xinit" }
         ],
+        "lib32": [{ "package": "lib32-nvidia-580xx-utils", "source": "aur" }],
         "aur": [
           { "package": "libva-nvidia-driver" },
           { "package": "nvidia-580xx-dkms" },
@@ -158,6 +178,7 @@
           { "package": "xorg-server" },
           { "package": "xorg-xinit" }
         ],
+        "lib32": [{ "package": "lib32-nvidia-470xx-utils", "source": "aur" }],
         "aur": [
           { "package": "nvidia-470xx-dkms" },
           { "package": "nvidia-470xx-settings" },
@@ -174,6 +195,7 @@
           { "package": "xorg-server" },
           { "package": "xorg-xinit" }
         ],
+        "lib32": [{ "package": "lib32-nvidia-390xx-utils", "source": "aur" }],
         "aur": [
           { "package": "nvidia-390xx-dkms" },
           { "package": "nvidia-390xx-settings" },
@@ -190,6 +212,7 @@
           { "package": "xorg-server" },
           { "package": "xorg-xinit" }
         ],
+        "lib32": [{ "package": "lib32-nvidia-340xx-utils", "source": "aur" }],
         "aur": [
           { "package": "nvidia-340xx" },
           { "package": "nvidia-340xx-settings" },
@@ -208,6 +231,11 @@
           { "package": "vulkan-intel" },
           { "package": "xorg-server" },
           { "package": "xorg-xinit" }
+        ],
+        "lib32": [
+          { "package": "lib32-mesa" },
+          { "package": "lib32-nvidia-utils" },
+          { "package": "lib32-vulkan-intel" }
         ]
       },
       "open-lts": {
@@ -222,6 +250,11 @@
           { "package": "vulkan-intel" },
           { "package": "xorg-server" },
           { "package": "xorg-xinit" }
+        ],
+        "lib32": [
+          { "package": "lib32-mesa" },
+          { "package": "lib32-nvidia-utils" },
+          { "package": "lib32-vulkan-intel" }
         ]
       },
       "open-dkms": {
@@ -237,6 +270,11 @@
           { "package": "vulkan-intel" },
           { "package": "xorg-server" },
           { "package": "xorg-xinit" }
+        ],
+        "lib32": [
+          { "package": "lib32-mesa" },
+          { "package": "lib32-nvidia-utils" },
+          { "package": "lib32-vulkan-intel" }
         ]
       },
       "nouveau": {
@@ -249,6 +287,11 @@
           { "package": "xf86-video-nouveau" },
           { "package": "xorg-server" },
           { "package": "xorg-xinit" }
+        ],
+        "lib32": [
+          { "package": "lib32-mesa" },
+          { "package": "lib32-vulkan-intel" },
+          { "package": "lib32-vulkan-nouveau" }
         ]
       }
     }

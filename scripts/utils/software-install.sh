@@ -911,19 +911,30 @@ install_gpu_from_json() {
 
     local pacman_packages=()
     local aur_packages=()
+    local lib32_packages=()
+    local lib32_sources=()
     while IFS= read -r package; do
         [[ -n "$package" ]] && pacman_packages+=("$package")
     done < <(jq --raw-output "${profile_path}.pacman[]?.package" "$json_file" 2>/dev/null)
     while IFS= read -r package; do
         [[ -n "$package" ]] && aur_packages+=("$package")
     done < <(jq --raw-output "${profile_path}.aur[]?.package" "$json_file" 2>/dev/null)
+    if [[ "${ENABLE_32BIT_GRAPHICS:-false}" == true ]]; then
+        while IFS=$'\t' read -r package source; do
+            if [[ -n "$package" ]]; then
+                lib32_packages+=("$package")
+                lib32_sources+=("${source:-pacman}")
+            fi
+        done < <(jq --raw-output "${profile_path}.lib32[]? | [.package, (.source // \"pacman\")] | @tsv" "$json_file" 2>/dev/null)
+    fi
 
-    if [[ ${#pacman_packages[@]} -eq 0 && ${#aur_packages[@]} -eq 0 ]]; then
+    if [[ ${#pacman_packages[@]} -eq 0 && ${#aur_packages[@]} -eq 0 &&
+        ${#lib32_packages[@]} -eq 0 ]]; then
         echo "Error: No packages found for GPU type: $gpu_type"
         return 1
     fi
 
-    echo "Installing $((${#pacman_packages[@]} + ${#aur_packages[@]})) packages for $gpu_type..."
+    echo "Installing $((${#pacman_packages[@]} + ${#aur_packages[@]} + ${#lib32_packages[@]})) packages for $gpu_type..."
 
     local failed=0
     for package in "${pacman_packages[@]}"; do
@@ -933,6 +944,11 @@ install_gpu_from_json() {
     done
     for package in "${aur_packages[@]}"; do
         if ! install_package "$package" "aur"; then
+            ((failed++))
+        fi
+    done
+    for package in "${!lib32_packages[@]}"; do
+        if ! install_package "${lib32_packages[$package]}" "${lib32_sources[$package]}"; then
             ((failed++))
         fi
     done
