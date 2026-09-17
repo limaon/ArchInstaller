@@ -271,6 +271,63 @@ set_option() {
     fi
 }
 
+# @description Set an array option in setup.conf
+# @arg $1 string Configuration variable.
+# @arg $@ string Array values.
+set_array_option() {
+    local key="${1:-}"
+    local config_dir
+    local temp_file
+    shift || true
+
+    if [[ ! "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+        echo "ERROR: Invalid configuration key: $key" >&2
+        return 1
+    fi
+    if [[ -z "${CONFIG_FILE:-}" ]]; then
+        echo "ERROR: CONFIG_FILE is not set" >&2
+        return 1
+    fi
+
+    config_dir=$(dirname -- "$CONFIG_FILE") || return 1
+    if ! mkdir -p -- "$config_dir"; then
+        echo "ERROR: Could not create configuration directory: $config_dir" >&2
+        return 1
+    fi
+    if [[ -L "$CONFIG_FILE" || -d "$CONFIG_FILE" ]]; then
+        echo "ERROR: Configuration path is not a regular file: $CONFIG_FILE" >&2
+        return 1
+    fi
+
+    temp_file=$(mktemp -- "$CONFIG_FILE.tmp.XXXXXX") || {
+        echo "ERROR: Could not create temporary configuration file" >&2
+        return 1
+    }
+
+    if [[ -f "$CONFIG_FILE" ]] && ! sed -E "/^${key}=.*/d" "$CONFIG_FILE" >"$temp_file"; then
+        rm -f -- "$temp_file"
+        echo "ERROR: Could not read configuration file: $CONFIG_FILE" >&2
+        return 1
+    fi
+    if ! printf '%s=(' "$key" >>"$temp_file"; then
+        rm -f -- "$temp_file"
+        echo "ERROR: Could not write configuration file: $CONFIG_FILE" >&2
+        return 1
+    fi
+    for value in "$@"; do
+        if ! printf ' %q' "$value" >>"$temp_file"; then
+            rm -f -- "$temp_file"
+            echo "ERROR: Could not write configuration file: $CONFIG_FILE" >&2
+            return 1
+        fi
+    done
+    if ! printf ')\n' >>"$temp_file" || ! mv -- "$temp_file" "$CONFIG_FILE"; then
+        rm -f -- "$temp_file"
+        echo "ERROR: Could not replace configuration file: $CONFIG_FILE" >&2
+        return 1
+    fi
+}
+
 # Renders a text-based list of options that can be selected by the
 # user using up, down, and enter keys and returns the chosen option.
 #

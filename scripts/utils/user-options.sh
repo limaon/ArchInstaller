@@ -112,6 +112,23 @@ configure_32bit_graphics() {
     fi
 }
 
+# @description Choose whether to install switcheroo-control for hybrid graphics.
+# @noargs
+configure_switcheroo_control() {
+    if [[ "${GPU_TYPE:-}" != "hybrid" ]]; then
+        set_option ENABLE_SWITCHEROO_CONTROL false || return 1
+        return 0
+    fi
+
+    echo -e "\nEnable switcheroo-control for automatic hybrid GPU offloading?"
+    local options=("No" "Yes")
+    if select_option ${#options[@]} 1 "${options[@]}"; then
+        set_option ENABLE_SWITCHEROO_CONTROL false || return 1
+    else
+        set_option ENABLE_SWITCHEROO_CONTROL true || return 1
+    fi
+}
+
 # @description Disk selection for drive to be used with installation.
 # @noargs
 disk_select() {
@@ -235,7 +252,7 @@ set_btrfs() {
     # If no subvolumes are provided, use the defaults as per the article
     # Note: @swap is included for dedicated swap subvolume (required for btrfs snapshots compatibility)
     if [[ -z "${ARR[*]}" ]]; then
-        set_option "SUBVOLUMES" "(@ @docker @flatpak @home @opt @snapshots @swap @var_cache @var_log @var_tmp)" || return 1
+        set_array_option "SUBVOLUMES" @ @docker @flatpak @home @opt @snapshots @swap @var_cache @var_log @var_tmp || return 1
     else
         NAMES=("@")
         for i in "${ARR[@]}"; do
@@ -247,7 +264,7 @@ set_btrfs() {
         done
         # Remove duplicates
         IFS=" " read -r -a SUBS <<<"$(tr ' ' '\n' <<<"${NAMES[@]}" | awk '!x[$0]++' | tr '\n' ' ')"
-        set_option "SUBVOLUMES" "${SUBS[*]}" || return 1
+        set_array_option "SUBVOLUMES" "${SUBS[@]}" || return 1
     fi
 
     set_option "MOUNTPOINT" "/mnt" || return 1
@@ -503,6 +520,7 @@ Do you want to redo any step? Select an option below, or press Enter to proceed:
         10)
             if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
                 configure_gpu_selection
+                configure_switcheroo_control
             else
                 echo "Invalid option. Please try again."
             fi

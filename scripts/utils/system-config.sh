@@ -36,6 +36,54 @@ mirrorlist_update() {
     fi
 }
 
+# @description Deactivate mounts and LVM volume groups on the selected disk
+# @arg $1 Disk device path
+# @return 1 when a mounted filesystem or volume group cannot be deactivated
+prepare_disk_for_format() {
+    local disk="$1"
+    local device
+    local device_type
+    local mountpoint
+    local volume_group
+    local -a partitions=()
+    local -A volume_groups=()
+
+    while IFS=$'\t' read -r device device_type mountpoint; do
+        [[ -z "$device" ]] && continue
+        if [[ "$device_type" == "part" ]]; then
+            partitions+=("$device")
+        fi
+
+        if [[ -n "$mountpoint" && "$mountpoint" != "-" ]]; then
+            echo "Unmounting $mountpoint from $device..."
+            if ! umount --recursive "$mountpoint"; then
+                echo "ERROR: Failed to unmount $mountpoint"
+                return 1
+            fi
+        fi
+    done < <(lsblk -nrpo NAME,TYPE,MOUNTPOINT "$disk" 2>/dev/null | awk '{print $1 "\t" $2 "\t" $3}')
+
+    if command -v pvs &>/dev/null && command -v vgchange &>/dev/null; then
+        for device in "${partitions[@]}"; do
+            while IFS= read -r volume_group; do
+                [[ -n "$volume_group" ]] && volume_groups["$volume_group"]=1
+            done < <(pvs --noheadings --readonly -o vg_name "$device" 2>/dev/null | awk 'NF {print $1}')
+        done
+
+        for volume_group in "${!volume_groups[@]}"; do
+            echo "Deactivating LVM volume group $volume_group..."
+            if ! vgchange --activate n "$volume_group"; then
+                echo "ERROR: Failed to deactivate LVM volume group $volume_group"
+                return 1
+            fi
+        done
+    fi
+
+    if command -v udevadm &>/dev/null; then
+        udevadm settle
+    fi
+}
+
 # @description Format disk before creating filesystem(s)
 # @noargs
 format_disk() {
@@ -56,6 +104,11 @@ format_disk() {
 
     mkdir -p /mnt &>/dev/null
     umount -A --recursive /mnt &>/dev/null
+
+    if ! prepare_disk_for_format "$DISK"; then
+        echo "ERROR: Selected disk is still in use; refusing to format it"
+        exit 1
+    fi
 
     set -e
 
@@ -942,6 +995,12 @@ locale_config() {
     "
 }
 
+# @description Check whether the selected installation needs the multilib repo
+# @return 0 when multilib packages will be installed
+multilib_required() {
+    [[ "${INSTALL_TYPE:-}" == "FULL" || "${ENABLE_32BIT_GRAPHICS:-false}" == true ]]
+}
+
 # @description Adds multilib and chaotic-aur repo to get precompiled aur packages
 # @noargs
 extra_repos() {
@@ -951,9 +1010,12 @@ extra_repos() {
 -------------------------------------------------------------------------
 "
 
-    # Enable multilib
-    echo -e "\n Enabling multilib"
-    sed -i "/\[multilib\]/,/Include/"'s/^#//' /etc/pacman.conf
+    if multilib_required; then
+        echo -e "\n Enabling multilib"
+        sed -i "/\[multilib\]/,/Include/"'s/^#//' /etc/pacman.conf
+    else
+        echo -e "\n Multilib not required; keeping it disabled"
+    fi
 
     # echo -e "\n Importing chaotic aur keyring"
     # Enable chaotic-aur
@@ -1355,6 +1417,33 @@ grub_config() {
     echo "GRUB configuration complete."
 }
 
+# @description Calculate kernel parameters required to resume from a swapfile
+# @arg $1 Swapfile path
+# @return 0 with resume and resume_offset parameters, 1 if unavailable
+get_swapfile_resume_parameters() {
+    local swap_path="$1"
+    local filesystem_type
+    local filesystem_uuid
+    local resume_offset
+
+    filesystem_type=$(findmnt -no FSTYPE -T "$swap_path" 2>/dev/null) || return 1
+    filesystem_uuid=$(findmnt -no UUID -T "$swap_path" 2>/dev/null) || return 1
+    [[ -n "$filesystem_uuid" ]] || return 1
+
+    case "$filesystem_type" in
+        btrfs)
+            resume_offset=$(btrfs inspect-internal map-swapfile -r "$swap_path" 2>/dev/null) || return 1
+            ;;
+        *)
+            resume_offset=$(filefrag -v "$swap_path" 2>/dev/null |
+                awk '$1 == "0:" {split($4, extent, /\.\./); gsub(/[^0-9]/, "", extent[1]); print extent[1]; exit}')
+            ;;
+    esac
+
+    [[ "$resume_offset" =~ ^[0-9]+$ ]] || return 1
+    printf 'resume=UUID=%s resume_offset=%s\n' "$filesystem_uuid" "$resume_offset"
+}
+
 # @description Configure hibernation resume parameter for GRUB
 # @noargs
 _configure_hibernation() {
@@ -1371,19 +1460,12 @@ _configure_hibernation() {
     echo -e "\nConfiguring GRUB for hibernation support..."
     echo "Swap file found at: $swap_path"
 
-    local swap_uuid=""
-    swap_uuid=$(blkid -s UUID -o value "$swap_path" 2>/dev/null)
-    [[ -z "$swap_uuid" ]] && swap_uuid=$(swapon --show=UUID --noheadings "$swap_path" 2>/dev/null | tr -d '[:space:]')
-    [[ -z "$swap_uuid" ]] && swap_uuid=$(findmnt -no UUID -T "$swap_path" 2>/dev/null)
-
-    local resume_param=""
-    if [[ -n "$swap_uuid" ]]; then
-        resume_param="resume=UUID=$swap_uuid"
-        echo "Detected swap file UUID: $swap_uuid"
-    else
-        resume_param="resume=$swap_path"
-        echo "Warning: Could not detect swap file UUID, using file path: $swap_path"
+    local resume_param
+    if ! resume_param=$(get_swapfile_resume_parameters "$swap_path"); then
+        echo "Warning: Could not calculate swapfile resume parameters; skipping hibernation configuration"
+        return
     fi
+    echo "Detected swapfile resume parameters: $resume_param"
 
     if grep -q "resume=" /etc/default/grub; then
         echo "Resume parameter already configured in GRUB"
@@ -1759,6 +1841,26 @@ configure_pipewire() {
     echo "  /etc/wireplumber/  (system-wide)"
     echo "  ~/.config/wireplumber/  (user-specific)"
 }
+
+# @description Normalize configured btrfs subvolumes into an array
+# @noargs
+normalize_btrfs_subvolumes() {
+    if [[ -z "${SUBVOLUMES+x}" ]]; then
+        SUBVOLUMES=(@ @docker @flatpak @home @opt @snapshots @swap @var_cache @var_log @var_tmp)
+    elif ! declare -p SUBVOLUMES 2>/dev/null | grep -q "declare -a"; then
+        local legacy_subvolumes="${SUBVOLUMES#\(}"
+        legacy_subvolumes="${legacy_subvolumes%\)}"
+        read -r -a SUBVOLUMES <<<"$legacy_subvolumes"
+        echo "WARNING: Converted legacy SUBVOLUMES configuration to an array"
+    fi
+
+    if ! declare -p SUBVOLUMES 2>/dev/null | grep -q "declare -a" \
+        || [[ ${#SUBVOLUMES[@]} -eq 0 || "${SUBVOLUMES[0]}" != "@" ]]; then
+        echo "ERROR: SUBVOLUMES must be a non-empty array starting with @"
+        return 1
+    fi
+}
+
 # @description Perform btrfs filesystem configuration
 # @noargs
 do_btrfs() {
@@ -1768,9 +1870,8 @@ do_btrfs() {
 -------------------------------------------------------------------------
 "
 
-    if [[ -z "${SUBVOLUMES+x}" ]] || ! declare -p SUBVOLUMES 2>/dev/null | grep -q "declare -a"; then
-        echo "WARNING: SUBVOLUMES not set, using default subvolumes"
-        SUBVOLUMES=(@ @docker @flatpak @home @opt @snapshots @swap @var_cache @var_log @var_tmp)
+    if ! normalize_btrfs_subvolumes; then
+        exit 1
     fi
 
     echo -e "Creating btrfs device $1 on $2 \\n"
@@ -1794,11 +1895,6 @@ do_btrfs() {
     fi
 
     echo "Creating subvolumes and directories"
-
-    if ! declare -p SUBVOLUMES 2>/dev/null | grep -q "declare -a"; then
-        echo "ERROR: SUBVOLUMES is not an array"
-        exit 1
-    fi
 
     for x in "${SUBVOLUMES[@]}"; do
         echo "Creating subvolume: $x"
@@ -1885,6 +1981,7 @@ configure_nvidia_kernel_modules() {
 
     cat >"$modprobe_config_file" <<'EOF'
 options nvidia_drm modeset=1
+blacklist nouveau
 EOF
 
     local modules_line
@@ -1906,6 +2003,27 @@ EOF
         sed -i "s|^MODULES=.*|MODULES=(${modules[*]})|" "$mkinitcpio_config_file"
     else
         sed -i "1i MODULES=(${modules[*]})" "$mkinitcpio_config_file"
+    fi
+}
+
+configure_nvidia_power_management() {
+    local driver_type="${NVIDIA_DRIVER_TYPE:-}"
+
+    if [[ "${GPU_DRIVERS_INSTALLED:-false}" != true ]]; then
+        return 0
+    fi
+
+    case "${GPU_TYPE:-}" in
+        nvidia | hybrid) ;;
+        *) return 0 ;;
+    esac
+
+    if [[ -z "$driver_type" || "$driver_type" == "nouveau" ]]; then
+        return 0
+    fi
+
+    if ! systemctl enable nvidia-suspend.service nvidia-hibernate.service nvidia-resume.service; then
+        echo "Warning: NVIDIA power-management services could not be enabled"
     fi
 }
 
@@ -1956,6 +2074,10 @@ configure_xorg_gpu() {
             gpu_type="Nouveau Optimus (Intel + NVIDIA)"
             cat >"$xorg_config_file" <<'EOF'
 # Xorg Configuration: Nouveau Optimus (Hybrid GPU)
+Section "ServerFlags"
+    Option "AutoAddGPU" "off"
+EndSection
+
 Section "OutputClass"
     Identifier "intel"
     MatchDriver "i915"
@@ -1972,6 +2094,10 @@ EOF
             gpu_type="NVIDIA Optimus (Intel + NVIDIA)"
             cat >"$xorg_config_file" <<'EOF'
 # Xorg Configuration: NVIDIA Optimus (Hybrid GPU)
+Section "ServerFlags"
+    Option "AutoAddGPU" "off"
+EndSection
+
 Section "OutputClass"
     Identifier "intel"
     MatchDriver "i915"
@@ -2081,6 +2207,7 @@ EOF
 
 configure_xorg_display() {
     local monitor_count=0
+    local xorg_display_config_file="${XORG_DISPLAY_CONFIG_FILE:-/etc/X11/xorg.conf.d/50-monitor.conf}"
 
     echo -ne "
 -------------------------------------------------------------------------
@@ -2096,27 +2223,18 @@ configure_xorg_display() {
         monitor_count=1
     fi
 
-    mkdir -p /etc/X11/xorg.conf.d
+    mkdir -p "$(dirname "$xorg_display_config_file")"
 
     if [[ $monitor_count -eq 1 ]]; then
-        cat >/etc/X11/xorg.conf.d/50-monitor.conf <<'EOF'
+        cat >"$xorg_display_config_file" <<'EOF'
 # Xorg Configuration: Single Monitor Display
 Section "Monitor"
     Identifier "Primary"
     Option "Primary" "true"
 EndSection
-
-Section "Screen"
-    Identifier "Screen0"
-    Monitor "Primary"
-    DefaultDepth 24
-    SubSection "Display"
-        Depth 24
-    EndSubSection
-EndSection
 EOF
     else
-        cat >/etc/X11/xorg.conf.d/50-monitor.conf <<'EOF'
+        cat >"$xorg_display_config_file" <<'EOF'
 # Xorg Configuration: Multi-Monitor Display
 Section "Monitor"
     Identifier "Primary"
@@ -2126,15 +2244,6 @@ EndSection
 Section "Monitor"
     Identifier "Secondary"
     Option "RightOf" "Primary"
-EndSection
-
-Section "Screen"
-    Identifier "Screen0"
-    Monitor "Primary"
-    DefaultDepth 24
-    SubSection "Display"
-        Depth 24
-    EndSubSection
 EndSection
 EOF
     fi

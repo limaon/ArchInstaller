@@ -34,6 +34,9 @@ if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
     clear
     show_logo
     configure_32bit_graphics
+    clear
+    show_logo
+    configure_switcheroo_control
 fi
 clear
 show_logo

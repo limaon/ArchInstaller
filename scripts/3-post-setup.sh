@@ -69,6 +69,7 @@ if [[ "${FS}" == "btrfs" || "${FS}" == "luks" ]] && ! command -v btrfs &>/dev/nu
 fi
 
 configure_nvidia_kernel_modules
+configure_nvidia_power_management
 
 if ! mkinitcpio -P; then
     echo "ERROR: Failed to rebuild initramfs presets"

@@ -1007,6 +1007,24 @@ install_gpu_from_json() {
     return 0
 }
 
+# @description Install and enable optional hybrid GPU offloading support
+# @noargs
+install_switcheroo_control() {
+    if [[ "${GPU_TYPE:-}" != "hybrid" || "${ENABLE_SWITCHEROO_CONTROL:-false}" != true ]]; then
+        return 0
+    fi
+
+    if ! install_package switcheroo-control pacman; then
+        echo "Error: Failed to install switcheroo-control"
+        return 1
+    fi
+
+    if ! sudo systemctl enable switcheroo-control.service; then
+        echo "Error: Failed to enable switcheroo-control.service"
+        return 1
+    fi
+}
+
 # @description Installs graphics drivers depending on detected gpu
 # @noargs
 graphics_install() {
@@ -1038,7 +1056,11 @@ graphics_install() {
         # Check for hybrid graphics
         if detect_hybrid_graphics; then
             echo "Hybrid graphics detected ($detected_gpu + Intel)"
-            install_gpu_from_json "hybrid" "$hybrid_profile" "$nvidia_driver_type"
+            if ! install_gpu_from_json "hybrid" "$hybrid_profile" "$nvidia_driver_type"; then
+                return 1
+            fi
+            install_switcheroo_control
+            return $?
         else
             install_gpu_from_json "$detected_gpu" "$nvidia_driver_type"
         fi
