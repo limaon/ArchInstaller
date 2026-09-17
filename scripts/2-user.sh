@@ -12,7 +12,15 @@ for filename in "$HOME"/archinstaller/scripts/utils/*.sh; do
     # shellcheck source=./utils/*.sh
     source "$filename"
 done
-source "$HOME"/archinstaller/configs/setup.conf
+CONFIG_FILE=$(config_file_for_context shared "$(id -un)") || {
+    echo "ERROR: Could not resolve user configuration path"
+    exit 1
+}
+export CONFIG_FILE
+if ! source "$CONFIG_FILE"; then
+    echo "ERROR: Could not load user configuration: $CONFIG_FILE"
+    exit 1
+fi
 
 show_logo
 

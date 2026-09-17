@@ -665,26 +665,39 @@ configure_gpu_selection() {
     detected_gpu=$(detect_gpu)
 
     if detect_vm >/dev/null; then
-        set_option GPU_TYPE "vm"
-        set_option GPU_DRIVER "vm"
-        return 0
-    fi
-
-    if [[ "$detected_gpu" == "nvidia" || "$detected_gpu" == "amd" ]] && detect_hybrid_graphics; then
-        set_option GPU_TYPE "hybrid"
-        set_option GPU_DRIVER "$detected_gpu"
-        set_option GPU_SECONDARY_VENDOR "intel"
-        if [[ "$detected_gpu" == "nvidia" ]]; then
-            set_option NVIDIA_DRIVER_TYPE "$(get_nvidia_driver_choice)"
+        if ! set_option GPU_TYPE "vm" || ! set_option GPU_DRIVER "vm"; then
+            echo "ERROR: Failed to save virtual machine GPU configuration"
+            return 1
         fi
         return 0
     fi
 
-    set_option GPU_TYPE "$detected_gpu"
-    set_option GPU_DRIVER "$detected_gpu"
+    if [[ "$detected_gpu" == "nvidia" || "$detected_gpu" == "amd" ]] && detect_hybrid_graphics; then
+        if ! set_option GPU_TYPE "hybrid" ||
+            ! set_option GPU_DRIVER "$detected_gpu" ||
+            ! set_option GPU_SECONDARY_VENDOR "intel"; then
+            echo "ERROR: Failed to save hybrid GPU configuration"
+            return 1
+        fi
+        if [[ "$detected_gpu" == "nvidia" ]]; then
+            if ! set_option NVIDIA_DRIVER_TYPE "$(get_nvidia_driver_choice)"; then
+                echo "ERROR: Failed to save NVIDIA driver configuration"
+                return 1
+            fi
+        fi
+        return 0
+    fi
+
+    if ! set_option GPU_TYPE "$detected_gpu" || ! set_option GPU_DRIVER "$detected_gpu"; then
+        echo "ERROR: Failed to save GPU configuration"
+        return 1
+    fi
 
     if [[ "$detected_gpu" == "nvidia" ]]; then
-        set_option NVIDIA_DRIVER_TYPE "$(get_nvidia_driver_choice)"
+        if ! set_option NVIDIA_DRIVER_TYPE "$(get_nvidia_driver_choice)"; then
+            echo "ERROR: Failed to save NVIDIA driver configuration"
+            return 1
+        fi
     fi
 }
 
@@ -971,14 +984,23 @@ install_gpu_from_json() {
         return 1
     fi
 
-    # Save configuration
-    set_option GPU_DRIVERS_INSTALLED true
-    set_option GPU_TYPE "$gpu_type"
-    set_option NVIDIA_KERNEL_VARIANT "${NVIDIA_KERNEL_VARIANT:-both}"
+    # Save configuration only after every package was installed successfully.
+    if ! set_option GPU_DRIVERS_INSTALLED true ||
+        ! set_option GPU_TYPE "$gpu_type" ||
+        ! set_option NVIDIA_KERNEL_VARIANT "${NVIDIA_KERNEL_VARIANT:-both}"; then
+        echo "ERROR: GPU packages installed, but their configuration could not be saved"
+        return 1
+    fi
     if [[ "$gpu_type" == "hybrid" && -n "$nvidia_type" ]]; then
-        set_option NVIDIA_DRIVER_TYPE "$nvidia_type"
+        if ! set_option NVIDIA_DRIVER_TYPE "$nvidia_type"; then
+            echo "ERROR: GPU packages installed, but NVIDIA configuration could not be saved"
+            return 1
+        fi
     elif [[ -n "$driver_variant" ]]; then
-        set_option NVIDIA_DRIVER_TYPE "$driver_variant"
+        if ! set_option NVIDIA_DRIVER_TYPE "$driver_variant"; then
+            echo "ERROR: GPU packages installed, but NVIDIA configuration could not be saved"
+            return 1
+        fi
     fi
 
     echo "[OK] GPU drivers installed successfully"
@@ -1153,12 +1175,13 @@ run_user_theming() {
         fi
     fi
 
-    runuser -u "$USERNAME" -- env HOME="$user_home" bash -c '
+    runuser -u "$USERNAME" -- env HOME="$user_home" USERNAME="$USERNAME" bash -c '
         for filename in "$HOME"/archinstaller/scripts/utils/*.sh; do
             [ -e "$filename" ] || continue
             source "$filename"
         done
-        source "$HOME"/archinstaller/configs/setup.conf
+        CONFIG_FILE=$(config_file_for_context shared "$USERNAME") || exit 1
+        source "$CONFIG_FILE" || exit 1
         user_theming
     '
 }

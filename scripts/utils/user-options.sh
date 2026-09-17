@@ -13,7 +13,7 @@ set_password() {
     echo -ne "\n"
     read -rs -p "Please re-enter password: " PASSWORD2
     if [[ "$PASSWORD1" == "$PASSWORD2" ]]; then
-        set_option "$1" "$PASSWORD1"
+        set_option "$1" "$PASSWORD1" || return 1
         echo -ne "\n"
     else
         echo -ne "ERROR! Passwords do not match. \n"
@@ -34,7 +34,7 @@ user_info() {
         elif [[ "$real_name" =~ [^a-zA-Z\ ] ]]; then
             echo "Full name contains invalid characters. Only letters and spaces are allowed."
         else
-            set_option REAL_NAME "$real_name"
+            set_option REAL_NAME "$real_name" || return 1
             break
         fi
     done
@@ -47,7 +47,7 @@ user_info() {
         [[ "${username,,}" =~ ^[a-z_]([a-z0-9_-]{0,31}|[a-z0-9_-]{0,30}\$)$ ]] && break
         echo "Incorrect username."
     done
-    set_option USERNAME "${username,,}" # convert to lower case
+    set_option USERNAME "${username,,}" || return 1 # convert to lower case
 
     # Ask for and set password
     set_password "PASSWORD"
@@ -61,7 +61,7 @@ user_info() {
         read -rp "Hostname doesn't seem correct. Do you still want to save it? (y/n)" force
         [[ "${force,,}" = "y" ]] && break
     done
-    set_option NAME_OF_MACHINE "$nameofmachine"
+    set_option NAME_OF_MACHINE "$nameofmachine" || return 1
 }
 
 # @description Choose whether to do full or minimal installation.
@@ -74,7 +74,7 @@ install_type() {
     options=(FULL MINIMAL SERVER)
     select_option $? 4 "${options[@]}"
     install_type="${options[$?]}"
-    set_option INSTALL_TYPE "$install_type"
+    set_option INSTALL_TYPE "$install_type" || return 1
     export INSTALL_TYPE="$install_type"
 }
 
@@ -86,7 +86,7 @@ aur_helper() {
     options=(paru yay picaur aura trizen pacaur NONE)
     select_option $? 4 "${options[@]}"
     aur_helper="${options[$?]}"
-    set_option AUR_HELPER "$aur_helper"
+    set_option AUR_HELPER "$aur_helper" || return 1
 }
 
 # @description Choose Desktop Environment
@@ -97,7 +97,7 @@ desktop_environment() {
     mapfile -t options < <(for f in packages/desktop-environments/*.json; do echo "$f" | sed -r "s/.+\/(.+)\..+/\1/;/pkgs/d"; done)
     select_option $? 4 "${options[@]}"
     desktop_env="${options[$?]}"
-    set_option DESKTOP_ENV "$desktop_env"
+    set_option DESKTOP_ENV "$desktop_env" || return 1
 }
 
 # @description Choose whether to install optional 32-bit graphics libraries.
@@ -106,9 +106,9 @@ configure_32bit_graphics() {
     echo -e "\nInstall optional 32-bit graphics libraries for Steam, Wine, and 32-bit games?"
     local options=("No" "Yes")
     if select_option ${#options[@]} 1 "${options[@]}"; then
-        set_option ENABLE_32BIT_GRAPHICS false
+        set_option ENABLE_32BIT_GRAPHICS false || return 1
     else
-        set_option ENABLE_32BIT_GRAPHICS true
+        set_option ENABLE_32BIT_GRAPHICS true || return 1
     fi
 }
 
@@ -136,7 +136,7 @@ disk_select() {
     disk="${disk// /}" # Remove trailing spaces
 
     echo -e "\n${disk} selected \n"
-    set_option DISK "${disk}"
+    set_option DISK "${disk}" || return 1
 
     # Ask for disk usage percentage
     echo -ne "${BOLD}Disk space usage:${RESET}\n\n"
@@ -185,13 +185,13 @@ disk_select() {
     fi
 
     # Save percentage
-    set_option DISK_USAGE_PERCENT "${disk_percent}"
+    set_option DISK_USAGE_PERCENT "${disk_percent}" || return 1
 
     # Detect disk type (SSD/HDD)
     if [[ "$(lsblk -n --output TYPE,ROTA "${disk}" | awk '$1=="disk"{print $2}')" -eq "0" ]]; then
-        set_option "MOUNT_OPTION" "defaults,noatime,compress=zstd,ssd,discard=async,commit=120"
+        set_option "MOUNT_OPTION" "defaults,noatime,compress=zstd,ssd,discard=async,commit=120" || return 1
     else
-        set_option "MOUNT_OPTION" "defaults,noatime,compress=zstd,discard=async,commit=120"
+        set_option "MOUNT_OPTION" "defaults,noatime,compress=zstd,discard=async,commit=120" || return 1
     fi
 }
 
@@ -208,12 +208,12 @@ Please Select your file system for both boot and root
     case $? in
     0)
         set_btrfs
-        set_option FS btrfs
+        set_option FS btrfs || return 1
         ;;
-    1) set_option FS ext4 ;;
+    1) set_option FS ext4 || return 1 ;;
     2)
         set_password "LUKS_PASSWORD"
-        set_option FS luks
+        set_option FS luks || return 1
         ;;
     3) exit ;;
     *)
@@ -235,7 +235,7 @@ set_btrfs() {
     # If no subvolumes are provided, use the defaults as per the article
     # Note: @swap is included for dedicated swap subvolume (required for btrfs snapshots compatibility)
     if [[ -z "${ARR[*]}" ]]; then
-        set_option "SUBVOLUMES" "(@ @docker @flatpak @home @opt @snapshots @swap @var_cache @var_log @var_tmp)"
+        set_option "SUBVOLUMES" "(@ @docker @flatpak @home @opt @snapshots @swap @var_cache @var_log @var_tmp)" || return 1
     else
         NAMES=("@")
         for i in "${ARR[@]}"; do
@@ -247,10 +247,10 @@ set_btrfs() {
         done
         # Remove duplicates
         IFS=" " read -r -a SUBS <<<"$(tr ' ' '\n' <<<"${NAMES[@]}" | awk '!x[$0]++' | tr '\n' ' ')"
-        set_option "SUBVOLUMES" "${SUBS[*]}"
+        set_option "SUBVOLUMES" "${SUBS[*]}" || return 1
     fi
 
-    set_option "MOUNTPOINT" "/mnt"
+    set_option "MOUNTPOINT" "/mnt" || return 1
 }
 
 # @description Detects and sets timezone interactively from system timezones.
@@ -272,7 +272,7 @@ timezone() {
 
         if [[ $choice -eq 0 ]]; then
             echo -e "\nUsing detected timezone: ${detected_tz}"
-            set_option TIMEZONE "$detected_tz"
+            set_option TIMEZONE "$detected_tz" || return 1
             return 0
         fi
         echo ""
@@ -284,7 +284,7 @@ timezone() {
         echo "Please enter timezone manually (e.g., America/New_York):"
         read -r manual_tz
         if [[ -n "$manual_tz" ]]; then
-            set_option TIMEZONE "$manual_tz"
+            set_option TIMEZONE "$manual_tz" || return 1
             return 0
         else
             echo "Error: No timezone provided"
@@ -307,7 +307,7 @@ timezone() {
         echo "Please enter timezone manually (e.g., America/New_York):"
         read -r manual_tz
         if [[ -n "$manual_tz" ]]; then
-            set_option TIMEZONE "$manual_tz"
+        set_option TIMEZONE "$manual_tz" || return 1
             return 0
         else
             echo "Error: No timezone provided"
@@ -326,7 +326,7 @@ timezone() {
     fi
 
     echo -e "\nSelected timezone: ${full_timezone}"
-    set_option TIMEZONE "$full_timezone"
+    set_option TIMEZONE "$full_timezone" || return 1
 }
 
 # @description Set system language (locale)
@@ -341,7 +341,7 @@ Please select your system language (locale) from the list below:
     locale="${options[$?]}"
 
     echo -ne "Selected system language: ${locale} \n"
-    set_option LOCALE "$locale"
+    set_option LOCALE "$locale" || return 1
 }
 
 # @description Set user's keyboard mapping.
@@ -357,27 +357,48 @@ Please select keyboard layout from this list:
     keymap="${options[$?]}"
 
     echo -ne "Your keyboards layout: ${keymap} \n"
-    set_option KEYMAP "$keymap"
+    set_option KEYMAP "$keymap" || return 1
 }
 
 # @description Show all configurations set during the setup and allow user to redo any step.
 # @noargs
 show_configurations() {
-    # Load INSTALL_TYPE from config if not already set
-    # shellcheck disable=SC1090
-    # Reason: CONFIG_FILE path is dynamically set, ShellCheck can't follow it
-    if [[ -f "$CONFIG_FILE" ]] && grep -q "^INSTALL_TYPE=" "$CONFIG_FILE"; then
-        source "$CONFIG_FILE"
+    # Load the configuration so values are displayed after shell escaping is
+    # interpreted, rather than showing the serialized setup.conf contents.
+    if [[ -f "$CONFIG_FILE" ]]; then
+        # shellcheck disable=SC1090
+        # Reason: CONFIG_FILE path is dynamically set, ShellCheck can't follow it
+        if ! source "$CONFIG_FILE"; then
+            echo "ERROR: Could not load configuration: $CONFIG_FILE" >&2
+            return 1
+        fi
     fi
 
     while true; do
         echo -e "
 ------------------------------------------------------------------------
-                          Configuration Summary
+                    Configuration Summary
 ------------------------------------------------------------------------
 "
         if [[ -f "$CONFIG_FILE" ]]; then
-            cat "$CONFIG_FILE"
+            local config_key
+            local config_value
+
+            while IFS='=' read -r config_key _; do
+                [[ "$config_key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || continue
+
+                case "$config_key" in
+                PASSWORD|LUKS_PASSWORD)
+                    printf '%s=[redacted]\n' "$config_key"
+                    ;;
+                *)
+                    if [[ -v "$config_key" ]]; then
+                        config_value=${!config_key}
+                        printf '%s=%s\n' "$config_key" "$config_value"
+                    fi
+                    ;;
+                esac
+            done <"$CONFIG_FILE"
         else
             echo "Configuration file not found. Please check if setup.conf was created."
         fi

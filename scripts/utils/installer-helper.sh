@@ -75,9 +75,13 @@ end_script() {
         # Copy installation log
         cp -v "$LOG_FILE" "/mnt/home/$USERNAME/.archinstaller/install.log"
 
-        # Copy config file (without password)
-        if [[ -f "$CONFIG_FILE" ]]; then
-            grep -v "^PASSWORD=\|^LUKS_PASSWORD=" "$CONFIG_FILE" >"/mnt/home/$USERNAME/.archinstaller/setup.conf" || true
+        # Preserve the latest shared config without passwords.
+        local shared_config
+        shared_config=$(config_file_for_context shared "$USERNAME") || return 1
+        if [[ -f "/mnt$shared_config" ]] && ! sanitize_config_file \
+            "/mnt$shared_config" "/mnt/home/$USERNAME/.archinstaller/setup.conf"; then
+            echo "ERROR! Failed to preserve sanitized configuration" >&2
+            return 1
         fi
 
         # Set ownership using arch-chroot (user exists in installed system)
@@ -221,24 +225,49 @@ function multiselect {
 # @arg $1 string Configuration variable.
 # @arg $2 string Configuration value.
 set_option() {
-    local key="$1"
-    local value="$2"
+    local key="${1:-}"
+    local value="${2:-}"
+    local config_dir
+    local temp_file
 
-    # Ensure config directory exists
-    local config_dir=$(dirname "$CONFIG_FILE")
-    [[ -d "$config_dir" ]] || mkdir -p "$config_dir"
+    if [[ ! "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+        echo "ERROR: Invalid configuration key: $key" >&2
+        return 1
+    fi
+    if [[ -z "${CONFIG_FILE:-}" ]]; then
+        echo "ERROR: CONFIG_FILE is not set" >&2
+        return 1
+    fi
 
-    # Ensure config file exists
-    [[ -f "$CONFIG_FILE" ]] || touch "$CONFIG_FILE"
+    config_dir=$(dirname -- "$CONFIG_FILE") || return 1
+    if ! mkdir -p -- "$config_dir"; then
+        echo "ERROR: Could not create configuration directory: $config_dir" >&2
+        return 1
+    fi
+    if [[ -L "$CONFIG_FILE" || -d "$CONFIG_FILE" ]]; then
+        echo "ERROR: Configuration path is not a regular file: $CONFIG_FILE" >&2
+        return 1
+    fi
 
-    # Remove existing key if present (suppress errors if grep fails)
-    grep -Eq "^${key}.*" "$CONFIG_FILE" 2>/dev/null && sed -i "/^${key}.*/d" "$CONFIG_FILE"
+    temp_file=$(mktemp -- "$CONFIG_FILE.tmp.XXXXXX") || {
+        echo "ERROR: Could not create temporary configuration file" >&2
+        return 1
+    }
 
-    # Quote values that contain spaces or special characters
-    if [[ "$value" =~ [[:space:]] ]]; then
-        echo "${key}=\"${value}\"" >>"$CONFIG_FILE"
-    else
-        echo "${key}=${value}" >>"$CONFIG_FILE"
+    if [[ -f "$CONFIG_FILE" ]] && ! sed -E "/^${key}=.*/d" "$CONFIG_FILE" >"$temp_file"; then
+        rm -f -- "$temp_file"
+        echo "ERROR: Could not read configuration file: $CONFIG_FILE" >&2
+        return 1
+    fi
+    if ! printf '%s=%q\n' "$key" "$value" >>"$temp_file"; then
+        rm -f -- "$temp_file"
+        echo "ERROR: Could not write configuration file: $CONFIG_FILE" >&2
+        return 1
+    fi
+    if ! mv -- "$temp_file" "$CONFIG_FILE"; then
+        rm -f -- "$temp_file"
+        echo "ERROR: Could not replace configuration file: $CONFIG_FILE" >&2
+        return 1
     fi
 }
 

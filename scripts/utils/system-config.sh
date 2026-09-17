@@ -1281,6 +1281,18 @@ add_user() {
             exit 1
         fi
 
+        local shared_config_dir shared_config_file
+        shared_config_dir="/home/$USERNAME/.archinstaller"
+        shared_config_file="$shared_config_dir/setup.conf"
+        if ! install -d -o "$USERNAME" -g "$USERNAME" -m 700 "$shared_config_dir" ||
+            ! sanitize_config_file "$HOME/archinstaller/configs/setup.conf" "$shared_config_file" ||
+            ! chown "$USERNAME":"$USERNAME" "$shared_config_file" ||
+            ! rm -f -- "/home/$USERNAME/archinstaller/configs/setup.conf"; then
+            echo "ERROR! Failed to initialize shared configuration for $USERNAME."
+            exit 1
+        fi
+        echo "Shared configuration initialized at $shared_config_file."
+
         echo "$NAME_OF_MACHINE" >/etc/hostname
         echo "Hostname set to $NAME_OF_MACHINE."
 

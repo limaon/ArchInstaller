@@ -12,7 +12,12 @@ for filename in /root/archinstaller/scripts/utils/*.sh; do
     # shellcheck source=./utils/*.sh
     source "$filename"
 done
-source "$HOME"/archinstaller/configs/setup.conf
+CONFIG_FILE=$(config_file_for_context root) || {
+    echo "ERROR: Could not resolve root configuration path"
+    exit 1
+}
+export CONFIG_FILE
+source "$CONFIG_FILE"
 
 show_logo
 
@@ -64,7 +69,7 @@ else
 fi
 
 # If this file run without configuration, ask for basic user info before setting up user
-if ! source "$HOME"/archinstaller/configs/setup.conf; then
+if ! source "$CONFIG_FILE"; then
     user_info
 fi
 
