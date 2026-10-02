@@ -35,6 +35,13 @@ export TERM=xterm-256color
 # Check window size after each command
 shopt -s checkwinsize
 
+# Useful interactive shell conveniences
+shopt -s autocd
+shopt -s cdspell
+shopt -s dirspell
+shopt -s globstar
+shopt -s checkjobs
+
 # Append to history file, don't overwrite it
 shopt -s histappend
 
@@ -73,10 +80,10 @@ BWhite='\e[1;37m'
 
 # Root prompt with warning color (red)
 # Format: [ROOT] user@host:directory #
-PS1='\[\033[1;31m\][ROOT]\[\033[0m\] \[\033[1;32m\]\u\[\033[0m\]@\[\033[1;34m\]\h\[\033[0m\]:\[\033[1;36m\]\w\[\033[0m\] \[\033[1;31m\]#\[\033[0m\] '
+PS1='\[\033[1;31m\][ROOT]\[\033[0m\] \[\033[1;32m\]\u\[\033[0m\]@\[\033[1;34m\]\h\[\033[0m\]:\[\033[1;36m\]\W\[\033[0m\] \[\033[1;31m\]#\[\033[0m\] '
 
 # Set window title
-PS1="\[\e]0;ROOT@\h: \w\a\]$PS1"
+PS1="\[\e]0;ROOT@\h: \W\a\]$PS1"
 
 ################################################################################
 ##  ALIASES                                                                   ##
@@ -182,4 +189,3 @@ fi
 ################################################################################
 ##  END OF CONFIGURATION                                                     ##
 ################################################################################
-

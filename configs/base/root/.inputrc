@@ -21,6 +21,12 @@ set show-all-if-ambiguous on
 # Show completions on first tab press
 set show-all-if-unmodified on
 
+# Safely paste multi-line text
+set enable-bracketed-paste on
+
+# Do not repeat text that was already completed
+set skip-completed-text on
+
 # Menu completion: cycle through completions with Tab
 set menu-complete-display-prefix on
 
@@ -83,6 +89,15 @@ set mark-symlinked-directories on
 # Colorize completions
 set colored-stats on
 set colored-completion-prefix on
+
+# Display file types in completion suggestions
+set visible-stats on
+
+# Do not display control characters in an unexpected form
+set echo-control-characters off
+
+# Discard unfinished input after executing a command
+set revert-all-at-newline on
 
 ################################################################################
 ##  CASE SENSITIVITY                                                          ##

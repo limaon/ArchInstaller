@@ -49,6 +49,9 @@ shopt -s extglob
 # Enable autocd (auto "cd" when entering just a path - ArchWiki: Bash#Auto "cd")
 shopt -s autocd
 
+# Correct minor spelling errors in directory changes
+shopt -s cdspell
+
 # Append to history file, don't overwrite it
 shopt -s histappend
 
@@ -57,6 +60,10 @@ shopt -s cmdhist
 
 # Correct minor spelling errors in directory names
 shopt -s dirspell
+
+# Enable recursive ** path expansion and warn about running jobs on exit
+shopt -s globstar
+shopt -s checkjobs
 
 # Enable case-insensitive filename globbing
 shopt -s nocaseglob
@@ -151,14 +158,14 @@ if [[ "$COLOR_PROMPT" == "true" ]]; then
     # - Green (bold) for username and hostname
     # - Blue (bold) for current directory
     # - Exit code and git branch appear in default color for a cleaner look
-    PS1='$(exit_code)\[\033[1;32m\]\u@\h\[\033[0m\]:\[\033[1;34m\]\w\[\033[0m\] $(git_branch)\$ '
+    PS1='$(exit_code)\[\033[1;32m\]\u@\h\[\033[0m\]:\[\033[1;34m\]\W\[\033[0m\] $(git_branch)\$ '
 else
     # No colors - simple prompt without escape sequences
-    PS1='$(exit_code)\u@\h:\w $(git_branch)\$ '
+    PS1='$(exit_code)\u@\h:\W $(git_branch)\$ '
 fi
 
 # Set window title (for terminal emulators that support it)
-PS1="\[\e]0;\u@\h: \w\a\]$PS1"
+PS1="\[\e]0;\u@\h: \W\a\]$PS1"
 
 ################################################################################
 ##  ALIASES                                                                   ##
@@ -403,4 +410,3 @@ fi
 ################################################################################
 ##  END OF CONFIGURATION                                                     ##
 ################################################################################
-

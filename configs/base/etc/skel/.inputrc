@@ -1,0 +1,16 @@
+# Readline configuration for regular users
+
+# Safely paste multi-line text
+set enable-bracketed-paste on
+
+# Do not repeat text that was already completed
+set skip-completed-text on
+
+# Display file types in completion suggestions
+set visible-stats on
+
+# Do not display control characters in an unexpected form
+set echo-control-characters off
+
+# Discard unfinished input after executing a command
+set revert-all-at-newline on
