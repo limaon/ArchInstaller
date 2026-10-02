@@ -31,8 +31,7 @@ set menu-complete-display-prefix on
 # Ignore duplicate entries in history
 set history-size 5000
 
-# Ignore lines starting with space
-set HISTCONTROL=ignoreboth
+# History filtering is configured in ~/.bashrc via HISTCONTROL.
 
 # Incremental search: search history as you type
 "\e[A": history-search-backward
@@ -75,9 +74,6 @@ set editing-mode emacs
 ##  DISPLAY                                                                   ##
 ################################################################################
 
-# Show matching brackets/parentheses
-set show-match-pair on
-
 # Highlight matching brackets
 set blink-matching-paren on
 
@@ -119,4 +115,3 @@ set horizontal-scroll-mode off
 ################################################################################
 ##  END OF CONFIGURATION                                                     ##
 ################################################################################
-
