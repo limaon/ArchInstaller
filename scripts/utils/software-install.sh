@@ -1071,11 +1071,7 @@ i3wm_battery_notifications() {
 -------------------------------------------------------------------------
 "
 
-    # Check if acpi and libnotify are installed (should be via i3-wm.json)
-    if ! pacman -Qi acpi &>/dev/null; then
-        echo "Warning: acpi not found, battery notifications may not work"
-    fi
-
+    # Battery data is read directly from sysfs; only libnotify is needed to notify.
     if ! pacman -Qi libnotify &>/dev/null; then
         echo "Warning: libnotify not found, battery notifications may not work"
     fi

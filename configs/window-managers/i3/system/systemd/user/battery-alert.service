@@ -5,10 +5,9 @@ PartOf=graphical-session.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/battery-alert
+ExecStart=/usr/local/bin/battery-alert --check
 StandardOutput=journal
 StandardError=journal
 
 [Install]
 WantedBy=graphical-session.target
-

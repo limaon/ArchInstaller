@@ -4,10 +4,9 @@ After=graphical-session.target
 PartOf=graphical-session.target
 
 [Timer]
-OnBootSec=5min
-OnUnitActiveSec=5min
-Persistent=true
+OnStartupSec=30s
+OnUnitInactiveSec=30s
+AccuracySec=1s
 
 [Install]
 WantedBy=timers.target
-

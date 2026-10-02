@@ -1,136 +1,171 @@
-#!/bin/bash
-# battery-alert - Battery level notification script for i3-wm
-# Checks battery level and sends notifications when low/critical/full
-# Designed to run periodically via systemd timer
+#!/usr/bin/env bash
+# Dynamic battery reporting. Test overrides never require changes to real sysfs.
+set -u
+export LC_ALL=C
 
-# Show help message
-show_help() {
-    cat << EOF
-battery-alert - Battery level notification script for i3-wm
+ROOT=${BATTERY_SYSFS_ROOT:-/sys/class/power_supply}
+declare -a names=()
+declare -A levels states health
+total_now=0 total_full=0 complete=1 ac=unknown
 
-DESCRIPTION:
-    Checks battery level and sends desktop notifications when:
-    - Battery is fully charged (>99% and connected)
-    - Battery is low (≤20% and discharging)
-    - Battery is critical (≤5% and discharging)
-
-USAGE:
-    battery-alert [OPTIONS]
-
-OPTIONS:
-    -h, --help      Show this help message and exit
-
-EXAMPLES:
-    battery-alert              # Check battery and send notification if needed
-    battery-alert --help       # Show help message
-
-NOTIFICATIONS:
-    The script uses notify-send to display desktop notifications:
-    - "Battery Charged" when battery is >99% and charging
-    - "Low Battery" when battery ≤20% and discharging
-    - "Battery Critical" when battery ≤5% and discharging
-
-    Notification levels can be customized by editing the script:
-    - WARNING_LEVEL=20   # Low battery threshold (%)
-    - CRITICAL_LEVEL=5   # Critical battery threshold (%)
-
-DEPENDENCIES:
-    - acpi           # Battery information
-    - notify-send    # Desktop notifications (from libnotify)
-    - dunst          # Notification daemon (should be running)
-
-ENVIRONMENT:
-    The script automatically detects:
-    - DISPLAY                    # X display server
-    - DBUS_SESSION_BUS_ADDRESS   # DBus session address
-
-FILES:
-    Lock files are created in /tmp/ to prevent duplicate notifications:
-    - /tmp/battery-\$USER-full      # Full battery notification sent
-    - /tmp/battery-\$USER-empty     # Low battery notification sent
-    - /tmp/battery-\$USER-critical  # Critical battery notification sent
-
-EXIT CODES:
-    0   Success (no action needed or notification sent)
-    1   Error (invalid arguments or dependencies missing)
-
-AUTHOR:
-    Part of ArchInstaller - Battery notification system for i3-wm
-
-EOF
+number() {
+    local value
+    value=$(cat "$1" 2>/dev/null) || return 1
+    [[ $value =~ ^[0-9]+$ && ${#value} -le 15 ]] || return 1
+    printf '%s' "$((10#$value))"
 }
 
-# Check for help argument
-if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
-    show_help
-    exit 0
-fi
+scan() {
+    local path name type present level status now full design h online voltage
+    for path in "$ROOT"/*; do
+        [[ -d $path ]] || continue
+        type=$(cat "$path/type" 2>/dev/null) || continue
+        if [[ $type != Battery ]]; then
+            if online=$(number "$path/online"); then
+                [[ $ac == unknown ]] && ac=0
+                [[ $online == 1 ]] && ac=1
+            fi
+            continue
+        fi
+        present=$(cat "$path/present" 2>/dev/null) || present=1
+        [[ $present != 0 ]] || continue
+        name=${path##*/}
+        status=$(cat "$path/status" 2>/dev/null) || status=Unknown
+        level=$(number "$path/capacity") || level=unknown
+        h=unknown
+        if now=$(number "$path/energy_now") && full=$(number "$path/energy_full") && ((full > 0)); then
+            total_now=$((total_now + now))
+            total_full=$((total_full + full))
+            [[ $level != unknown ]] || level=$(((now * 100 + full / 2) / full))
+            if design=$(number "$path/energy_full_design") && ((design > 0)); then
+                h=$(((full * 100 + design / 2) / design))
+            fi
+        elif now=$(number "$path/charge_now") && full=$(number "$path/charge_full") && ((full > 0)); then
+            [[ $level != unknown ]] || level=$(((now * 100 + full / 2) / full))
+            if design=$(number "$path/charge_full_design") && ((design > 0)); then
+                h=$(((full * 100 + design / 2) / design))
+            fi
+            if voltage=$(number "$path/voltage_min_design") && ((voltage > 0)); then
+                # uAh * uV / 1e6 = uWh. Use awk to avoid integer overflow.
+                total_now=$((total_now + $(awk -v q="$now" -v v="$voltage" 'BEGIN {printf "%.0f", q*v/1000000}')))
+                total_full=$((total_full + $(awk -v q="$full" -v v="$voltage" 'BEGIN {printf "%.0f", q*v/1000000}')))
+            else
+                complete=0
+            fi
+        else
+            complete=0
+        fi
+        [[ $level == unknown ]] || { ((level <= 100)) || level=100; }
+        names+=("$name")
+        levels[$name]=$level states[$name]=$status health[$name]=$h
+    done
+}
 
-# Exit silently if no battery (desktop systems)
-if ! acpi -b &>/dev/null || [[ -z "$(acpi -b 2>/dev/null)" ]]; then
-    exit 0
-fi
-
-# Detect user DISPLAY if not set
-if [[ -z "${DISPLAY:-}" ]]; then
-    # Try to get DISPLAY from loginctl
-    X_USER=$(loginctl list-sessions 2>/dev/null | grep -E 'session-.*seat' | head -n1 | awk '{print $3}')
-    if [[ -n "$X_USER" ]]; then
-        X_SESSION=$(loginctl show-user "$X_USER" -p Display 2>/dev/null | cut -d= -f2)
-        export DISPLAY="${X_SESSION:-:0}"
-    else
-        export DISPLAY="${DISPLAY:-:0}"
+summary() {
+    local name charge condition
+    for name in "${names[@]}"; do
+        charge=${levels[$name]}
+        [[ $charge == unknown ]] || charge+=%
+        condition=${health[$name]}
+        [[ $condition == unknown ]] || condition+=%
+        printf '%s: %s — %s (Health: %s)\n' "$name" "$charge" "${states[$name]}" "$condition"
+    done
+    if ((${#names[@]} > 1 && complete && total_full > 0)); then
+        local combined=$(((total_now * 100 + total_full / 2) / total_full))
+        ((combined <= 100)) || combined=100
+        printf 'Combined charge: %s%%\n' "$combined"
     fi
-fi
+}
 
-# Detect DBUS_SESSION_BUS_ADDRESS if not set
-if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]]; then
-    USER_ID=$(id -u)
-    if [[ -S "/run/user/${USER_ID}/bus" ]]; then
-        export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/${USER_ID}/bus"
+notify() {
+    notify-send -a 'Battery Monitor' -u "${3:-normal}" -- "$1" "$2"
+}
+
+monitor() {
+    local runtime=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
+    local cache="$runtime/battery-monitor" name previous band level old_status old_ac charge
+    umask 077
+    mkdir -p "$cache" || return 1
+    exec 9>"$cache/lock"
+    flock -n 9 || return 0
+    old_ac=$(cat "$cache/ac" 2>/dev/null) || old_ac=unknown
+    if [[ $ac != unknown && $old_ac != unknown && $ac != "$old_ac" ]] && ((${#names[@]})); then
+        if [[ $ac == 1 ]]; then
+            notify 'Charger Connected' "$(summary)" || return 1
+        else
+            notify 'Charger Disconnected' "$(summary)" || return 1
+        fi
     fi
-fi
+    printf '%s' "$ac" >"$cache/ac"
+    for previous in "$cache"/*.present; do
+        [[ -f $previous ]] || continue
+        name=${previous##*/}
+        name=${name%.present}
+        if [[ ! -v levels[$name] ]]; then
+            notify 'Battery Removed' "$name is no longer detected." || return 1
+            rm -f "$previous" "$cache/$name.band" "$cache/$name.status"
+        fi
+    done
+    for name in "${names[@]}"; do
+        if [[ -f $cache/initialized && ! -f $cache/$name.present ]]; then
+            notify 'Battery Detected' "$name has been detected." || continue
+        fi
+        touch "$cache/$name.present"
+        level=${levels[$name]}
+        band=normal
+        previous=$(cat "$cache/$name.band" 2>/dev/null) || previous=normal
+        if [[ ${states[$name]} == Discharging && $level != unknown ]]; then
+            if ((level <= 5)); then
+                band=critical
+            elif ((level <= 20)); then
+                band=low
+            fi
+        elif [[ ${states[$name]} == Full ]] || [[ $level == 100 && (${states[$name]} == Charging || ${states[$name]} == 'Not charging') ]]; then
+            band=full
+        fi
+        if [[ $band != "$previous" ]]; then
+            case $band in
+            critical) notify 'Critical Battery' "$name has $level% battery remaining. Please connect the charger." critical || continue ;;
+            low) notify 'Low Battery' "$name has $level% battery remaining." critical || continue ;;
+            full) notify 'Battery Fully Charged' "$name is fully charged." || continue ;;
+            esac
+        fi
+        printf '%s' "$band" >"$cache/$name.band"
+        old_status=$(cat "$cache/$name.status" 2>/dev/null) || old_status=${states[$name]}
+        if [[ $old_status != "${states[$name]}" && $band == normal ]]; then
+            charge=$level
+            [[ $charge == unknown ]] || charge+=%
+            notify "Battery $name" "$name: $charge — ${states[$name]}" || continue
+        fi
+        printf '%s' "${states[$name]}" >"$cache/$name.status"
+        if [[ ${health[$name]} != unknown ]] && ((${health[$name]} < 50)) && [[ ! -f $cache/$name.health ]]; then
+            if notify 'Battery Health Warning' "$name battery health is low: ${health[$name]}%. Consider replacing the battery."; then
+                touch "$cache/$name.health"
+            fi
+        fi
+    done
+    touch "$cache/initialized"
+}
 
-# Battery levels for notifications
-WARNING_LEVEL=20
-CRITICAL_LEVEL=5
-
-# Get battery status
-BATTERY_INFO=$(acpi -b 2>/dev/null | grep "Battery 0" | head -n1)
-if [[ -z "$BATTERY_INFO" ]]; then
+case "${1:---check}" in
+--help | -h)
+    echo 'Usage: battery-alert [--status|--notify|--check|--help]'
     exit 0
-fi
-
-# Check if discharging
-BATTERY_DISCHARGING=$(echo "$BATTERY_INFO" | grep -c "Discharging" || echo "0")
-BATTERY_LEVEL=$(echo "$BATTERY_INFO" | grep -oE '[0-9]+%' | grep -oE '[0-9]+' || echo "")
-
-if [[ -z "$BATTERY_LEVEL" ]]; then
-    exit 0
-fi
-
-# Lock files per user to avoid duplicate notifications
-FULL_FILE="/tmp/battery-${USER}-full"
-EMPTY_FILE="/tmp/battery-${USER}-empty"
-CRITICAL_FILE="/tmp/battery-${USER}-critical"
-
-# Reset notification flags when state changes
-if [[ "$BATTERY_DISCHARGING" -eq 1 ]] && [[ -f "$FULL_FILE" ]]; then
-    rm -f "$FULL_FILE"
-elif [[ "$BATTERY_DISCHARGING" -eq 0 ]] && [[ -f "$EMPTY_FILE" ]]; then
-    rm -f "$EMPTY_FILE"
-fi
-
-# Send notifications based on battery state
-if [[ "$BATTERY_LEVEL" -gt 99 ]] && [[ "$BATTERY_DISCHARGING" -eq 0 ]] && [[ ! -f "$FULL_FILE" ]]; then
-    notify-send "Battery Charged" "Battery is fully charged." -i "battery" -r 9991 2>/dev/null
-    touch "$FULL_FILE"
-elif [[ "$BATTERY_LEVEL" -le "$WARNING_LEVEL" ]] && [[ "$BATTERY_DISCHARGING" -eq 1 ]] && [[ ! -f "$EMPTY_FILE" ]]; then
-    notify-send "Low Battery" "${BATTERY_LEVEL}% of battery remaining." -u critical -i "battery-alert" -r 9991 2>/dev/null
-    touch "$EMPTY_FILE"
-elif [[ "$BATTERY_LEVEL" -le "$CRITICAL_LEVEL" ]] && [[ "$BATTERY_DISCHARGING" -eq 1 ]] && [[ ! -f "$CRITICAL_FILE" ]]; then
-    notify-send "Battery Critical" "The computer will shutdown soon." -u critical -i "battery-alert" -r 9991 2>/dev/null
-    touch "$CRITICAL_FILE"
-fi
-
-exit 0
+    ;;
+--status)
+    scan
+    summary
+    ;;
+--notify)
+    scan
+    if ((${#names[@]})); then notify 'Battery Status' "$(summary)"; fi
+    ;;
+--check)
+    scan
+    monitor
+    ;;
+*)
+    echo 'Unknown option. Use --help.' >&2
+    exit 1
+    ;;
+esac
