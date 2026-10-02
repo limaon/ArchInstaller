@@ -46,15 +46,19 @@ docker_check() {
     fi
 }
 
-# @description Checks if drive is mounted
+# @description Validate the root and required boot filesystem mounts.
 # @noargs
 mount_check() {
-    if ! grep -qs '/mnt' /proc/mounts; then
-        echo "Drive is not mounted can not continue"
-        echo "Rebooting in 3 Seconds ..." && sleep 1
-        echo "Rebooting in 2 Seconds ..." && sleep 1
-        echo "Rebooting in 1 Second ..." && sleep 1
-        reboot now
+    if ! findmnt -n --target /mnt >/dev/null 2>&1; then
+        echo "ERROR: Root filesystem is not mounted at /mnt" >&2
+        return 1
+    fi
+
+    if test -d /sys/firmware/efi || [[ "${FS:-}" == "luks" ]]; then
+        if ! findmnt -n --target /mnt/boot >/dev/null 2>&1; then
+            echo "ERROR: Boot filesystem is not mounted at /mnt/boot" >&2
+            return 1
+        fi
     fi
 }
 

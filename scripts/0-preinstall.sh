@@ -48,7 +48,7 @@ else
     echo "Legacy BIOS system detected - Boot filesystem prepared"
     mkdir -p /mnt/boot
 fi
-mount_check
+mount_check || exit 1
 
 # Function to install the Arch base system using pacstrap on 'software-install.sh'
 arch_install
