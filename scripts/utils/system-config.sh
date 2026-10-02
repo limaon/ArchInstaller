@@ -147,6 +147,63 @@ mount_efi_partition() {
     fi
 }
 
+# @description Add sd-encrypt to mkinitcpio hooks for LUKS root unlocking.
+# @noargs
+configure_luks_initramfs() {
+    local config_file="${MKINITCPIO_CONFIG_FILE:-/etc/mkinitcpio.conf}"
+    local hooks_line hooks_value hook replacement temp_file
+    local -a hooks new_hooks=()
+
+    if [[ ! -f "$config_file" ]]; then
+        echo "ERROR: mkinitcpio configuration not found: $config_file" >&2
+        return 1
+    fi
+    if ! hooks_line=$(grep '^HOOKS=' "$config_file" | head -n1); then
+        echo "ERROR: HOOKS entry not found in $config_file" >&2
+        return 1
+    fi
+
+    hooks_value="${hooks_line#HOOKS=(}"
+    hooks_value="${hooks_value%)}"
+    read -r -a hooks <<<"$hooks_value"
+
+    for hook in "${hooks[@]}"; do
+        if [[ "$hook" == "sd-encrypt" ]]; then
+            return 0
+        fi
+        if [[ "$hook" == "filesystems" ]]; then
+            new_hooks+=(sd-encrypt)
+        fi
+        new_hooks+=("$hook")
+    done
+
+    if [[ " ${new_hooks[*]} " != *" sd-encrypt "* ]]; then
+        echo "ERROR: HOOKS must contain filesystems" >&2
+        return 1
+    fi
+
+    printf -v replacement 'HOOKS=(%s)' "${new_hooks[*]}"
+    temp_file=$(mktemp "${config_file}.XXXXXX") || {
+        echo "ERROR: Could not create temporary mkinitcpio configuration" >&2
+        return 1
+    }
+    if ! awk -v replacement="$replacement" '
+        BEGIN { replaced = 0 }
+        /^HOOKS=/ && !replaced { print replacement; replaced = 1; next }
+        { print }
+        END { exit !replaced }
+    ' "$config_file" >"$temp_file"; then
+        rm -f -- "$temp_file"
+        echo "ERROR: Could not update mkinitcpio configuration" >&2
+        return 1
+    fi
+    if ! mv -- "$temp_file" "$config_file"; then
+        rm -f -- "$temp_file"
+        echo "ERROR: Could not replace mkinitcpio configuration" >&2
+        return 1
+    fi
+}
+
 # @description Format disk before creating filesystem(s)
 # @noargs
 format_disk() {

@@ -85,8 +85,7 @@ run_user_theming
 # https://wiki.archlinux.org/title/Dm-crypt/Encrypting_an_entire_system#LUKS_on_a_partition
 if [[ "${FS}" == "luks" ]]; then
     echo "Adding sd-encrypt hook to mkinitcpio for LUKS..."
-    # Add sd-encrypt hook BEFORE filesystems in HOOKS array
-    sed -i 's/\(block\) filesystems/\1 sd-encrypt filesystems/' /etc/mkinitcpio.conf
+    configure_luks_initramfs || exit 1
 fi
 
 echo -ne "
