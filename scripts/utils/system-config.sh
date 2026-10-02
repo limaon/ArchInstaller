@@ -1453,6 +1453,25 @@ grub_config() {
     echo "GRUB configuration complete."
 }
 
+# @description Install GRUB for the active firmware mode.
+# @noargs
+grub_install_bootloader() {
+    if test -d "/sys/firmware/efi"; then
+        echo "Installing GRUB for UEFI system..."
+        if ! grub-install --target=x86_64-efi --efi-directory=/boot \
+            --bootloader-id="Arch Linux"; then
+            echo "ERROR: Failed to install GRUB bootloader" >&2
+            return 1
+        fi
+    else
+        echo "Installing GRUB for Legacy BIOS system..."
+        if ! grub-install --recheck --target=i386-pc "${DISK}"; then
+            echo "ERROR: Failed to install GRUB bootloader" >&2
+            return 1
+        fi
+    fi
+}
+
 # @description Calculate kernel parameters required to resume from a swapfile
 # @arg $1 Swapfile path
 # @return 0 with resume and resume_offset parameters, 1 if unavailable

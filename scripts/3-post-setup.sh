@@ -80,14 +80,9 @@ if ! mkinitcpio -P; then
 fi
 
 # Install GRUB bootloader based on system type (UEFI or Legacy BIOS)
-if [[ -d "/sys/firmware/efi" ]]; then
-    # UEFI system: Install GRUB for EFI
-    echo "Installing GRUB for UEFI system..."
-    grub-install --target=x86_64-efi --efi-directory=/boot "${DISK}" --bootloader-id='Arch Linux'
-else
-    # Legacy BIOS system: Install GRUB to MBR
-    echo "Installing GRUB for Legacy BIOS system..."
-    grub-install --target=i386-pc "${DISK}"
+if ! grub_install_bootloader; then
+    echo "ERROR: GRUB bootloader installation failed; stopping post-setup"
+    exit 1
 fi
 
 # Function to enable and theme the appropriate display manager
