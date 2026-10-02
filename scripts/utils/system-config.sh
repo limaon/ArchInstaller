@@ -120,6 +120,33 @@ disk_allocation_plan() {
     fi
 }
 
+# @description Mount and verify the EFI system partition of the selected disk.
+# @noargs
+mount_efi_partition() {
+    local efi_partition
+    if [[ "${DISK}" =~ nvme|mmc ]]; then
+        efi_partition="${DISK}p1"
+    else
+        efi_partition="${DISK}1"
+    fi
+
+    mkdir -p /mnt/boot
+    if ! mount -t vfat "${efi_partition}" /mnt/boot; then
+        echo "ERROR: Failed to mount EFI partition ${efi_partition}" >&2
+        return 1
+    fi
+
+    local mounted_source
+    if ! mounted_source=$(findmnt -n -o SOURCE --target /mnt/boot); then
+        echo "ERROR: Could not verify EFI mount at /mnt/boot" >&2
+        return 1
+    fi
+    if [[ "$mounted_source" != "$efi_partition" ]]; then
+        echo "ERROR: EFI mount source does not match selected disk" >&2
+        return 1
+    fi
+}
+
 # @description Format disk before creating filesystem(s)
 # @noargs
 format_disk() {

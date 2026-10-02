@@ -39,10 +39,9 @@ create_filesystems
 
 # mount target (boot partition only for UEFI systems)
 if [[ -d "/sys/firmware/efi" ]]; then
-    # UEFI system: Mount EFI partition to /mnt/boot
+    # UEFI system: Mount and verify the selected disk's EFI partition.
     echo "UEFI system detected - Mounting EFI partition..."
-    mkdir -p /mnt/boot
-    mount -t vfat -L EFIBOOT /mnt/boot/
+    mount_efi_partition || exit 1
 else
     # BIOSBOOT (ef02) is used directly by GRUB, never mounted.
     # For LUKS, create_filesystems already mounted the separate ext4 /boot.
