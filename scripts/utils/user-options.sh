@@ -200,12 +200,12 @@ disk_select() {
     fi
 }
 
-# @description This function will handle file systems. At this movement we are handling only
-# btrfs and ext4. Others will be added in future.
+# @description Choose the root filesystem before calculating the disk allocation.
 # @noargs
 filesystem() {
+    local previous_fs="${FS:-}"
     echo -ne "
-Please Select your file system for both boot and root
+Please select your root filesystem (boot filesystem is configured automatically)
 "
     options=("btrfs" "ext4" "luks" "exit")
     select_option $? 1 "${options[@]}"
@@ -214,18 +214,29 @@ Please Select your file system for both boot and root
     0)
         set_btrfs
         set_option FS btrfs || return 1
+        FS=btrfs
         ;;
-    1) set_option FS ext4 || return 1 ;;
+    1)
+        set_option FS ext4 || return 1
+        FS=ext4
+        ;;
     2)
         set_password "LUKS_PASSWORD"
         set_option FS luks || return 1
+        FS=luks
         ;;
     3) exit ;;
     *)
         echo "Wrong option please select again"
         filesystem
+        return $?
         ;;
     esac
+
+    if [[ -n "${DISK:-}" && "$FS" != "$previous_fs" ]]; then
+        echo "Filesystem changed; please reconfirm the disk allocation."
+        disk_select || return 1
+    fi
 }
 
 # @description Set btrfs subvolumes to be used during install

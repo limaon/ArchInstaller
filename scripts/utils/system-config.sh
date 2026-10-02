@@ -105,6 +105,9 @@ disk_allocation_plan() {
     disk_boot_mib=256
     if test -d /sys/firmware/efi; then
         disk_boot_mib=1024
+    elif [[ "${FS:-}" == "luks" ]]; then
+        # BIOSBOOT embeds GRUB; a separate, unencrypted /boot holds kernel/initramfs.
+        disk_boot_mib=1280
     fi
     disk_allocation_mib=$((disk_total_mib * percent / 100))
     disk_root_mib=$((disk_allocation_mib - disk_boot_mib))
@@ -163,12 +166,18 @@ format_disk() {
     else
         echo -e "\nCreating BIOS Boot partition (no filesystem)"
         sgdisk -n 1::+256M --typecode=1:ef02 --change-name=1:"BIOSBOOT" "${DISK}"
+        local root_partition_number=2
+        if [[ "${FS:-}" == "luks" ]]; then
+            echo -e "\nCreating unencrypted BOOT partition (1 GiB)"
+            sgdisk -n 2::+1G --typecode=2:8300 --change-name=2:"BOOT" "${DISK}"
+            root_partition_number=3
+        fi
         echo -e "\nCreating ROOT partition (${disk_percent}% of disk including boot)"
 
         if [[ "$disk_percent" -eq 100 ]]; then
-            sgdisk -n 2::-0 --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
+            sgdisk -n "${root_partition_number}::-0" --typecode="${root_partition_number}:8300" --change-name="${root_partition_number}:ROOT" "${DISK}"
         else
-            sgdisk -n "2::+${disk_root_mib}M" --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
+            sgdisk -n "${root_partition_number}::+${disk_root_mib}M" --typecode="${root_partition_number}:8300" --change-name="${root_partition_number}:ROOT" "${DISK}"
         fi
 
         sgdisk -A 1:set:2 "${DISK}"
@@ -190,17 +199,23 @@ create_filesystems() {
     set -e
 
     if [[ "${DISK}" =~ "nvme" || "${DISK}" =~ "mmc" ]]; then
-        if [[ -d "/sys/firmware/efi" ]]; then
+        if test -d /sys/firmware/efi; then
             boot_partition="${DISK}p1"
             root_partition="${DISK}p2"
+        elif [[ "$FS" == "luks" ]]; then
+            boot_partition="${DISK}p2"
+            root_partition="${DISK}p3"
         else
             boot_partition=""
             root_partition="${DISK}p2"
         fi
     else
-        if [[ -d "/sys/firmware/efi" ]]; then
+        if test -d /sys/firmware/efi; then
             boot_partition="${DISK}1"
             root_partition="${DISK}2"
+        elif [[ "$FS" == "luks" ]]; then
+            boot_partition="${DISK}2"
+            root_partition="${DISK}3"
         else
             boot_partition=""
             root_partition="${DISK}1"
@@ -209,8 +224,13 @@ create_filesystems() {
     fi
 
     if [[ -n "${boot_partition}" ]]; then
-        echo "Creating FAT32 EFI boot filesystem on ${boot_partition}"
-        mkfs.vfat -F32 -n "EFIBOOT" "${boot_partition}"
+        if test -d /sys/firmware/efi; then
+            echo "Creating FAT32 EFI boot filesystem on ${boot_partition}"
+            mkfs.vfat -F32 -n "EFIBOOT" "${boot_partition}"
+        else
+            echo "Creating unencrypted EXT4 boot filesystem on ${boot_partition}"
+            mkfs.ext4 -L BOOT "${boot_partition}"
+        fi
     fi
 
     if [[ "${FS}" == "btrfs" ]]; then
@@ -252,6 +272,12 @@ create_filesystems() {
 
         do_btrfs "ROOT" "/dev/mapper/ROOT"
         echo ENCRYPTED_PARTITION_UUID="$(blkid -s UUID -o value "${root_partition}")" >>"$CONFIGS_DIR"/setup.conf
+    fi
+
+    if ! test -d /sys/firmware/efi && [[ "$FS" == "luks" ]]; then
+        # Mount after the root subvolume, before pacstrap and genfstab.
+        mkdir -p /mnt/boot
+        mount -t ext4 "$boot_partition" /mnt/boot
     fi
 
     set +e

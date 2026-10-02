@@ -44,9 +44,9 @@ if [[ -d "/sys/firmware/efi" ]]; then
     mkdir -p /mnt/boot
     mount -t vfat -L EFIBOOT /mnt/boot/
 else
-    # Legacy BIOS system: No separate boot partition to mount
-    # BIOS Boot partition (ef02) is not mounted - GRUB uses it directly
-    echo "Legacy BIOS system detected - No EFI partition to mount"
+    # BIOSBOOT (ef02) is used directly by GRUB, never mounted.
+    # For LUKS, create_filesystems already mounted the separate ext4 /boot.
+    echo "Legacy BIOS system detected - Boot filesystem prepared"
     mkdir -p /mnt/boot
 fi
 mount_check
