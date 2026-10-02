@@ -100,7 +100,10 @@ configure_pam_faillock
 
 # Function to configure PipeWire audio server and remove PulseAudio
 # function from 'system-config.sh'
-configure_pipewire
+if ! configure_pipewire; then
+    echo "ERROR: PipeWire configuration failed; stopping post-setup" >&2
+    exit 1
+fi
 
 # Configure root user shell
 echo -ne "

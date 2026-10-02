@@ -1940,8 +1940,18 @@ configure_pipewire() {
     echo "PipeWire is installed, configuring audio server..."
 
     if pacman -Qi pulseaudio &>/dev/null; then
+        local package
+        local -a pulse_packages=()
+        for package in pulseaudio pulseaudio-alsa pulseaudio-bluetooth pulseaudio-equalizer pulseaudio-jack; do
+            if pacman -Qi "$package" &>/dev/null; then
+                pulse_packages+=("$package")
+            fi
+        done
         echo "Removing obsolete PulseAudio packages..."
-        pacman -Rns --noconfirm pulseaudio pulseaudio-alsa pulseaudio-bluetooth pulseaudio-equalizer pulseaudio-jack 2>/dev/null || true
+        if ! pacman -Rns --noconfirm "${pulse_packages[@]}"; then
+            echo "ERROR: Failed to remove PulseAudio packages" >&2
+            return 1
+        fi
         echo "PulseAudio removed successfully"
     else
         echo "PulseAudio not found (already using PipeWire)"
