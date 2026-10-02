@@ -1881,9 +1881,9 @@ configure_pam_faillock() {
                     Configuring PAM Password Attempts
 -------------------------------------------------------------------------
 "
-    FAILLOCK_CONF="/etc/security/faillock.conf"
+    local FAILLOCK_CONF="${FAILLOCK_CONFIG_FILE:-/etc/security/faillock.conf}"
 
-    mkdir -p /etc/security/
+    mkdir -p "$(dirname "$FAILLOCK_CONF")"
 
     if [[ ! -f "$FAILLOCK_CONF" ]]; then
         cat >"$FAILLOCK_CONF" <<'EOF'
@@ -1903,19 +1903,10 @@ unlock_time = 600
 EOF
         echo "Created $FAILLOCK_CONF with 5 attempts configuration"
     else
-        sed -i '/^deny\s*=/d' "$FAILLOCK_CONF"
+        sed -i '/^[[:space:]]*deny[[:space:]]*=/d' "$FAILLOCK_CONF"
 
-        # Add deny = 5 after the header comments (after first non-empty, non-comment section)
-        # Find a good place to insert: after comments but before other config lines
-        # If we find a line like "fail_interval" or "unlock_time", add before it
-        if grep -q "^fail_interval\|^unlock_time" "$FAILLOCK_CONF"; then
-            sed -i '/^fail_interval\|^unlock_time/i deny = 5' "$FAILLOCK_CONF"
-        elif grep -q "^[^#[:space:]]" "$FAILLOCK_CONF"; then
-            sed -i '/^[^#[:space:]]/i deny = 5' "$FAILLOCK_CONF"
-        else
-            echo "" >>"$FAILLOCK_CONF"
-            echo "deny = 5" >>"$FAILLOCK_CONF"
-        fi
+        # Append one active limit while preserving the other policy settings.
+        printf '\ndeny = 5\n' >>"$FAILLOCK_CONF"
 
         echo "Updated $FAILLOCK_CONF: deny = 5 (removed duplicates)"
     fi
