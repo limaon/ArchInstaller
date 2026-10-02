@@ -81,7 +81,7 @@ cat /mnt/etc/fstab
 bootloader_install
 
 # Configure swap memory settings for systems with limited resources, function is located on 'system-config.sh'
-low_memory_config
+low_memory_config || exit 1
 
 echo -ne "
 -------------------------------------------------------------------------

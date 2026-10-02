@@ -40,7 +40,7 @@ if [[ ! "$INSTALL_TYPE" == "SERVER" ]]; then
 fi
 clear
 show_logo
-disk_select
+disk_select || exit 1
 clear
 show_logo
 filesystem

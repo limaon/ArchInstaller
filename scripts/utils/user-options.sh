@@ -132,6 +132,7 @@ configure_switcheroo_control() {
 # @description Disk selection for drive to be used with installation.
 # @noargs
 disk_select() {
+    local disk_total_mib disk_boot_mib disk_allocation_mib disk_root_mib
     echo -ne "
 ------------------------------------------------------------------------
     ${BRED}${BOLD}THIS WILL FORMAT AND DELETE ALL DATA ON THE DISK!${RESET}
@@ -153,7 +154,6 @@ disk_select() {
     disk="${disk// /}" # Remove trailing spaces
 
     echo -e "\n${disk} selected \n"
-    set_option DISK "${disk}" || return 1
 
     # Ask for disk usage percentage
     echo -ne "${BOLD}Disk space usage:${RESET}\n\n"
@@ -162,46 +162,34 @@ disk_select() {
     select_option ${#options_percent[@]} 1 "${options_percent[@]}"
     percent_choice=$?
 
-    if [[ $percent_choice -eq 0 ]]; then
-        # Use 100%
+    while true; do
         disk_percent=100
-        echo -e "\nUsing 100% of ${disk}\n"
-    else
-        # Define custom percentage
-        while true; do
-            read -rp "Enter percentage to use (5-100): " user_percent
+        if [[ $percent_choice -ne 0 ]]; then
+            read -rp "Enter percentage to use (5-100, default 100): " user_percent || return 1
+            disk_percent="${user_percent:-100}"
+        fi
+        if ! disk_allocation_plan "$disk" "$disk_percent"; then
+            [[ $percent_choice -eq 0 ]] && return 1
+            continue
+        fi
+        disk_percent=$((10#$disk_percent))
 
-            # Validate input
-            if [[ -z "$user_percent" ]]; then
-                echo "Percentage cannot be empty. Using 100%."
-                disk_percent=100
-                break
-            elif ! [[ "$user_percent" =~ ^[0-9]+$ ]]; then
-                echo "Invalid input. Please enter a number."
-            elif [[ "$user_percent" -lt 5 ]] || [[ "$user_percent" -gt 100 ]]; then
-                echo "Percentage must be between 5 and 100."
-            else
-                disk_percent="$user_percent"
-
-                # Calculate and show preview
-                disk_size=$(lsblk -n -b -o SIZE "${disk}" | head -n1)
-                disk_size_gb=$((disk_size / 1024 / 1024 / 1024))
-                used_size_gb=$((disk_size * disk_percent / 100 / 1024 / 1024 / 1024))
-
-                echo -e "\n${BOLD}Preview:${RESET}"
-                echo -e "Total disk size: ${disk_size_gb}GB"
-                echo -e "Will use: ${used_size_gb}GB (${disk_percent}%)"
-                echo -e "Remaining: $((disk_size_gb - used_size_gb))GB (unused)"
-
-                read -rp "Confirm this percentage? (y/n): " confirm
-                if [[ "${confirm,,}" == "y" ]]; then
-                    break
-                fi
-            fi
-        done
-    fi
+        echo -e "\n${BOLD}Preview:${RESET}"
+        awk -v total="$disk_total_mib" -v used="$disk_allocation_mib" \
+            -v boot="$disk_boot_mib" -v root="$disk_root_mib" -v percent="$disk_percent" 'BEGIN {
+            printf "Total disk size: %.2f GiB\n", total / 1024
+            printf "Installation budget: %.2f GiB (%d%%, including boot)\n", used / 1024, percent
+            printf "Boot: %.2f GiB\nRoot: %.2f GiB (minimum 50 GiB)\n", boot / 1024, root / 1024
+            printf "Remaining: approximately %.2f GiB (unallocated)\n", (total - used) / 1024
+        }'
+        echo "All existing partitions will be erased, including when using less than 100%."
+        [[ $percent_choice -eq 0 ]] && break
+        read -rp "Confirm this percentage? (y/n): " confirm || return 1
+        [[ "${confirm,,}" == "y" ]] && break
+    done
 
     # Save percentage
+    set_option DISK "${disk}" || return 1
     set_option DISK_USAGE_PERCENT "${disk_percent}" || return 1
 
     # Detect disk type (SSD/HDD)

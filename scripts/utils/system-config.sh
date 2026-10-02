@@ -84,9 +84,46 @@ prepare_disk_for_format() {
     fi
 }
 
+# @description Calculate partition sizes in MiB and validate a 50 GiB minimum root.
+# Percentage budgets include boot and root; reserve alignment/GPT space at 100%.
+disk_allocation_plan() {
+    local disk="$1" percent="$2" disk_bytes
+    if [[ ! "$percent" =~ ^[0-9]{1,3}$ ]]; then
+        echo "ERROR: Disk percentage must be an integer between 5 and 100" >&2
+        return 1
+    fi
+    percent=$((10#$percent))
+    if ((percent < 5 || percent > 100)); then
+        echo "ERROR: Disk percentage must be between 5 and 100" >&2
+        return 1
+    fi
+    if ! disk_bytes=$(blockdev --getsize64 "$disk") || [[ ! "$disk_bytes" =~ ^[0-9]+$ ]]; then
+        echo "ERROR: Cannot read disk size for $disk" >&2
+        return 1
+    fi
+    disk_total_mib=$((disk_bytes / 1024 / 1024))
+    disk_boot_mib=256
+    if test -d /sys/firmware/efi; then
+        disk_boot_mib=1024
+    fi
+    disk_allocation_mib=$((disk_total_mib * percent / 100))
+    disk_root_mib=$((disk_allocation_mib - disk_boot_mib))
+    if ((percent == 100)); then
+        disk_root_mib=$((disk_root_mib - 2))
+    fi
+    if ((disk_root_mib < 51200)); then
+        echo "ERROR: Root requires at least 50 GiB after reserving boot space" >&2
+        return 1
+    fi
+}
+
 # @description Format disk before creating filesystem(s)
 # @noargs
 format_disk() {
+    local disk_percent="${DISK_USAGE_PERCENT:-100}"
+    local disk_total_mib disk_boot_mib disk_allocation_mib disk_root_mib
+    disk_allocation_plan "$DISK" "$disk_percent" || exit 1
+    disk_percent=$((10#$disk_percent))
     echo -ne "
 -------------------------------------------------------------------------
                     Installing Prerequisites
@@ -99,8 +136,6 @@ format_disk() {
                     Formatting ${DISK}
 -------------------------------------------------------------------------
 "
-
-    disk_percent="${DISK_USAGE_PERCENT:-100}"
 
     mkdir -p /mnt &>/dev/null
     umount -A --recursive /mnt &>/dev/null
@@ -115,49 +150,25 @@ format_disk() {
     sgdisk -Z "${DISK}"
     sgdisk -a 2048 -o "${DISK}"
 
-    if [[ -d "/sys/firmware/efi" ]]; then
+    if ((disk_boot_mib == 1024)); then
         echo -e "\nCreating EFI partition (UEFI Boot Partition)"
         sgdisk -n 1::+1G --typecode=1:ef00 --change-name=1:"EFIBOOT" "${DISK}"
-        echo -e "\nCreating ROOT partition (${disk_percent}% of disk)"
+        echo -e "\nCreating ROOT partition (${disk_percent}% of disk including boot)"
 
         if [[ "$disk_percent" -eq 100 ]]; then
             sgdisk -n 2::-0 --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
         else
-            # Calculate size based on percentage
-            # Get total disk size in bytes
-            disk_size_bytes=$(blockdev --getsize64 "${DISK}")
-
-            # EFI partition is 1GB = 1024MB = 1024 * 1024 * 1024 bytes
-            efi_size_bytes=$((1024 * 1024 * 1024))
-
-            # Calculate available space after EFI partition
-            available_bytes=$((disk_size_bytes - efi_size_bytes))
-
-            # Calculate root partition size based on percentage of available space
-            root_size_mb=$(((available_bytes * disk_percent) / 100 / 1024 / 1024))
-            sgdisk -n 2::+${root_size_mb}M --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
+            sgdisk -n "2::+${disk_root_mib}M" --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
         fi
     else
         echo -e "\nCreating BIOS Boot partition (no filesystem)"
         sgdisk -n 1::+256M --typecode=1:ef02 --change-name=1:"BIOSBOOT" "${DISK}"
-        echo -e "\nCreating ROOT partition (${disk_percent}% of disk)"
+        echo -e "\nCreating ROOT partition (${disk_percent}% of disk including boot)"
 
         if [[ "$disk_percent" -eq 100 ]]; then
             sgdisk -n 2::-0 --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
         else
-            # Calculate size based on percentage
-            # Get total disk size in bytes
-            disk_size_bytes=$(blockdev --getsize64 "${DISK}")
-
-            # BIOS Boot partition is 256MB = 256 * 1024 * 1024 bytes
-            bios_boot_size_bytes=$((256 * 1024 * 1024))
-
-            # Calculate available space after BIOS Boot partition
-            available_bytes=$((disk_size_bytes - bios_boot_size_bytes))
-
-            # Calculate root partition size based on percentage of available space
-            root_size_mb=$(((available_bytes * disk_percent) / 100 / 1024 / 1024))
-            sgdisk -n 2::+${root_size_mb}M --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
+            sgdisk -n "2::+${disk_root_mib}M" --typecode=2:8300 --change-name=2:"ROOT" "${DISK}"
         fi
 
         sgdisk -A 1:set:2 "${DISK}"
@@ -307,6 +318,11 @@ get_cpu_cores() {
 # Reference: https://wiki.archlinux.org/title/Btrfs#Swap_file
 # @noargs
 low_memory_config() {
+    # Swap files need free space inside the mounted target, not outside its partitions.
+    if ! mountpoint -q /mnt; then
+        echo "ERROR: /mnt must be mounted before configuring swap" >&2
+        return 1
+    fi
     echo -ne "
 -------------------------------------------------------------------------
           Intelligent Swap Configuration
@@ -338,16 +354,7 @@ low_memory_config() {
     IS_LAPTOP=$?
 
     # Calculate available disk space
-    AVAILABLE_SPACE_GB=0
-    if mountpoint -q /mnt 2>/dev/null; then
-        AVAILABLE_SPACE_GB=$(df -BG /mnt 2>/dev/null | awk 'NR==2 {gsub(/G/, "", $4); print int($4)}' || echo "0")
-    elif [[ -n "${DISK:-}" ]] && [[ -b "${DISK}" ]]; then
-        DISK_SIZE_BYTES=$(blockdev --getsize64 "${DISK}" 2>/dev/null || echo "0")
-        DISK_SIZE_GB=$((DISK_SIZE_BYTES / 1024 / 1024 / 1024))
-        DISK_PERCENT="${DISK_USAGE_PERCENT:-100}"
-        USED_GB=$(((DISK_SIZE_GB * DISK_PERCENT) / 100))
-        AVAILABLE_SPACE_GB=$((DISK_SIZE_GB - USED_GB))
-    fi
+    AVAILABLE_SPACE_GB=$(df -BG /mnt 2>/dev/null | awk 'NR==2 {gsub(/G/, "", $4); print int($4)}' || echo "0")
 
     echo "System Hardware Analysis:"
     echo "  RAM: ${TOTAL_MEM_GB}GB"
