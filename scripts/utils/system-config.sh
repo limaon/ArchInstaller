@@ -1543,7 +1543,7 @@ grub_install_bootloader() {
     if test -d "/sys/firmware/efi"; then
         echo "Installing GRUB for UEFI system..."
         if ! grub-install --target=x86_64-efi --efi-directory=/boot \
-            --bootloader-id="Arch Linux"; then
+            --bootloader-id="Arch Linux" --removable; then
             echo "ERROR: Failed to install GRUB bootloader" >&2
             return 1
         fi
