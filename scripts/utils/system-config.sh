@@ -1441,7 +1441,10 @@ grub_config() {
 
     echo -e "\nUpdating GRUB configuration..."
     mkdir -p /boot/grub
-    grub-mkconfig -o /boot/grub/grub.cfg
+    if ! grub-mkconfig -o /boot/grub/grub.cfg; then
+        echo "ERROR: Failed to generate GRUB configuration" >&2
+        return 1
+    fi
 
     if [[ "${FS}" == "luks" ]]; then
         sed -i 's/root=UUID=[^ ]* //' /boot/grub/grub.cfg

@@ -42,7 +42,10 @@ echo -ne "
 # Function to configure and theme the GRUB boot menu, including setting
 # kernel parameters and installing the some theme, function from 'system-config.sh'
 # This must be called BEFORE grub-install when using LUKS encryption
-grub_config
+if ! grub_config; then
+    echo "ERROR: GRUB configuration failed; stopping post-setup"
+    exit 1
+fi
 
 # Configure crypttab for LUKS if needed
 if [[ "${FS}" == "luks" ]]; then
