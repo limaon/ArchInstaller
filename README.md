@@ -15,7 +15,7 @@ An automated and interactive Arch Linux installer that transforms the complex ma
 - **Battery Notifications**: Dynamic per-battery monitoring for i3-wm, including multi-battery laptops, charger events and health alerts
 - **Installation Profiles**: FULL (complete desktop), MINIMAL (basic desktop), SERVER (CLI only)
 - **Automatic SSH Setup**: SSH server configured and enabled for remote access
-- **Post-Installation Verification**: Automatic verification script to check installation success
+- **Installation Records**: Installation log and saved configuration with password fields removed in `~/.archinstaller/`
 - **Complete Logging**: All output logged to `/var/log/install.log` for troubleshooting
 
 ## Prerequisites

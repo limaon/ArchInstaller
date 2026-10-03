@@ -56,37 +56,38 @@ run_installation_phases() {
     arch-chroot /mnt "$HOME"/archinstaller/scripts/3-post-setup.sh || return 1
 }
 
-# @description Copy logs to installed system and user home, copy verification script
-# @noargs
+# @description Preserve installation logs and sanitize the saved user configuration
+# @arg $1 Installed system root (defaults to /mnt)
 end_script() {
+    local target_root="${1:-/mnt}"
     echo "Copying logs"
-    if [[ "$(find /mnt/var/log -type d | wc -l)" -ne 0 ]]; then
-        cp -v "$LOG_FILE" /mnt/var/log/install.log
+    if [[ -d "$target_root/var/log" ]]; then
+        cp -v "$LOG_FILE" "$target_root/var/log/install.log" || return 1
     else
-        echo -ne "ERROR! Log directory not found"
-        exit 0
+        echo "ERROR! Log directory not found: $target_root/var/log" >&2
+        return 1
     fi
 
-    # Copy logs and verification script to user home (if USERNAME is set)
-    if [[ -n "${USERNAME:-}" ]] && [[ -d "/mnt/home/$USERNAME" ]]; then
-        echo "Copying logs and verification script to user home"
-        mkdir -p "/mnt/home/$USERNAME/.archinstaller"
+    # Preserve logs and sanitized configuration in user home (if USERNAME is set)
+    if [[ -n "${USERNAME:-}" ]] && [[ -d "$target_root/home/$USERNAME" ]]; then
+        echo "Preserving installation logs and sanitized configuration in user home"
+        mkdir -p "$target_root/home/$USERNAME/.archinstaller" || return 1
 
         # Copy installation log
-        cp -v "$LOG_FILE" "/mnt/home/$USERNAME/.archinstaller/install.log"
+        cp -v "$LOG_FILE" "$target_root/home/$USERNAME/.archinstaller/install.log" || return 1
 
         # Preserve the latest shared config without passwords.
         local shared_config
         shared_config=$(config_file_for_context shared "$USERNAME") || return 1
-        if [[ -f "/mnt$shared_config" ]] && ! sanitize_config_file \
-            "/mnt$shared_config" "/mnt/home/$USERNAME/.archinstaller/setup.conf"; then
+        if [[ -f "$target_root$shared_config" ]] && ! sanitize_config_file \
+            "$target_root$shared_config" "$target_root/home/$USERNAME/.archinstaller/setup.conf"; then
             echo "ERROR! Failed to preserve sanitized configuration" >&2
             return 1
         fi
 
         # Set ownership using arch-chroot (user exists in installed system)
-        if arch-chroot /mnt id "$USERNAME" &>/dev/null; then
-            arch-chroot /mnt chown -R "$USERNAME:$USERNAME" "/home/$USERNAME/.archinstaller"
+        if arch-chroot "$target_root" id "$USERNAME" &>/dev/null; then
+            arch-chroot "$target_root" chown -R "$USERNAME:$USERNAME" "/home/$USERNAME/.archinstaller"
             echo "Files copied to /home/$USERNAME/.archinstaller/"
         else
             echo "Warning: User $USERNAME not found in installed system, skipping chown"
