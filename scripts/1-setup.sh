@@ -39,8 +39,8 @@ locale_config
 # Add sudo no password rights
 sed -Ei 's/^# (%wheel ALL=\(ALL(:ALL)?\) NOPASSWD: ALL)/\1/' /etc/sudoers
 
-# Enables the multilib repository and adds the chaotic-aur repository
-# to the system's package manager configuration 'system-config.sh'
+# Enable multilib when required by the installation options and sync repositories.
+# Function from 'system-config.sh'.
 extra_repos
 
 # Installs the base Arch Linux system by parsing a JSON file for
