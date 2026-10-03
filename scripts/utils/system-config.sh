@@ -1028,18 +1028,24 @@ _create_standard_swapfile() {
 # @description Configures makepkg settings dependent on cpu cores
 # @noargs
 cpu_config() {
-    nc=$(grep -c ^processor /proc/cpuinfo)
-    echo -ne "
--------------------------------------------------------------------------
-                    You have $nc cores. And
-            changing the makeflags for $nc cores. Aswell as
-                changing the compression settings.
--------------------------------------------------------------------------
-"
-    TOTAL_MEM=$(grep </proc/meminfo -i 'memtotal' | grep -o '[[:digit:]]*')
-    if [[ "$TOTAL_MEM" -gt 8000000 ]]; then
+    local cpu_info_file="${CPU_INFO_FILE:-/proc/cpuinfo}"
+    local meminfo_file="${MEMINFO_FILE:-/proc/meminfo}"
+    local makepkg_file="${MAKEPKG_CONFIG_FILE:-/etc/makepkg.conf}"
+    local nc total_mem
+
+    nc=$(grep -c '^processor' "$cpu_info_file") || return 1
+    total_mem=$(awk '/^[Mm]em[Tt]otal:/ {print $2; exit}' "$meminfo_file") || return 1
+    if [[ ! "$total_mem" =~ ^[0-9]+$ ]]; then
+        echo "ERROR: Could not determine total memory from $meminfo_file" >&2
+        return 1
+    fi
+
+    if [[ "$total_mem" -gt 8000000 ]]; then
         sed -i "s/^#\(MAKEFLAGS=\"-j\)2\"/\1$nc\"/;
-        /^COMPRESSXZ=(xz -c -z -)/s/-c /&-T $nc /" /etc/makepkg.conf
+        /^COMPRESSXZ=(xz -c -z -)/s/-c /&-T $nc /" "$makepkg_file" || return 1
+        echo "CPU build settings configured: $nc cores, $((total_mem / 1024)) MiB RAM."
+    else
+        echo "CPU build settings unchanged: $((total_mem / 1024)) MiB RAM is below the 8 GiB threshold."
     fi
 }
 
