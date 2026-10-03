@@ -1484,7 +1484,7 @@ EOF
     fi
 }
 
-# @description Configure GRUB and set a wallpaper (if not SERVER installation)
+# @description Configure kernel parameters and generate the GRUB boot menu
 # @noargs
 grub_config() {
     echo -ne "
@@ -1511,12 +1511,6 @@ grub_config() {
     cp -an /etc/default/grub /etc/default/grub.bak
 
     _configure_hibernation
-
-    if [[ "$INSTALL_TYPE" != "SERVER" ]]; then
-        echo -e "\nSetting wallpaper for GRUB..."
-    else
-        echo -e "\nSkipping wallpaper setup for SERVER installation."
-    fi
 
     echo -e "\nUpdating GRUB configuration..."
     mkdir -p /boot/grub

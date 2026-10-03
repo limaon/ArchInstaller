@@ -39,8 +39,8 @@ echo -ne "
   GRUB Bootloader Install & Check
 "
 
-# Function to configure and theme the GRUB boot menu, including setting
-# kernel parameters and installing the some theme, function from 'system-config.sh'
+# Configure kernel parameters and generate the GRUB boot menu.
+# Function from 'system-config.sh'.
 # This must be called BEFORE grub-install when using LUKS encryption
 if ! grub_config; then
     echo "ERROR: GRUB configuration failed; stopping post-setup"
