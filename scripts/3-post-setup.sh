@@ -92,7 +92,10 @@ display_manager
 # Function to enable essential services based on installation
 # type, including NetworkManager, periodic trim, and additional
 # services for full installations function from 'software-install.sh'
-essential_services
+if ! essential_services; then
+    echo "ERROR: Essential services configuration failed; stopping post-setup" >&2
+    exit 1
+fi
 
 # Function to configure PAM password attempts (allow 5 attempts before lockout)
 # function from 'system-config.sh'

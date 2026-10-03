@@ -1855,20 +1855,55 @@ plymouth_config() {
             Enabling (and Theming) Plymouth Boot Splash
 -------------------------------------------------------------------------
 "
-    PLYMOUTH_THEMES_DIR="$HOME"/archinstaller/configs/base/usr/share/plymouth/themes
-    PLYMOUTH_THEME="arch-glow"
-    mkdir -p "/usr/share/plymouth/themes"
+    local PLYMOUTH_THEMES_DIR="$HOME"/archinstaller/configs/base/usr/share/plymouth/themes
+    local PLYMOUTH_THEME="arch-glow"
+    local themes_target="${PLYMOUTH_THEMES_TARGET:-/usr/share/plymouth/themes}"
+    local config_file="${MKINITCPIO_CONFIG_FILE:-/etc/mkinitcpio.conf}"
+    mkdir -p "$themes_target"
 
     echo -e "Installing Plymouth theme... \n"
 
-    cp -rf "${PLYMOUTH_THEMES_DIR}"/"${PLYMOUTH_THEME}" /usr/share/plymouth/themes
-    if [[ "${FS}" == "luks" ]]; then
-        sed -i 's/HOOKS=(base udev*/& plymouth/' /etc/mkinitcpio.conf
-        sed -i 's/HOOKS=(base udev \(.*block\) /&plymouth-/' /etc/mkinitcpio.conf
-    else
-        sed -i 's/HOOKS=(base udev*/& plymouth/' /etc/mkinitcpio.conf
+    cp -rf "${PLYMOUTH_THEMES_DIR}"/"${PLYMOUTH_THEME}" "$themes_target"
+    local hooks_line hooks_value hook backend replacement temp_file
+    local hooks_pattern='^[[:space:]]*HOOKS=\(([^)]*)\)[[:space:]]*(#.*)?$'
+    local -a hooks new_hooks=()
+    hooks_line=$(grep -m1 '^[[:space:]]*HOOKS=' "$config_file") || return 1
+    if [[ ! "$hooks_line" =~ $hooks_pattern ]]; then
+        echo "ERROR: Expected a single-line HOOKS array in $config_file" >&2
+        return 1
     fi
-    plymouth-set-default-theme -R arch-glow
+    hooks_value="${BASH_REMATCH[1]}"
+    hooks_value="${hooks_value//\"/}"
+    hooks_value="${hooks_value//\'/}"
+    read -r -a hooks <<<"$hooks_value"
+    if [[ " ${hooks[*]} " == *" systemd "* ]]; then
+        backend="systemd"
+    elif [[ " ${hooks[*]} " == *" udev "* ]]; then
+        backend="udev"
+    else
+        echo "ERROR: Plymouth requires a systemd or udev hook" >&2
+        return 1
+    fi
+    # Plymouth must follow the init backend and precede encrypt/sd-encrypt.
+    for hook in "${hooks[@]}"; do
+        [[ "$hook" == "plymouth" ]] && continue
+        new_hooks+=("$hook")
+        [[ "$hook" == "$backend" ]] && new_hooks+=(plymouth)
+    done
+    printf -v replacement 'HOOKS=(%s)' "${new_hooks[*]}"
+    temp_file=$(mktemp "${config_file}.XXXXXX") || return 1
+    if ! awk -v replacement="$replacement" '
+        /^[[:space:]]*HOOKS=/ { print replacement; next }
+        { print }
+    ' "$config_file" >"$temp_file" || ! mv -- "$temp_file" "$config_file"; then
+        rm -f -- "$temp_file"
+        echo "ERROR: Failed to update Plymouth initramfs hooks" >&2
+        return 1
+    fi
+    if ! plymouth-set-default-theme -R "$PLYMOUTH_THEME"; then
+        echo "ERROR: Failed to apply Plymouth theme and rebuild initramfs" >&2
+        return 1
+    fi
 
     echo -e "\n Plymouth theme installed"
 }

@@ -1356,7 +1356,7 @@ essential_services() {
         systemctl enable cpupower.service
         echo -e "cpupower enabled \n"
 
-        plymouth_config
+        plymouth_config || return 1
 
     fi
 
