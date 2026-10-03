@@ -78,7 +78,10 @@ fi
 add_user
 
 # Apply user-specific desktop configuration with the new user's home directory.
-run_user_theming
+if ! run_user_theming; then
+    echo "ERROR: Desktop configuration failed; stopping setup" >&2
+    exit 1
+fi
 
 # Check if the filesystem is LUKS; if so, add sd-encrypt hook and rebuild initramfs
 # According to Arch Wiki, use sd-encrypt (systemd-based) with systemd initramfs

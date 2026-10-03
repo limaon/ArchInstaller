@@ -37,9 +37,9 @@ deploy_window_manager() {
 
         if [[ -d "$config_source" ]]; then
             echo "  Deploying config files to $config_target..."
-            mkdir -p "$config_target"
-            cp -r "$config_source"* "$config_target/" 2>/dev/null || true
-            find "$config_target" -type d -exec chmod "$config_perms" {} \; 2>/dev/null || true
+            mkdir -p "$config_target" || return 1
+            cp -r "$config_source"* "$config_target/" || return 1
+            find "$config_target" -type d -exec chmod "$config_perms" {} + || return 1
             echo "  [OK] Config files deployed"
         fi
     fi
@@ -52,9 +52,9 @@ deploy_window_manager() {
 
         if [[ -d "$scripts_source" ]]; then
             echo "  Deploying scripts to $scripts_target..."
-            mkdir -p "$scripts_target"
-            cp "$scripts_source"* "$scripts_target/" 2>/dev/null || true
-            chmod "$scripts_perms" "$scripts_target"/* 2>/dev/null || true
+            mkdir -p "$scripts_target" || return 1
+            cp "$scripts_source"* "$scripts_target/" || return 1
+            chmod "$scripts_perms" "$scripts_target"/* || return 1
             echo "  [OK] Scripts deployed"
         fi
     fi
@@ -65,12 +65,12 @@ deploy_window_manager() {
 
         if [[ -d "$system_source" ]]; then
             echo "  Deploying system files to $system_target..."
-            cp -r "$system_source"* "$system_target/" 2>/dev/null || true
+            cp -r "$system_source"* "$system_target/" || return 1
             # Set permissions for specific file types
-            find "$system_target" -name "*.rules" -exec chmod 644 {} \; 2>/dev/null || true
-            find "$system_target" -name "*.conf" -exec chmod 644 {} \; 2>/dev/null || true
-            find "$system_target" -name "*.service" -exec chmod 644 {} \; 2>/dev/null || true
-            find "$system_target" -name "*.timer" -exec chmod 644 {} \; 2>/dev/null || true
+            find "$system_target" -name "*.rules" -exec chmod 644 {} + || return 1
+            find "$system_target" -name "*.conf" -exec chmod 644 {} + || return 1
+            find "$system_target" -name "*.service" -exec chmod 644 {} + || return 1
+            find "$system_target" -name "*.timer" -exec chmod 644 {} + || return 1
             echo "  [OK] System files deployed"
         fi
     fi
@@ -83,17 +83,17 @@ deploy_window_manager() {
 
         if [[ -d "$dotfiles_source" ]]; then
             echo "  Deploying dotfiles to $dotfiles_target..."
-            cp "$dotfiles_source".* "$dotfiles_target/" 2>/dev/null || true
+            cp "$dotfiles_source".* "$dotfiles_target/" || return 1
             for dotfile in "$dotfiles_source".*; do
                 [[ -f "$dotfile" ]] || continue
-                chmod "$dotfiles_perms" "$dotfiles_target/$(basename "$dotfile")" 2>/dev/null || true
+                chmod "$dotfiles_perms" "$dotfiles_target/$(basename "$dotfile")" || return 1
             done
             echo "  [OK] Dotfiles deployed"
         fi
     fi
 
     if [[ "$deployment_scope" != "system" ]]; then
-        apply_shared_components "$wm_name" "$metadata_file"
+        apply_shared_components "$wm_name" "$metadata_file" || return 1
     fi
 
     echo "[OK] $display_name deployment complete"
@@ -133,12 +133,14 @@ deploy_desktop_environment() {
 
         if [[ -d "$scripts_source" ]]; then
             echo "  Deploying scripts to $scripts_target..."
-            mkdir -p "$scripts_target"
-            if ! cp "$scripts_source"/* "$scripts_target/" 2>/dev/null; then
-                echo "  [WARNING] Failed to copy some scripts" >&2
+            mkdir -p "$scripts_target" || return 1
+            if ! cp "$scripts_source"/* "$scripts_target/"; then
+                echo "  [ERROR] Failed to copy scripts" >&2
+                return 1
             fi
-            if ! chmod "$scripts_perms" "$scripts_target"/* 2>/dev/null; then
-                echo "  [WARNING] Failed to set permissions on some scripts" >&2
+            if ! chmod "$scripts_perms" "$scripts_target"/*; then
+                echo "  [ERROR] Failed to set permissions on scripts" >&2
+                return 1
             fi
             echo "  [OK] Scripts deployed"
         fi
@@ -152,12 +154,14 @@ deploy_desktop_environment() {
 
         if [[ -d "$autostart_source" ]]; then
             echo "  Deploying autostart files to $autostart_target..."
-            mkdir -p "$autostart_target"
-            if ! cp "$autostart_source"/* "$autostart_target/" 2>/dev/null; then
-                echo "  [WARNING] Failed to copy some autostart files" >&2
+            mkdir -p "$autostart_target" || return 1
+            if ! cp "$autostart_source"/* "$autostart_target/"; then
+                echo "  [ERROR] Failed to copy autostart files" >&2
+                return 1
             fi
-            if ! chmod "$autostart_perms" "$autostart_target"/* 2>/dev/null; then
-                echo "  [WARNING] Failed to set permissions on some autostart files" >&2
+            if ! chmod "$autostart_perms" "$autostart_target"/*; then
+                echo "  [ERROR] Failed to set permissions on autostart files" >&2
+                return 1
             fi
             echo "  [OK] Autostart files deployed"
         fi
@@ -170,17 +174,19 @@ deploy_desktop_environment() {
 
         if [[ -d "$system_source" ]]; then
             echo "  Deploying system files to $system_target..."
-            if ! sudo cp -r "$system_source"/* "$system_target/" 2>/dev/null; then
-                echo "  [WARNING] Failed to copy some system files" >&2
+            if ! sudo cp -r "$system_source"/* "$system_target/"; then
+                echo "  [ERROR] Failed to copy system files" >&2
+                return 1
             fi
-            if ! sudo find "$system_target" -name "*.conf" -exec chmod 644 {} \; 2>/dev/null; then
-                echo "  [WARNING] Failed to set permissions on some system files" >&2
+            if ! sudo find "$system_target" -name "*.conf" -exec chmod 644 {} +; then
+                echo "  [ERROR] Failed to set permissions on system files" >&2
+                return 1
             fi
             echo "  [OK] System files deployed"
         fi
     fi
 
-    apply_shared_components "$de_name" "$metadata_file"
+    apply_shared_components "$de_name" "$metadata_file" || return 1
 
     echo "[OK] $display_name deployment complete"
     return 0
@@ -210,47 +216,61 @@ apply_shared_components() {
             # Deploy GTK/Qt/Kvantum themes
             if [[ -d "$shared_dir/themes" ]]; then
                 echo "    - Deploying themes..."
-                mkdir -p "$HOME/.config"
+                mkdir -p "$HOME/.config" || return 1
 
                 # GTK themes
-                [[ -d "$shared_dir/themes/gtk-3.0" ]] && cp -r "$shared_dir/themes/gtk-3.0" "$HOME/.config/" 2>/dev/null || true
-                [[ -d "$shared_dir/themes/gtk-4.0" ]] && cp -r "$shared_dir/themes/gtk-4.0" "$HOME/.config/" 2>/dev/null || true
+                if [[ -d "$shared_dir/themes/gtk-3.0" ]]; then
+                    cp -r "$shared_dir/themes/gtk-3.0" "$HOME/.config/" || return 1
+                fi
+                if [[ -d "$shared_dir/themes/gtk-4.0" ]]; then
+                    cp -r "$shared_dir/themes/gtk-4.0" "$HOME/.config/" || return 1
+                fi
 
                 # Qt themes
-                [[ -d "$shared_dir/themes/qt5ct" ]] && cp -r "$shared_dir/themes/qt5ct" "$HOME/.config/" 2>/dev/null || true
-                [[ -d "$shared_dir/themes/qt6ct" ]] && cp -r "$shared_dir/themes/qt6ct" "$HOME/.config/" 2>/dev/null || true
+                if [[ -d "$shared_dir/themes/qt5ct" ]]; then
+                    cp -r "$shared_dir/themes/qt5ct" "$HOME/.config/" || return 1
+                fi
+                if [[ -d "$shared_dir/themes/qt6ct" ]]; then
+                    cp -r "$shared_dir/themes/qt6ct" "$HOME/.config/" || return 1
+                fi
 
                 # Kvantum themes
-                [[ -d "$shared_dir/themes/Kvantum" ]] && cp -r "$shared_dir/themes/Kvantum" "$HOME/.config/" 2>/dev/null || true
+                if [[ -d "$shared_dir/themes/Kvantum" ]]; then
+                    cp -r "$shared_dir/themes/Kvantum" "$HOME/.config/" || return 1
+                fi
             fi
             ;;
         "terminal")
             # Deploy terminal configs (kitty)
             if [[ -d "$shared_dir/terminal/kitty" ]]; then
                 echo "    - Deploying terminal config..."
-                mkdir -p "$HOME/.config"
-                cp -r "$shared_dir/terminal/kitty" "$HOME/.config/" 2>/dev/null || true
+                mkdir -p "$HOME/.config" || return 1
+                cp -r "$shared_dir/terminal/kitty" "$HOME/.config/" || return 1
             fi
             ;;
         "fonts")
             # Deploy font configs
             if [[ -d "$shared_dir/fonts/fontconfig" ]]; then
                 echo "    - Deploying font config..."
-                mkdir -p "$HOME/.config"
-                cp -r "$shared_dir/fonts/fontconfig" "$HOME/.config/" 2>/dev/null || true
+                mkdir -p "$HOME/.config" || return 1
+                cp -r "$shared_dir/fonts/fontconfig" "$HOME/.config/" || return 1
             fi
             ;;
         "autostart")
             # Deploy autostart applications
             if [[ -d "$shared_dir/autostart" ]]; then
                 echo "    - Deploying autostart apps..."
-                mkdir -p "$HOME/.config"
+                mkdir -p "$HOME/.config" || return 1
 
                 # libfm config
-                [[ -d "$shared_dir/autostart/libfm" ]] && cp -r "$shared_dir/autostart/libfm" "$HOME/.config/" 2>/dev/null || true
+                if [[ -d "$shared_dir/autostart/libfm" ]]; then
+                    cp -r "$shared_dir/autostart/libfm" "$HOME/.config/" || return 1
+                fi
 
                 # autostart desktop files
-                [[ -d "$shared_dir/autostart/autostart" ]] && cp -r "$shared_dir/autostart/autostart" "$HOME/.config/" 2>/dev/null || true
+                if [[ -d "$shared_dir/autostart/autostart" ]]; then
+                    cp -r "$shared_dir/autostart/autostart" "$HOME/.config/" || return 1
+                fi
             fi
             ;;
         esac
@@ -259,7 +279,7 @@ apply_shared_components() {
     # Deploy shared dotfiles
     if [[ -d "$shared_dir/dotfiles" ]]; then
         echo "    - Deploying shared dotfiles..."
-        cp "$shared_dir/dotfiles"/.* "$HOME/" 2>/dev/null || true
+        cp "$shared_dir/dotfiles"/.* "$HOME/" || return 1
     fi
 
     echo "  [OK] Shared components deployed"
@@ -1229,13 +1249,13 @@ user_theming() {
             ./dotfiles-openbox/install-titus.sh
 
         elif [[ "$DESKTOP_ENV" == "awesome" ]]; then
-            deploy_window_manager "awesome"
+            deploy_window_manager "awesome" || return 1
 
             sudo chmod 755 /etc/xdg/awesome 2>/dev/null || true
             sudo chmod 644 /etc/xdg/awesome/rc.lua 2>/dev/null || true
 
         elif [[ "$DESKTOP_ENV" == "i3-wm" ]]; then
-            deploy_window_manager "i3"
+            deploy_window_manager "i3" || return 1
 
             # Configure i3 wallpaper/background with solid color for all installation types
             I3_CONFIG_FILE="$HOME/.config/i3/config"
@@ -1252,7 +1272,7 @@ user_theming() {
                 fi
             fi
         elif [[ "$DESKTOP_ENV" == "gnome" ]]; then
-            deploy_desktop_environment "gnome"
+            deploy_desktop_environment "gnome" || return 1
 
             echo "GNOME extensions and settings will be applied on first login"
 
@@ -1424,47 +1444,49 @@ i3wm_auto_suspend_hibernate() {
 
 "
 
-    # Create systemd logind configuration
-    echo "Configuring systemd logind for power management..."
-    sudo mkdir -p /etc/systemd/logind.conf.d/
-
-    sudo tee /etc/systemd/logind.conf.d/50-power.conf >/dev/null <<'EOF'
-HandleLidSwitch=suspend
-HandleLidSwitchDocked=hibernate
-HandleLidSwitchExternalPower=suspend
-
-IdleAction=suspend
-IdleActionSec=1800s  # 30 minutes
-
-InhibitDelayMax=30s
-
-# Suspend when battery is low
-HandlePowerKey=suspend
-HandleSleepKey=suspend
-EOF
-
-    sudo chmod 644 /etc/systemd/logind.conf.d/50-power.conf
-
-    # Restart logind to apply changes
-    sudo systemctl restart systemd-logind
-    echo "[OK] Power management configured"
-
-    # Check swap and hibernation capability
-    echo ""
+    # Choose the docked-lid action before writing the policy.
+    local SWAP_SIZE RAM_SIZE
+    local docked_action="suspend"
     echo "Checking swap configuration..."
     SWAP_SIZE=$(free -k | awk '/^Swap:/ {print $2}')
     RAM_SIZE=$(free -k | awk '/^Mem:/ {print $2}')
 
     if [[ $SWAP_SIZE -gt 0 && $SWAP_SIZE -ge $RAM_SIZE ]]; then
+        docked_action="hibernate"
         echo "[OK] Swap sufficient for hibernation ($((SWAP_SIZE / 1024 / 1024))GB >= $((RAM_SIZE / 1024 / 1024))GB)"
     else
         echo "[!] Warning: Insufficient swap for hibernation"
         echo "  Current swap: $((SWAP_SIZE / 1024 / 1024))GB, Required: $((RAM_SIZE / 1024 / 1024))GB"
-        echo "  System will suspend instead of hibernating on battery"
-        echo "  To enable hibernation: sudo systemctl edit systemd-logind and set:"
-        echo "    HandleLidSwitch=hibernate"
-        echo "    HandleLidSwitchDocked=hibernate"
+        echo "  Docked lid close will suspend instead of hibernating"
     fi
+
+    # Create systemd logind configuration
+    echo "Configuring systemd logind for power management..."
+    local logind_config="${LOGIND_CONFIG_FILE:-/etc/systemd/logind.conf.d/50-power.conf}"
+    sudo mkdir -p "$(dirname "$logind_config")" || return 1
+
+    sudo tee "$logind_config" >/dev/null <<EOF || return 1
+[Login]
+HandleLidSwitch=suspend
+HandleLidSwitchDocked=${docked_action}
+HandleLidSwitchExternalPower=suspend
+
+IdleAction=suspend
+# 30 minutes
+IdleActionSec=1800s
+
+InhibitDelayMax=30s
+
+# Suspend when the power or suspend key is pressed
+HandlePowerKey=suspend
+HandleSuspendKey=suspend
+EOF
+
+    sudo chmod 644 "$logind_config" || return 1
+
+    # Restart logind to apply changes
+    sudo systemctl restart systemd-logind
+    echo "[OK] Power management configured"
 
     echo ""
     echo "[OK] Power management configuration complete!"

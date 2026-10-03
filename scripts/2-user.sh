@@ -57,10 +57,11 @@ fi
 # on 'software-install.sh'.
 i3wm_battery_notifications
 
-# Installs auto suspend/hibernate for i3-wm desktop environment
-# Configures scripts, systemd logind, and xidlehook for automatic suspend/hibernate
-# on 'software-install.sh'.
-i3wm_auto_suspend_hibernate
+# Configure logind power actions, falling back to suspend when swap is insufficient.
+if ! i3wm_auto_suspend_hibernate; then
+    echo "Error: Power management configuration failed; stopping Phase 2" >&2
+    exit 1
+fi
 
 # Installs Btrfs packages based on the specified filesystem type, utilizing JQ
 # to parse a JSON file for package names and installing them via Pacman or an
